@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * keeps a visible edge against both a white and a near-black page.
  */
 export function BrowserFrame({
-  url = "schoolerp.okhrang.com",
+  url = "bloodoc.life/admin",
   children,
   className,
   screenClassName,
