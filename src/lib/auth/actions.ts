@@ -9,7 +9,18 @@ import { consumeOtp, issueOtp, normaliseEmail, OTP_TTL_MINUTES } from "@/lib/aut
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { signInCodeEmail } from "@/lib/email/templates";
 
-export type AuthState = { error?: string; sent?: boolean; email?: string };
+export type AuthState = {
+  error?: string;
+  sent?: boolean;
+  email?: string;
+  /**
+   * Changes on every successful send. Not a timestamp anybody measures with —
+   * the client uses it only as an identity, to know a *new* code went out and
+   * restart its own countdown. The cooldown that actually matters is enforced
+   * in `issueOtp`.
+   */
+  sentAt?: number;
+};
 
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address.");
 
@@ -43,7 +54,7 @@ export async function requestSignInCode(
     if (!sent.ok) return { error: "Could not send the email. Try again in a moment." };
   }
 
-  return { sent: true, email };
+  return { sent: true, email, sentAt: Date.now() };
 }
 
 /**

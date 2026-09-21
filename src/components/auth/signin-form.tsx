@@ -39,32 +39,6 @@ export function SignInForm() {
 
   const codeRef = useRef<HTMLInputElement>(null);
 
-  // The resend countdown.
-  //
-  // `sentAt` is adjusted during render when a *new* action result arrives —
-  // React's documented way to derive state from changing props, and the reason
-  // there is no effect here. Setting it from an effect would mean a second
-  // render pass every time a code goes out, for a value the render already
-  // knows.
-  //
-  // The ticking half is a genuine external system (a clock), so it stays in an
-  // effect, and it only runs while a countdown is actually in flight.
-  const [sentAt, setSentAt] = useState<number | null>(null);
-  const [seen, setSeen] = useState<AuthState | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-
-  if (seen !== reqState) {
-    setSeen(reqState);
-    if (reqState.sent) {
-      setSentAt(Date.now());
-      setNow(Date.now());
-    }
-  }
-
-  const cooldown = sentAt
-    ? Math.max(0, RESEND_SECONDS - Math.floor((now - sentAt) / 1000))
-    : 0;
-
   // Move the caret to the code box the moment the step changes. Without it the
   // focus stays on a submit button that is no longer on screen, and a keyboard
   // user has to tab back into the form they were already filling.
@@ -72,11 +46,6 @@ export function SignInForm() {
     if (sent) codeRef.current?.focus();
   }, [sent]);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [cooldown]);
 
   if (!sent) {
     return (
@@ -172,15 +141,46 @@ export function SignInForm() {
         >
           <ArrowLeft className="size-3.5" /> Use a different email
         </button>
-        <button
-          type="submit"
-          formAction={reqAction}
-          disabled={cooldown > 0 || reqPending}
-          className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-        >
-          {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
-        </button>
+        {/* Keyed on the send nonce, so each new code remounts this and the
+            countdown starts again from a clean state. That is what lets the
+            timer live entirely inside the component, with no state derived
+            from a prop and no clock read during render. */}
+        <ResendButton key={reqState.sentAt ?? 0} action={reqAction} busy={reqPending} />
       </div>
     </form>
+  );
+}
+
+/**
+ * "Resend code", with its own countdown.
+ *
+ * The countdown is local and starts at mount. The parent remounts it with a
+ * `key` whenever a new code is sent, which is both simpler and more accurate
+ * than deriving the remaining seconds from a server timestamp — the two clocks
+ * do not have to agree about anything.
+ */
+function ResendButton({
+  action,
+  busy,
+}: {
+  action: (formData: FormData) => void;
+  busy: boolean;
+}) {
+  const [left, setLeft] = useState(RESEND_SECONDS);
+
+  useEffect(() => {
+    const id = setInterval(() => setLeft((l) => (l <= 1 ? 0 : l - 1)), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <button
+      type="submit"
+      formAction={action}
+      disabled={left > 0 || busy}
+      className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+    >
+      {left > 0 ? `Resend in ${left}s` : "Resend code"}
+    </button>
   );
 }
