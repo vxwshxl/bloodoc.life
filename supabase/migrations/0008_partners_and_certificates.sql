@@ -353,6 +353,27 @@ as $$
   );
 $$;
 
+-- Is the caller a member of any body that acts as a blood bank somewhere?
+--
+-- Only used by the walk-in donor insert below, which cannot be scoped to a
+-- camp: the donor has no registration at the moment the row is written, so
+-- there is nothing to scope against.
+create or replace function is_any_bloodbank_member()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1
+      from camp_partners cp
+      join partner_members pm on pm.partner_id = cp.partner_id
+     where cp.role = 'blood_bank'
+       and pm.profile_id = auth.uid()
+  );
+$$;
+
 -- --------------------------------------------------------------------------
 -- RLS
 -- --------------------------------------------------------------------------
@@ -454,12 +475,24 @@ create policy donors_select_partner on donors for select
 -- walk-in. Insert is unscoped by necessity — the donor has no registration yet
 -- at the moment the row is written, so there is nothing to scope against.
 create policy donors_insert_bloodbank on donors for insert
-  with check (exists (select 1 from camp_partners cp
-                       join partner_members pm on pm.partner_id = cp.partner_id
-                      where cp.role = 'blood_bank' and pm.profile_id = auth.uid()));
+  with check (is_any_bloodbank_member());
 create policy donors_update_partner on donors for update
   using (shares_camp_with_donor(id))
   with check (shares_camp_with_donor(id));
+
+-- A partner reads its own camps, including drafts.
+--
+-- Without this the panel loses a camp until the day it is published: `camps`
+-- only admits `status = 'published'` to a non-admin, so the roster's join to
+-- camps came back null for anything still being planned — which is exactly
+-- when a coordinator is checking the venue and the date.
+--
+-- It goes through the `security definer` helper rather than a subquery on
+-- `camp_partners`. A policy on camps that read camp_partners, whose own policy
+-- reads camps, is mutual recursion and Postgres raises rather than resolving
+-- it. The definer function sidesteps RLS entirely and breaks the cycle.
+create policy camps_select_partner on camps for select
+  using (is_camp_partner(id));
 
 -- A partner member needs to read the profile behind a colleague's membership
 -- row, or the panel shows an email address where a name belongs.
