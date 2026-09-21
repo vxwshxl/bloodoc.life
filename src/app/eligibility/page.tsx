@@ -37,7 +37,7 @@ const DEFERRALS = [
   { what: "Pregnancy", wait: "12 months after delivery" },
   { what: "Miscarriage or termination", wait: "6 months" },
   { what: "While breastfeeding", wait: "Until the child is weaned" },
-  { what: "Vaccination (routine, inactivated)", wait: "Usually none — mention it at screening" },
+  { what: "Vaccination (routine, inactivated)", wait: "Usually none, but mention it at screening" },
   { what: "Malaria", wait: "3 months after full recovery" },
   { what: "Typhoid", wait: "12 months after recovery" },
 ];
@@ -62,7 +62,7 @@ export default async function EligibilityPage() {
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
               Almost certainly, and probably sooner than you think. Here is the
-              whole picture — including how long each of the common reasons for
+              whole picture, including how long each of the common reasons for
               waiting actually lasts.
             </p>
           </div>
@@ -128,7 +128,7 @@ export default async function EligibilityPage() {
               <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
                 Screening is free, takes ten minutes, and tells you your
                 haemoglobin, your blood pressure and your group. Being deferred
-                is recorded and costs you nothing — you simply come to the next
+                is recorded and costs you nothing. You simply come to the next
                 one.
               </p>
               <Link

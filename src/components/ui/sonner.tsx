@@ -1,15 +1,15 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      // Pinned, not read from a theme hook: the site is light only, and asking
+      // Sonner for "system" would give a phone in dark mode a dark toast on a
+      // white page.
+      theme="light"
       className="toaster group"
       icons={{
         success: (
@@ -30,8 +30,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
-          // Monochrome, pill-shaped toasts (black bg / white text; inverted in
-          // dark mode) — no status colours.
+          // Monochrome, pill-shaped toasts: black ground, white text, no
+          // status colours.
           "--normal-bg": "var(--foreground)",
           "--normal-text": "var(--background)",
           "--normal-border": "var(--foreground)",

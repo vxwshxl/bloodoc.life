@@ -15,7 +15,7 @@ import { CountUp } from "@/components/marketing/count-up";
 const STATS: { to: number; suffix?: string; label: string; note: string }[] = [
   { to: 3, label: "patients", note: "helped by one donation, once it is separated" },
   { to: 10, suffix: " min", label: "on the couch", note: "of an appointment that runs about an hour" },
-  { to: 56, label: "days", note: "between whole-blood donations — that is all" },
+  { to: 56, label: "days", note: "between whole-blood donations. That is all" },
   { to: 0, label: "substitutes", note: "have ever been manufactured. It only comes from people" },
 ];
 
@@ -24,7 +24,7 @@ const ASSURANCES = [
     icon: ShieldCheck,
     title: "A fresh, sterile kit for every donor",
     body:
-      "Needle, tubing and bag are single-use and opened in front of you. Giving blood cannot give you an infection — the one fear worth naming out loud.",
+      "Needle, tubing and bag are single-use and opened in front of you. Giving blood cannot give you an infection. That is the one fear worth naming out loud.",
   },
   {
     icon: Timer,
@@ -42,7 +42,7 @@ const ASSURANCES = [
 
 export function ImpactBand() {
   return (
-    <section id="impact" className="relative overflow-hidden px-6 py-24 sm:py-32">
+    <section id="impact" className="relative overflow-hidden px-5 py-16 sm:px-6 sm:py-32">
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade-y" />
 
       <div className="relative mx-auto max-w-6xl">
@@ -54,7 +54,7 @@ export function ImpactBand() {
             It is an hour. For someone else it is the rest of their life.
           </h2>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Blood cannot be manufactured and it does not keep for long — red
+            Blood cannot be manufactured and it does not keep for long. Red
             cells last about six weeks, platelets five days. Which means a blood
             bank is never stocked; it is only ever being refilled.
           </p>
@@ -62,7 +62,7 @@ export function ImpactBand() {
 
         <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
           {STATS.map((s, i) => (
-            <Reveal key={s.label} delay={i * 60} className="bg-card p-7">
+            <Reveal key={s.label} delay={i * 60} className="bg-card p-5 sm:p-7">
               <p className="font-display text-5xl font-bold tracking-tighter text-primary">
                 <CountUp to={s.to} />
                 {s.suffix}
@@ -78,7 +78,7 @@ export function ImpactBand() {
             <Reveal
               key={a.title}
               delay={i * 70}
-              className="rounded-2xl border border-border bg-card p-7 shadow-card"
+              className="rounded-2xl border border-border bg-card p-5 shadow-card sm:p-7"
             >
               <span className="flex size-11 items-center justify-center rounded-xl bg-primary/12 text-primary">
                 <a.icon className="size-5.5" strokeWidth={1.9} />

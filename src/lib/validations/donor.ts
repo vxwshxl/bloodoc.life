@@ -87,15 +87,16 @@ export const donorRegistrationSchema = z
     priorDonations: optionalNumber(0, 200, "Number of donations"),
 
     // --- On the day ---
+    //
+    // Blood pressure and haemoglobin are deliberately absent. They are
+    // measured at the desk with a cuff and a test, and a number a donor typed
+    // in from memory at home is worse than a blank: it looks like a reading,
+    // it sits in the same column as real ones, and nobody can tell them apart
+    // afterwards. Those two are recorded by the screening team through the
+    // console. Height and weight stay, because a donor genuinely knows them
+    // and the 45kg minimum is worth flagging before someone travels.
     heightCm: optionalNumber(100, 250, "Height"),
     weightKg: optionalNumber(30, 300, "Weight"),
-    bpSystolic: optionalNumber(60, 260, "Systolic pressure"),
-    bpDiastolic: optionalNumber(30, 160, "Diastolic pressure"),
-    // The range is deliberately wider than the donation cutoff (12.5 g/dL in
-    // India). A donor who is turned away for a low reading still has that
-    // reading recorded, and a field that refused to hold it would be a field
-    // that only works for people who pass.
-    hemoglobin: optionalNumber(3, 25, "Haemoglobin"),
     medications: optionalText,
 
     // --- Which camp ---
@@ -119,22 +120,7 @@ export const donorRegistrationSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["priorDonations"],
-        message: "You marked yourself a first-time donor — leave this blank, or untick that.",
-      });
-    }
-    // Blood pressure is a pair. One half of it is not a reading.
-    if ((v.bpSystolic === null) !== (v.bpDiastolic === null)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["bpDiastolic"],
-        message: "Enter both numbers, or neither.",
-      });
-    }
-    if (v.bpSystolic !== null && v.bpDiastolic !== null && v.bpDiastolic >= v.bpSystolic) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["bpDiastolic"],
-        message: "The lower number should be below the upper one.",
+        message: "You marked yourself a first-time donor. Leave this blank, or change that to No.",
       });
     }
     // Which of the two boxes is asked for depends on `kind`, and only the one

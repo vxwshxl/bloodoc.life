@@ -11,7 +11,7 @@ import { pageMetadata } from "@/lib/seo/page-metadata";
 export const metadata: Metadata = pageMetadata({
   title: "Blood donation questions, answered",
   description:
-    "Does it hurt, how long does it take, who can donate, how often, what about medication or a tattoo — the questions people actually ask before giving blood for the first time.",
+    "Does it hurt, how long does it take, who can donate, how often, what about medication or a tattoo. The questions people actually ask before giving blood for the first time.",
   path: "/faq",
 });
 
@@ -28,7 +28,7 @@ export default async function FaqPage() {
         />
         <TopNav activeIndex={3} dashboardHref={dashboardHref} />
 
-        <div className="relative overflow-hidden px-6 pt-4 pb-14">
+        <div className="relative overflow-hidden px-5 pt-4 pb-10 sm:px-6 sm:pb-14">
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade-b" />
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-bloom" />
           <div className="relative mx-auto max-w-3xl">
@@ -45,7 +45,7 @@ export default async function FaqPage() {
           </div>
         </div>
 
-        <div className="mx-auto w-full max-w-3xl px-6 pb-24">
+        <div className="mx-auto w-full max-w-3xl px-5 pb-20 sm:px-6 sm:pb-24">
           {/* <details> rather than a JS accordion: it opens before hydration,
               it is findable by the browser's own Find on page (Chrome expands a
               closed <details> to reach a match), and it prints open. */}
@@ -53,7 +53,7 @@ export default async function FaqPage() {
             {FAQ.map((item, i) => (
               <Reveal key={item.q} delay={Math.min(i, 6) * 40} as="div">
                 <details className="group">
-                  <summary className="flex cursor-pointer items-start gap-4 px-5 py-5 text-left font-semibold tracking-tight sm:px-7">
+                  <summary className="flex cursor-pointer items-start gap-4 px-4 py-4 text-left font-semibold tracking-tight sm:px-7 sm:py-5">
                     <span className="flex-1">{item.q}</span>
                     <span
                       aria-hidden
@@ -64,7 +64,7 @@ export default async function FaqPage() {
                       </svg>
                     </span>
                   </summary>
-                  <p className="px-5 pb-6 leading-relaxed text-muted-foreground sm:px-7">
+                  <p className="px-4 pb-5 leading-relaxed text-muted-foreground sm:px-7 sm:pb-6">
                     {item.a}
                   </p>
                 </details>

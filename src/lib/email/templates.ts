@@ -9,8 +9,9 @@ import {
   codeBlock,
   notice,
 } from "@/lib/email/render";
+import { SITE_URL } from "@/lib/site-url";
 
-const site = () => process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
+const site = () => SITE_URL;
 
 /** The six-digit sign-in code. */
 export function signInCodeEmail(code: string, minutes: number) {
@@ -26,7 +27,7 @@ export function signInCodeEmail(code: string, minutes: number) {
         paragraph("Enter this code on the BlooDoc sign-in page to continue. It expires in " + minutes + " minutes."),
         codeBlock(code),
         notice(
-          "If you did not ask to sign in, you can ignore this email — the code is useless without your inbox, and nobody can sign in with it on your behalf.",
+          "If you did not ask to sign in, you can ignore this email. The code is useless without your inbox, and nobody can sign in with it on your behalf.",
         ),
       ],
       footerNote: "This code was requested from the BlooDoc sign-in page.",
@@ -45,13 +46,13 @@ export function registrationConfirmedEmail(input: {
   partner?: string | null;
 }) {
   return {
-    subject: `You're registered — ${input.campTitle}`,
+    subject: `You're registered for ${input.campTitle}`,
     html: renderEmail({
       preheader: `${input.when} · ${input.venue}`,
       blocks: [
         heading(`Thank you, ${input.donorName}.`),
         paragraph(
-          "You are on the donor roster. Bring a photo ID on the day — it is the only thing you need to carry.",
+          "You are on the donor roster. Bring a photo ID on the day. It is the only thing you need to carry.",
         ),
         infoCard([
           { label: "Camp", value: input.campTitle, strong: true },
@@ -96,7 +97,7 @@ export function campReminderEmail(input: {
           { label: "Where", value: input.venue },
         ]),
         paragraph(
-          "Sleep well tonight, eat before you come, and drink more water than usual. If you are unwell or on new medication, tell the desk when you arrive rather than staying away — a deferral is recorded and costs you nothing.",
+          "Sleep well tonight, eat before you come, and drink more water than usual. If you are unwell or on new medication, tell the desk when you arrive rather than staying away. A deferral is recorded and costs you nothing.",
           { muted: true },
         ),
       ],

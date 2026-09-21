@@ -9,7 +9,7 @@ export const OG_IMAGE = {
   url: "/og.png?v=2",
   width: 1200,
   height: 630,
-  alt: "BlooDoc — roll up a sleeve, save three lives. Register in two minutes.",
+  alt: "BlooDoc: roll up a sleeve, save three lives. Register in two minutes.",
 };
 
 /**

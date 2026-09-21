@@ -3,7 +3,7 @@ import { ConsoleTimeline } from "@/components/marketing/console-timeline";
 
 export function ConsoleSection() {
   return (
-    <section id="console" className="relative px-6 py-24 sm:py-32">
+    <section id="console" className="relative px-5 py-16 sm:px-6 sm:py-32">
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-3xl">
           <span className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">

@@ -11,7 +11,7 @@ import { campDateParts, formatTimeRange, countdownLabel } from "@/lib/format";
 export const metadata: Metadata = pageMetadata({
   title: "Upcoming blood donation camps",
   description:
-    "Every BlooDoc blood donation camp still to come — date, time, venue and how many places are left. Registration takes two minutes and is free.",
+    "Every BlooDoc blood donation camp still to come: date, time, venue and how many places are left. Registration takes two minutes and is free.",
   path: "/camps",
 });
 
@@ -23,7 +23,7 @@ export default async function CampsPage() {
       <main className="relative z-10 flex flex-1 flex-col bg-background">
         <TopNav activeIndex={1} dashboardHref={dashboardHref} />
 
-        <div className="relative overflow-hidden px-6 pt-4 pb-16">
+        <div className="relative overflow-hidden px-5 pt-4 pb-10 sm:px-6 sm:pb-16">
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade-b" />
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-bloom" />
           <div className="relative mx-auto max-w-4xl">
@@ -35,12 +35,12 @@ export default async function CampsPage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
               Registering takes two minutes and costs nothing. You can also walk
-              in on the day — the form just means less queueing.
+              in on the day. The form just means less queueing.
             </p>
           </div>
         </div>
 
-        <div className="mx-auto w-full max-w-4xl px-6 pb-24">
+        <div className="mx-auto w-full max-w-4xl px-5 pb-20 sm:px-6 sm:pb-24">
           {camps.length === 0 ? (
             <div className="rounded-3xl border border-border bg-card p-10 text-center shadow-card">
               <p className="font-display text-xl font-bold tracking-tight">
@@ -65,7 +65,7 @@ export default async function CampsPage() {
                   <li key={camp.id}>
                     <Link
                       href={`/camps/${camp.slug}`}
-                      className="group press grain flex flex-col gap-5 rounded-3xl border border-border bg-card p-6 shadow-card transition-[border-color] duration-300 ease-out-strong hover:border-primary/40 sm:flex-row sm:items-center sm:gap-7"
+                      className="group press grain flex flex-col gap-4 rounded-3xl border border-border bg-card p-4 shadow-card transition-[border-color] duration-300 ease-out-strong hover:border-primary/40 sm:flex-row sm:items-center sm:gap-7 sm:p-6"
                     >
                       <span className="flex shrink-0 items-center gap-4 sm:flex-col sm:gap-0">
                         <span

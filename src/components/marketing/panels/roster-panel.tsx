@@ -4,7 +4,7 @@ const ROWS = [
   { name: "Anjali Deka", kind: "Student · Physics", group: "O+", donations: 3, bp: "118/76", status: "Screened" },
   { name: "Rahul Boro", kind: "Student · Commerce", group: "B+", donations: 0, bp: "122/80", status: "Donated" },
   { name: "Dr. Meera Kalita", kind: "Faculty · Zoology", group: "A+", donations: 11, bp: "126/82", status: "Donated" },
-  { name: "Priya Sarma", kind: "Student · English", group: "A-", donations: 1, bp: "—", status: "Registered" },
+  { name: "Priya Sarma", kind: "Student · English", group: "A-", donations: 1, bp: "–", status: "Registered" },
   { name: "Imran Ahmed", kind: "Staff · Library", group: "AB+", donations: 6, bp: "130/84", status: "Donated" },
   { name: "Nikita Das", kind: "Student · Botany", group: "O-", donations: 2, bp: "104/62", status: "Deferred" },
   { name: "Bikash Nath", kind: "Faculty · Maths", group: "O+", donations: 8, bp: "124/79", status: "Screened" },

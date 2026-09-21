@@ -10,7 +10,7 @@ export default function AssistantPage() {
     <>
       <PageHeader
         title="Assistant"
-        subtitle="Asks your roster, not the internet. Read-only — it can draft an email, you send it."
+        subtitle="Asks your roster, not the internet. Read-only: it can draft an email, you send it."
       />
       <Assistant configured={isAssistantConfigured()} />
     </>

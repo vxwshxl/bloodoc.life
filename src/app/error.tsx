@@ -28,7 +28,7 @@ export default function Error({
           Something went wrong.
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          That is on us, not on you. Try again — and if it keeps happening, write
+          That is on us, not on you. Try again, and if it keeps happening write
           to{" "}
           <a href="mailto:hello@bloodoc.life" className="font-medium text-foreground underline underline-offset-4">
             hello@bloodoc.life

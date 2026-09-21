@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/site-url";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
+const siteUrl = SITE_URL;
 
 /**
  * Open to crawlers, closed over the signed-in surfaces.

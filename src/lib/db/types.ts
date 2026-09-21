@@ -53,6 +53,9 @@ export type Camp = {
   id: string;
   slug: string;
   title: string;
+  /** Assamese and Hindi titles, shown in rotation beside the English one. */
+  title_as: string | null;
+  title_hi: string | null;
   summary: string | null;
   venue: string;
   city: string | null;
@@ -68,6 +71,12 @@ export type Camp = {
   /** Its address or parent institution. */
   partner_note: string | null;
   status: CampStatus;
+  /**
+   * Advertise it. False hides the camp from the home page and the /camps list
+   * while its own page stays reachable by direct link. Not the same question
+   * as `status`, which is whether the page may be opened at all.
+   */
+  listed: boolean;
   created_at: string;
   updated_at: string;
 };

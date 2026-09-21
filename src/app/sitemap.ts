@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { getUpcomingCamps } from "@/lib/camps/queries";
 import { LEGAL_DOCS } from "@/lib/legal/documents";
+import { SITE_URL } from "@/lib/site-url";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
+const siteUrl = SITE_URL;
 
 /**
  * The public surface only.

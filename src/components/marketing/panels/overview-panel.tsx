@@ -23,7 +23,7 @@ export function OverviewPanel() {
   return (
     <ConsoleMock
       active="Overview"
-      title="Camp day — 25 September"
+      title="Camp day, 25 September"
       subtitle="University Auditorium · 09:00–16:00 · live"
     >
       <div className="grid grid-cols-4 gap-4">

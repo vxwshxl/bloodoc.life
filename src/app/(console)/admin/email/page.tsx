@@ -32,7 +32,7 @@ export default async function EmailPage() {
         <Panel>
           <EmptyState
             title="No email yet"
-            body="Sign-in codes, registration confirmations and camp reminders all land here — successes included, so “did it actually go out” has an answer."
+            body="Sign-in codes, registration confirmations and camp reminders all land here, successes included, so “did it actually go out” has an answer."
           />
         </Panel>
       ) : (

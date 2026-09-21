@@ -22,7 +22,7 @@ const STEPS = [
     label: "Camp day",
     title: "The morning, on one screen",
     body:
-      "Registered, screened, donated, deferred — counted as it happens, next to the units collected by group. The organiser stops asking the desk for a number and starts reading it.",
+      "Registered, screened, donated, deferred, counted as it happens and set next to the units collected by group. The organiser stops asking the desk for a number and starts reading it.",
     points: ["Live counts", "Units by blood group", "Who is at the desk right now"],
     url: "bloodoc.life/admin",
     Panel: OverviewPanel,
@@ -44,7 +44,7 @@ const STEPS = [
     label: "Assistant",
     title: "Ask the roster a question",
     body:
-      "“Who is O-negative and has given before?” “Draft a reminder for tomorrow.” It reads the camp you are standing in and nothing else — the tools it is given cannot address another organiser's data.",
+      "“Who is O-negative and has given before?” “Draft a reminder for tomorrow.” It reads the camp you are standing in and nothing else, because the tools it is given cannot address another organiser's data.",
     points: ["Answers from your own records", "Drafts the email, you send it", "Scoped by the tools, not by a prompt"],
     url: "bloodoc.life/admin/assistant",
     Panel: AssistantPanel,
@@ -156,7 +156,7 @@ export function ConsoleTimeline() {
                   <div
                     key={id}
                     data-off={i === active ? undefined : ""}
-                    className="transition-[opacity,filter] duration-300 ease-out-strong data-off:pointer-events-none data-off:opacity-0 data-off:blur-[6px]"
+                    className="transition-opacity duration-300 ease-out-strong data-off:pointer-events-none data-off:opacity-0"
                   >
                     <ScaledMock width={MOCK_W} height={MOCK_H}>
                       <Panel />

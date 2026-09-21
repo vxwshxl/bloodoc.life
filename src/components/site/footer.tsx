@@ -50,15 +50,15 @@ export function SiteFooter() {
   return (
     <footer
       data-nav-stop
-      className="relative border-t border-border bg-card/40 px-6 pt-16 pb-10"
+      className="relative border-t border-border bg-card/40 px-5 pt-12 pb-10 sm:px-6 sm:pt-16"
     >
       <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1.3fr_2fr]">
         <div>
           <Wordmark />
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            BlooDoc runs blood donation camps end to end — the sign-up form, the
-            roster, the screening record and the follow-up — so the organisers
-            spend the morning with donors instead of with paper.
+            BlooDoc runs blood donation camps end to end: the sign-up form, the
+            roster, the screening record and the follow-up. The organisers spend
+            the morning with donors instead of with paper.
           </p>
 
           <ul className="mt-7 flex flex-col gap-3 text-sm">

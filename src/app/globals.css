@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* BlooDoc is light only. The variant stays registered because the shadcn
+ * components ship `dark:` utilities inline and Tailwind has to be able to
+ * compile them — but nothing ever sets the class, every `.dark { … }` block has
+ * been deleted from this file, and `color-scheme` below is hard `light`, so
+ * they can never match. */
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------------
@@ -39,25 +44,17 @@
   --press-scale-sm: 0.98;
 }
 
-/* Modal scrim. A 10% black veil separates a dialog from a white page, but over
- * the near-black dark canvas it dims nothing at all and the dialog reads as
- * floating on the page rather than above it — so dark mode needs a much
- * heavier veil to do the same job. */
+/* Modal scrim. A 10% black veil is enough to separate a dialog from a white
+ * page without turning the page behind it into a grey slab. */
 :root {
   --scrim: oklch(0 0 0 / 0.1);
 }
 
-.dark {
-  --scrim: oklch(0 0 0 / 0.55);
-}
 
 /* SliderNav's highlighter. These were raw rgba() literals inside the component,
- * which is why a nav tuned for a white pill turns to mud the moment dark mode is
- * switched on: the same crimson that reads as a warm droplet on a white bar has
- * to gain lightness and lose saturation to survive the near-black canvas, and
- * its label has to flip with it. Both palettes live here and swap with the
- * theme. (SchoolERP's signature pill is gold; BlooDoc's is the brand crimson,
- * so the header belongs to the same palette as everything below it.) */
+ * which put four unnamed colours outside the palette where nothing could find
+ * them. (SchoolERP's signature pill is gold; BlooDoc's is the brand crimson, so
+ * the header belongs to the same palette as everything below it.) */
 :root {
   --nav-pill-bg: linear-gradient(
     135deg,
@@ -73,28 +70,12 @@
   --nav-pill-label: oklch(0.3 0.11 22);
 }
 
-.dark {
-  --nav-pill-bg: linear-gradient(
-    135deg,
-    rgba(186, 44, 44, 0.38) 0%,
-    rgba(240, 138, 130, 0.48) 35%,
-    rgba(255, 190, 182, 0.4) 55%,
-    rgba(186, 44, 44, 0.32) 100%
-  );
-  --nav-pill-border: rgba(240, 150, 142, 0.44);
-  --nav-pill-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 1px 14px rgba(240, 138, 130, 0.22);
-  --nav-pill-shimmer: rgba(255, 196, 188, 0.55);
-  --nav-pill-label: oklch(0.26 0.1 22);
-}
 
 /* ---------------------------------------------------------------------------
  * Marketing surface. Only the public landing pulls these in; the app shell
  * never touches them. Every value resolves from the same primary/border/
- * foreground tokens the product uses, so the landing recolours with the theme
- * and there is no second palette to keep in sync. The dark values are not the
- * light ones dimmed — a hairline grid that reads at 5.5% on white disappears
- * entirely on near-black, and a crimson glow needs more chroma to survive it.
+ * foreground tokens the product uses, so there is no second palette to keep in
+ * sync.
  * ------------------------------------------------------------------------- */
 :root {
   --hero-grid: oklch(0.16 0 0 / 0.05);
@@ -102,34 +83,22 @@
   --hero-glow-soft: oklch(0.55 0.2 22 / 0.07);
   --hero-halo: oklch(0.55 0.2 22 / 0.34);
   --hero-vignette: oklch(1 0 0);
-  /* Device bezel + screen. A mock phone/browser is a physical object: it stays
-   * dark in both themes, the way a real one on a desk does. Only the screen
-   * inside follows the theme. */
+  /* Device bezel + screen. A mock browser is a physical object, so its chrome
+   * is dark against the light page the way a real one on a desk is. Only the
+   * screen inside it is the product. */
   --bezel: oklch(0.24 0 0);
   --bezel-edge: oklch(0.42 0 0);
   --panel-shadow: 0 32px 80px -24px oklch(0.16 0 0 / 0.28), 0 4px 16px -4px oklch(0.16 0 0 / 0.1);
-  /* Window-control dots. Part of the hardware, not the palette, so they are
-   * fixed in both themes — the same reason the bezel is. */
+  /* Window-control dots. Part of the hardware, not the palette. */
   --tl-red: oklch(0.7 0.17 25);
   --tl-amber: oklch(0.8 0.15 85);
   --tl-green: oklch(0.75 0.17 145);
 }
 
-.dark {
-  --hero-grid: oklch(1 0 0 / 0.055);
-  --hero-glow: oklch(0.7 0.19 22 / 0.24);
-  --hero-glow-soft: oklch(0.7 0.19 22 / 0.11);
-  --hero-halo: oklch(0.7 0.19 22 / 0.42);
-  --hero-vignette: oklch(0.13 0 0);
-  --bezel: oklch(0.2 0 0);
-  --bezel-edge: oklch(0.38 0 0);
-  --panel-shadow: 0 32px 80px -24px oklch(0 0 0 / 0.7), 0 4px 16px -4px oklch(0 0 0 / 0.5);
-}
 
-/* WhatsApp's brand green. Fixed in both themes, like the device bezel above:
- * it is someone else's mark, not part of our palette, and a WhatsApp button
- * that is a different green in dark mode stops being recognisable as one —
- * which is the entire reason for using the brand colour at all. */
+/* WhatsApp's brand green. Someone else's mark, not part of our palette, and
+ * left exactly as they specify it — being recognisable is the entire reason for
+ * using a brand colour. */
 :root {
   --whatsapp: oklch(0.76 0.185 150);
   --whatsapp-hover: oklch(0.71 0.18 150);
@@ -143,11 +112,6 @@
  * of the same sheet. The blooms are fixed, so they stay put while a long donor
  * roster scrolls past instead of sliding up out of the window.
  *
- * Dark mode is not the light values dimmed. A bloom that reads at 6% on white
- * is invisible on near-black, so the dark ones carry far more chroma; and a
- * floating panel has to be *lighter* than its ground there, where the light one
- * is darker than its own. The hairlines invert for the same reason — a 8% black
- * line disappears on a dark canvas.
  * ------------------------------------------------------------------------- */
 :root {
   --app-bg: oklch(0.966 0.002 265);
@@ -165,18 +129,6 @@
   --rail-w: 16rem;
 }
 
-.dark {
-  --app-bg: oklch(0.115 0 0);
-  --app-bloom-1: oklch(0.46 0.11 275 / 0.34);
-  --app-bloom-2: oklch(0.48 0.1 55 / 0.24);
-  --app-bloom-3: oklch(0.47 0.115 22 / 0.32);
-  --app-line: oklch(1 0 0 / 0.1);
-  --app-line-soft: oklch(1 0 0 / 0.07);
-  --app-shadow-card: 0 1px 2px oklch(0 0 0 / 0.4),
-    0 10px 28px -14px oklch(0 0 0 / 0.6);
-  --app-shadow-raised: 0 2px 4px oklch(0 0 0 / 0.4),
-    0 20px 44px -20px oklch(0 0 0 / 0.7);
-}
 
 @theme inline {
   --color-background: var(--background);
@@ -261,12 +213,10 @@
   --chart-4: oklch(0.6 0.18 300);
   --chart-5: oklch(0.63 0.2 15);
   --radius: 0.7rem;
-  color-scheme: light;
+  color-scheme: only light;
   /* The sidebar is a panel that floats on the app ground, not a dark rail
-   * welded to the edge of the window. `primary` is the fill of the item you
-   * are standing on and `accent` the wash under the pointer — they were the
-   * other way round when the rail was black, which is why every nav wrote
-   * `bg-sidebar-accent` for active and `/60` of the same colour for hover. */
+   * welded to the edge of the window. `primary` is the fill of the item you are
+   * standing on, `accent` the wash under the pointer. */
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.16 0 0);
   --sidebar-primary: oklch(0.16 0 0);
@@ -277,44 +227,6 @@
   --sidebar-ring: oklch(0.52 0.205 22);
 }
 
-.dark {
-  color-scheme: dark;
-  --background: oklch(0.13 0 0);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.17 0 0);
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.17 0 0);
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.72 0.175 22);
-  --primary-foreground: oklch(0.15 0.04 22);
-  --secondary: oklch(0.24 0 0);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.24 0 0);
-  --muted-foreground: oklch(0.68 0 0);
-  --accent: oklch(0.28 0.055 22);
-  --accent-foreground: oklch(0.93 0.05 22);
-  --destructive: oklch(0.74 0.16 45);
-  --destructive-foreground: oklch(0.16 0.03 45);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.72 0.165 22);
-  --chart-1: oklch(0.7 0.18 22);
-  --chart-2: oklch(0.7 0.15 245);
-  --chart-3: oklch(0.8 0.14 75);
-  --chart-4: oklch(0.68 0.17 300);
-  --chart-5: oklch(0.7 0.18 15);
-  /* Lighter than the ground it floats on, where the light panel was darker
-   * than its own. A floating surface catches the light in both themes; the
-   * old value (0.1) sat *below* the 0.13 canvas and read as a hole in it. */
-  --sidebar: oklch(0.19 0 0);
-  --sidebar-foreground: oklch(0.96 0 0);
-  --sidebar-primary: oklch(0.95 0 0);
-  --sidebar-primary-foreground: oklch(0.16 0 0);
-  --sidebar-accent: oklch(0.26 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(1 0 0 / 0.09);
-  --sidebar-ring: oklch(0.72 0.175 22);
-}
 
 @layer base {
   * {
@@ -556,15 +468,17 @@
   }
 
   /* Scroll reveal. A transition rather than a keyframe so a fast scroll that
-   * re-enters an element mid-fade retargets instead of restarting, and blur
-   * rather than movement alone because it hides the moment two nearby items
-   * cross each other's paths. 6px stays well under the 20px where blur starts
-   * costing real time in Safari. */
+   * re-enters an element mid-fade retargets instead of restarting.
+   *
+   * Fade and a short rise, and nothing else. There is no blur anywhere on this
+   * site: an animated `filter` is the one property here that cannot run on the
+   * compositor, so every blurred element is re-rasterised on each frame — which
+   * is exactly the cost a mid-range phone cannot absorb while it is also
+   * scrolling. */
   .reveal {
     transition:
       opacity 700ms var(--ease-out-strong),
-      transform 700ms var(--ease-out-strong),
-      filter 700ms var(--ease-out-strong);
+      transform 700ms var(--ease-out-strong);
     transition-delay: var(--reveal-delay, 0ms);
   }
 
@@ -581,14 +495,12 @@
     .reveal:not([data-shown]) {
       opacity: 0;
       transform: translate3d(0, 20px, 0);
-      filter: blur(6px);
     }
   }
   @media print {
     .reveal:not([data-shown]) {
       opacity: 1;
       transform: none;
-      filter: none;
     }
   }
 
@@ -705,7 +617,6 @@
   }
   .reveal:not([data-shown]) {
     transform: none;
-    filter: none;
   }
   .animate-marquee,
   .animate-marquee-reverse {

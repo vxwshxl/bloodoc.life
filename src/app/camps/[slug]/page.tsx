@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Clock, MapPin, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { getCampBySlug } from "@/lib/camps/queries";
 import { getDashboardHref } from "@/lib/auth/dal";
 import { TopNav } from "@/components/site/top-nav";
 import { SiteFooter } from "@/components/site/footer";
 import { RegisterForm } from "@/components/marketing/register-form";
+import { RotatingTitle } from "@/components/marketing/rotating-title";
+import { campTitles } from "@/lib/camps/titles";
 import { campEvent } from "@/lib/seo/structured-data";
 import { pageMetadata } from "@/lib/seo/page-metadata";
 import { campDateParts, formatCampDate, formatTimeRange, countdownLabel } from "@/lib/format";
@@ -21,7 +23,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // The date and the place go in the title, because that is what somebody types
   // and what an answer engine has to match to quote this page.
   return pageMetadata({
-    title: `${camp.title} — ${formatCampDate(camp.starts_at)}`,
+    title: `${camp.title}, ${formatCampDate(camp.starts_at)}`,
     description:
       camp.summary ??
       `Blood donation camp on ${formatCampDate(camp.starts_at)} at ${camp.venue}${camp.city ? `, ${camp.city}` : ""}. Free, takes about 40 minutes, register in two minutes.`,
@@ -48,7 +50,7 @@ export default async function CampPage({ params }: Params) {
         />
         <TopNav activeIndex={1} dashboardHref={dashboardHref} />
 
-        <div className="relative overflow-hidden px-6 pt-4 pb-14">
+        <div className="relative overflow-hidden px-5 pt-4 pb-10 sm:px-6 sm:pb-14">
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade-b" />
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-bloom" />
           <div className="relative mx-auto max-w-3xl">
@@ -56,41 +58,71 @@ export default async function CampPage({ params }: Params) {
               {countdownLabel(camp.starts_at)}
             </span>
             <h1 className="mt-6 text-4xl font-bold tracking-tight text-balance sm:text-5xl">
-              {camp.title}
+              <RotatingTitle titles={campTitles(camp)} />
             </h1>
             {camp.summary && (
-              <p className="mt-6 text-lg leading-relaxed text-muted-foreground">{camp.summary}</p>
+              <p className="mt-5 leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
+                {camp.summary}
+              </p>
             )}
 
-            <dl className="mt-8 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {/*
+              One horizontal strip, not three stacked blocks.
+
+              Label and value sit side by side inside each segment and each
+              segment sits beside the next, so the whole thing reads as a single
+              line of "when and where" rather than as three cards to work
+              through. The segments are divided by hairlines instead of being
+              separate bordered boxes: three borders in a row at phone width is
+              more chrome than content.
+
+              Below `sm` the strip is one unbroken line that scrolls sideways.
+              That is a real trade (the venue runs off the right edge until you
+              swipe) and it is the right one here, because the alternative is
+              either truncating the floor of the building somebody is
+              navigating to, or going back to a stack that pushed the form off
+              the screen. The scrollbar is hidden and the right edge is masked,
+              so it reads as "there is more this way".
+
+              From `sm` there is room to do it properly: nothing scrolls, the
+              mask comes off, and the venue segment takes the remaining width
+              and wraps inside itself. Keeping the phone's nowrap up here would
+              push the venue out past the card's own border, since the three
+              segments together are wider than the 3xl column.
+            */}
+            <dl className="scrollbar-none max-sm:mask-fade-x mt-5 flex items-stretch gap-4 overflow-x-auto rounded-2xl border border-border bg-card px-4 py-3 sm:mt-8 sm:gap-6 sm:overflow-x-visible sm:px-6 sm:py-4">
+              <div className="flex shrink-0 items-baseline gap-2">
+                <dt className="shrink-0 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   Date
                 </dt>
-                <dd className="mt-2 font-display text-xl font-bold tracking-tight">
+                <dd className="flex items-baseline gap-1.5 text-sm font-semibold whitespace-nowrap">
                   {d.day} {d.month}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {d.weekday}, {d.year}
+                  </span>
                 </dd>
-                <dd className="text-xs text-muted-foreground">{d.weekday}, {d.year}</dd>
               </div>
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+
+              <span aria-hidden className="w-px shrink-0 self-stretch bg-border" />
+
+              <div className="flex shrink-0 items-baseline gap-2">
+                <dt className="shrink-0 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   Time
                 </dt>
-                <dd className="mt-2 flex items-center gap-2 text-sm font-medium">
-                  <Clock className="size-4 shrink-0 text-primary" strokeWidth={1.9} />
+                <dd className="text-sm font-semibold whitespace-nowrap">
                   {formatTimeRange(camp.starts_at, camp.ends_at)}
                 </dd>
               </div>
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+
+              <span aria-hidden className="w-px shrink-0 self-stretch bg-border" />
+
+              <div className="flex shrink-0 items-baseline gap-2 pr-2 sm:min-w-0 sm:shrink sm:pr-0">
+                <dt className="shrink-0 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   Venue
                 </dt>
-                <dd className="mt-2 flex items-start gap-2 text-sm font-medium">
-                  <MapPin className="mt-0.5 size-4 shrink-0 text-primary" strokeWidth={1.9} />
-                  <span>
-                    {camp.venue}
-                    {camp.city ? `, ${camp.city}` : ""}
-                  </span>
+                <dd className="text-sm font-semibold whitespace-nowrap sm:whitespace-normal">
+                  {camp.venue}
+                  {camp.city ? `, ${camp.city}` : ""}
                 </dd>
               </div>
             </dl>
@@ -102,55 +134,66 @@ export default async function CampPage({ params }: Params) {
               </p>
             )}
 
-            {(camp.collaboration || camp.partner_name) && (
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                {camp.collaboration && (
-                  <div className="rounded-2xl border border-border bg-card p-5">
-                    <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                      In collaboration with
-                    </p>
-                    <p className="mt-1.5 font-semibold">{camp.collaboration}</p>
-                  </div>
-                )}
-                {camp.partner_name && (
-                  <div className="rounded-2xl border border-border bg-card p-5">
-                    <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                      Blood bank partner
-                    </p>
-                    <p className="mt-1.5 font-semibold">{camp.partner_name}</p>
-                    {camp.partner_note && (
-                      <p className="mt-0.5 text-sm text-muted-foreground">{camp.partner_note}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        <div className="mx-auto w-full max-w-3xl px-6 pb-24">
+        {/*
+          The form, before anything else on the page.
+
+          It used to sit under the collaboration and blood-bank cards, which put
+          two screens of institutional detail between somebody who had just
+          tapped "Register to donate" and the first field. Who is running the
+          camp is worth saying; it is not worth saying before the thing the
+          reader came to do. It is directly below now.
+
+          `scroll-mt-32` is what makes the `#register` anchor land correctly
+          when something does link to it: the header is fixed and translucent,
+          so without a scroll margin the heading arrives underneath it.
+        */}
+        <div id="register" className="mx-auto w-full max-w-3xl scroll-mt-32 px-5 pb-16 sm:px-6 sm:pb-20">
           {camp.status === "closed" ? (
-            <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-card">
+            <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-card sm:p-8">
               <p className="font-display text-xl font-bold tracking-tight">
                 Registration for this camp is closed.
               </p>
               <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-                You can still walk in on the day if there is room — or look at
+                You can still walk in on the day if there is room, or look at
                 what is coming next.
               </p>
             </div>
           ) : (
-            <div className="grain rounded-3xl border border-border bg-card p-6 shadow-[var(--panel-shadow)] sm:p-9">
-              <h2 className="font-display text-2xl font-bold tracking-tight">Register to donate</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Two minutes. You only ever fill this in once.
-              </p>
-              <div className="mt-7">
+            <div className="grain rounded-3xl border border-border bg-card p-5 shadow-[var(--panel-shadow)] sm:p-9">
+              <h2 className="font-display text-2xl font-bold tracking-tight">Register as a Donor</h2>
+              <div className="mt-6">
                 <RegisterForm camp={camp} compact />
               </div>
             </div>
           )}
         </div>
+
+        {(camp.collaboration || camp.partner_name) && (
+          <div className="mx-auto grid w-full max-w-3xl gap-4 px-5 pb-24 sm:grid-cols-2 sm:px-6">
+            {camp.collaboration && (
+              <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                  In collaboration with
+                </p>
+                <p className="mt-1.5 font-semibold">{camp.collaboration}</p>
+              </div>
+            )}
+            {camp.partner_name && (
+              <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                  Blood bank partner
+                </p>
+                <p className="mt-1.5 font-semibold">{camp.partner_name}</p>
+                {camp.partner_note && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{camp.partner_note}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       <SiteFooter />

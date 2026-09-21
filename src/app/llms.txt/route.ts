@@ -3,8 +3,9 @@ import { BRAND_ALTERNATE_NAMES, SERVICE_LIST } from "@/lib/seo/structured-data";
 import { CONTACT_EMAIL, CONTACT_PHONES } from "@/lib/brand-contact";
 import { TEAM } from "@/lib/team";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
+import { SITE_URL } from "@/lib/site-url";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
+const siteUrl = SITE_URL;
 
 /**
  * /llms.txt — a plain-text brief for generative engines.
@@ -40,7 +41,7 @@ ${
         .map(
           (c) =>
             [
-              `- ${c.title} — ${formatCampDate(c.starts_at)}, ${formatTimeRange(c.starts_at, c.ends_at)}, ${[c.venue, c.city].filter(Boolean).join(", ")}.`,
+              `- ${c.title}: ${formatCampDate(c.starts_at)}, ${formatTimeRange(c.starts_at, c.ends_at)}, ${[c.venue, c.city].filter(Boolean).join(", ")}.`,
               c.collaboration ? `In collaboration with ${c.collaboration}.` : "",
               c.partner_name
                 ? `Blood bank partner: ${[c.partner_name, c.partner_note].filter(Boolean).join(", ")}.`
@@ -55,7 +56,7 @@ ${
 }
 
 ## Who runs it
-${TEAM.map((m) => `- ${m.name} — ${m.role}`).join("\n")}
+${TEAM.map((m) => `- ${m.name}, ${m.role}`).join("\n")}
 
 ## Who can donate (India, general rules)
 - Age 18 to 65, weight 45kg or more, feeling well on the day.

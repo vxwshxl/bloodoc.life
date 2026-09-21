@@ -29,6 +29,16 @@ export function CampRow({ camp, when }: { camp: Camp; when: string }) {
             >
               {camp.status}
             </span>
+            {/* Only the unusual case is badged. Every camp being marked
+                "Listed" would be noise on a list where that is the default. */}
+            {!camp.listed && (
+              <span
+                className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                title="Hidden from the home page and the camps list. The direct link still works."
+              >
+                Unlisted
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {when} · {[camp.venue, camp.city].filter(Boolean).join(", ")}

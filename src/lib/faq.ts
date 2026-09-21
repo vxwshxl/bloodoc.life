@@ -24,7 +24,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How often can I donate blood?",
-    a: "Once every three months for whole blood — 56 days is the medical minimum and 90 days is the usual interval in India. Your body replaces the plasma within a day or two and the red cells within a few weeks.",
+    a: "Once every three months for whole blood. 56 days is the medical minimum and 90 days is the usual interval in India. Your body replaces the plasma within a day or two and the red cells within a few weeks.",
   },
   {
     q: "Can I donate if I am on medication?",
@@ -32,7 +32,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Can I donate if I have a tattoo or a piercing?",
-    a: "Yes, if it is more than six months old and was done with sterile equipment. Inside six months you are asked to wait, which is a deferral rather than a refusal — come to the next camp.",
+    a: "Yes, if it is more than six months old and was done with sterile equipment. Inside six months you are asked to wait, which is a deferral rather than a refusal. Come to the next camp.",
   },
   {
     q: "Can women donate blood during their period?",
@@ -52,7 +52,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Do I have to register in advance?",
-    a: "No — you can walk in. Registering online takes two minutes, means far less queueing, and saves your details so you never fill the form again.",
+    a: "No, you can walk in. Registering online takes two minutes, means far less queueing, and saves your details so you never fill the form again.",
   },
   {
     q: "I do not know my blood group. Can I still come?",
@@ -60,7 +60,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What happens to my blood after I give it?",
-    a: "It is separated into red cells, plasma and platelets, each of which goes to a different patient — which is why one donation is usually described as helping up to three people. Red cells keep for about six weeks, platelets for five days.",
+    a: "It is separated into red cells, plasma and platelets, each of which goes to a different patient. That is why one donation is usually described as helping up to three people. Red cells keep for about six weeks, platelets for five days.",
   },
   {
     q: "Who can see the details on my form?",

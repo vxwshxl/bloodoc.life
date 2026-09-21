@@ -31,7 +31,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "What we collect",
         body: [
           "The registration form: your name, sex, date of birth or age, your parents' names, what you do and where, your email, phone numbers and address, your blood group, and how many times you have donated before.",
-          "What is measured at the camp: height, weight, blood pressure, any medication you are taking, and — if you are deferred — the reason.",
+          "What is measured at the camp: height, weight, blood pressure, haemoglobin, any medication you are taking, and the reason if you are deferred.",
           "Nothing else. There is no tracking pixel, no advertising network and no analytics product on this site.",
         ],
       },
@@ -40,7 +40,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         body: [
           "To run the camp you registered for: to know who is coming, to screen you safely, and to record what happened.",
           "To save you filling the same form in again at the next camp.",
-          "To write to you about camps — a confirmation when you register, a reminder the day before, and a note when a new camp is fixed.",
+          "To write to you about camps: a confirmation when you register, a reminder the day before, and a note when a new camp is fixed.",
         ],
       },
       {
@@ -48,14 +48,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
         body: [
           "You, whenever you sign in.",
           "The people running the camps, through the BlooDoc console.",
-          "Nobody else. Donors cannot see each other's records — that is enforced by the database itself, on every table, rather than by the application remembering to check.",
+          "Nobody else. Donors cannot see each other's records, and that is enforced by the database itself on every table, rather than by the application remembering to check.",
           "We sell nothing to anyone, and we share your details with no third party except the email provider that delivers the message to you.",
         ],
       },
       {
         heading: "How long we keep it",
         body: [
-          "Your donor record is kept while it is useful to you — it is what saves you the form each time. Screening records are kept as part of the camp's record.",
+          "Your donor record is kept while it is useful to you, since it is what saves you the form each time. Screening records are kept as part of the camp's record.",
           "Ask us to delete your record and we will, within thirty days.",
         ],
       },
@@ -91,7 +91,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: "What you agree to",
         body: [
-          "That the details you give are true, as far as you know. A wrong answer about medication or recent illness is not a formality — it is a risk to the person who receives your blood.",
+          "That the details you give are true, as far as you know. A wrong answer about medication or recent illness is not a formality. It is a risk to the person who receives your blood.",
           "That you will tell the desk on the day if anything has changed since you registered.",
           "That we may contact you about camps at the address and number you gave.",
         ],
@@ -119,14 +119,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: "It is refused at the database, not filtered by the app",
         body: [
-          "Every table has row-level security enabled with explicit policies. A donor's session can read that donor's rows and no others — not because the application asks nicely, but because Postgres refuses the query. An application bug cannot widen that.",
+          "Every table has row-level security enabled with explicit policies. A donor's session can read that donor's rows and no others, not because the application asks nicely but because Postgres refuses the query. An application bug cannot widen that.",
           "Sign-in codes are stored only as a SHA-256 hash, and the table holding them has security enabled with no policies at all: no browser session can reach it under any circumstance.",
         ],
       },
       {
         heading: "It is not used for anything else",
         body: [
-          "It is not profiled, scored, sold or shared. The console's assistant can read it to answer an organiser's question, and it runs under that organiser's own permissions — it cannot reach a record they could not open themselves.",
+          "It is not profiled, scored, sold or shared. The console's assistant can read it to answer an organiser's question, and it runs under that organiser's own permissions, so it cannot reach a record they could not open themselves.",
         ],
       },
       {

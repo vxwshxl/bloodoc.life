@@ -1,5 +1,7 @@
 import "server-only";
 
+import { SITE_URL } from "@/lib/site-url";
+
 // Branded email HTML. Mail clients have no Tailwind, no external stylesheets
 // and no custom properties, so everything here is inline-styled table markup
 // and the palette is the app's light theme translated to hex — globals.css is
@@ -132,7 +134,7 @@ export type RenderEmailInput = {
  */
 export function renderEmail(input: RenderEmailInput): string {
   const year = new Date().getFullYear();
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
+  const site = SITE_URL;
 
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>BlooDoc</title></head>

@@ -1,16 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { BRAND_ALTERNATE_NAMES } from "@/lib/seo/structured-data";
 import { OG_IMAGE, SITE_NAME } from "@/lib/seo/page-metadata";
+import { SITE_URL } from "@/lib/site-url";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = SITE_URL;
 
 // `interactive-widget=resizes-content` shrinks the layout viewport (and dvh
 // units) when the on-screen keyboard opens, so the registration dialog
@@ -21,12 +21,18 @@ export const viewport: Viewport = {
   initialScale: 1,
   interactiveWidget: "resizes-content",
   viewportFit: "cover",
+  // The site is light only, so the browser's own chrome is told to be white
+  // too. Without this, Chrome and Safari on a phone in dark mode tint the
+  // address bar and the status area dark above a white page, which is the
+  // thing that reads as "the site half-supports dark mode".
+  colorScheme: "light",
+  themeColor: "#ffffff",
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "BlooDoc — blood donation camps, done properly",
+    default: "BlooDoc: blood donation camps, done properly",
     template: `%s · ${SITE_NAME}`,
   },
   description:
@@ -52,7 +58,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: "BlooDoc — roll up a sleeve, save three lives",
+    title: "BlooDoc: roll up a sleeve, save three lives",
     description:
       "Blood donation camps, from the sign-up form to the roster. Register in two minutes.",
     url: siteUrl,
@@ -61,7 +67,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "BlooDoc — roll up a sleeve, save three lives",
+    title: "BlooDoc: roll up a sleeve, save three lives",
     description:
       "Blood donation camps, from the sign-up form to the roster. Register in two minutes.",
     images: [OG_IMAGE.url],
@@ -88,17 +94,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en-IN"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
-        <ThemeProvider>
-          {/* One provider for the whole app so the delay-skip window is shared:
-              moving between tooltips anywhere in a toolbar stays instant. */}
-          <TooltipProvider>
-            {children}
-            <Toaster position="top-center" />
-          </TooltipProvider>
-        </ThemeProvider>
+        {/* One provider for the whole app so the delay-skip window is shared:
+            moving between tooltips anywhere in a toolbar stays instant. */}
+        <TooltipProvider>
+          {children}
+          <Toaster position="top-center" />
+        </TooltipProvider>
       </body>
     </html>
   );

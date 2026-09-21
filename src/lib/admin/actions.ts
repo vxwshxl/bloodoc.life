@@ -20,6 +20,23 @@ export type ActionState = { ok?: boolean; error?: string; message?: string };
  * first of those.
  */
 
+/**
+ * A number box that is allowed to be empty.
+ *
+ * `z.coerce.number()` turns "" into 0, which would silently record a
+ * haemoglobin of zero for every donor whose reading was not taken. Emptiness is
+ * therefore handled before coercion, not after.
+ */
+const optionalNumber = (min: number, max: number, label: string) =>
+  z
+    .string()
+    .trim()
+    .transform((s) => (s === "" ? null : Number(s)))
+    .refine(
+      (n) => n === null || (Number.isFinite(n) && n >= min && n <= max),
+      `${label} should be between ${min} and ${max}.`,
+    );
+
 const slugify = (s: string) =>
   s
     .toLowerCase()
@@ -30,7 +47,11 @@ const slugify = (s: string) =>
 const campSchema = z.object({
   id: z.string().uuid().optional().or(z.literal("")),
   title: z.string().trim().min(3, "Give the camp a title.").max(160),
+  titleAs: z.string().trim().max(160).transform((s) => (s === "" ? null : s)),
+  titleHi: z.string().trim().max(160).transform((s) => (s === "" ? null : s)),
   summary: z.string().trim().max(600).transform((s) => (s === "" ? null : s)),
+  organiser: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
+  contactPhone: z.string().trim().max(40).transform((s) => (s === "" ? null : s)),
   venue: z.string().trim().min(3, "Where is it?").max(200),
   city: z.string().trim().max(120).transform((s) => (s === "" ? null : s)),
   // `datetime-local` posts "2026-09-25T09:00" with no zone. The camp is in
@@ -44,6 +65,10 @@ const campSchema = z.object({
     .transform((s) => (s === "" ? null : Number(s)))
     .refine((n) => n === null || (Number.isInteger(n) && n > 0), "Capacity must be a whole number."),
   status: z.enum(["draft", "published", "closed"]),
+  // An unticked checkbox posts nothing at all, so absence is the false case.
+  // `z.coerce.boolean()` would be wrong here: it turns the string "false" into
+  // true, which is exactly the shape a hidden input would send.
+  listed: z.literal("on").optional().transform((v) => v === "on"),
   collaboration: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
   partnerName: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
   partnerNote: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
@@ -70,7 +95,12 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
   const supabase = await createClient();
   const row = {
     title: v.title,
+    title_as: v.titleAs,
+    title_hi: v.titleHi,
     summary: v.summary,
+    organiser: v.organiser,
+    contact_phone: v.contactPhone,
+    listed: v.listed,
     venue: v.venue,
     city: v.city,
     starts_at: startsAt,
@@ -139,6 +169,63 @@ export async function setRegistrationStatus(
   revalidatePath("/admin/registrations");
   revalidatePath("/admin");
   return { ok: true };
+}
+
+/**
+ * The screening readings, recorded at the desk.
+ *
+ * These are the two fields the public form deliberately does not collect —
+ * they are measured here, by someone with a cuff and a haemoglobin test, and
+ * this is the only path that writes them.
+ *
+ * Empty means "not taken", not zero, so a blank box clears the column rather
+ * than recording a blood pressure of nothing. That distinction is the whole
+ * reason these are nullable.
+ */
+const vitalsSchema = z.object({
+  id: z.string().uuid(),
+  heightCm: optionalNumber(100, 250, "Height"),
+  weightKg: optionalNumber(30, 300, "Weight"),
+  bpSystolic: optionalNumber(60, 260, "Systolic pressure"),
+  bpDiastolic: optionalNumber(30, 160, "Diastolic pressure"),
+  // Wider than the 12.5 g/dL donation cutoff on purpose: the reading that
+  // caused a deferral is by definition below it, and a field that refused to
+  // hold it would only work for people who passed.
+  hemoglobin: optionalNumber(3, 25, "Haemoglobin"),
+});
+
+export async function setRegistrationVitals(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const parsed = vitalsSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const v = parsed.data;
+
+  // Blood pressure is a pair; one half of it is not a reading.
+  if ((v.bpSystolic === null) !== (v.bpDiastolic === null)) {
+    return { error: "Enter both blood pressure numbers, or neither." };
+  }
+  if (v.bpSystolic !== null && v.bpDiastolic !== null && v.bpDiastolic >= v.bpSystolic) {
+    return { error: "The lower blood pressure number should be below the upper one." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("registrations")
+    .update({
+      height_cm: v.heightCm,
+      weight_kg: v.weightKg,
+      bp_systolic: v.bpSystolic,
+      bp_diastolic: v.bpDiastolic,
+      hemoglobin_gdl: v.hemoglobin,
+    })
+    .eq("id", v.id);
+  if (error) return { error: "Could not save those readings." };
+
+  revalidatePath("/admin/registrations");
+  return { ok: true, message: "Saved." };
 }
 
 /**

@@ -119,15 +119,17 @@ export async function registerDonor(
         first_time: v.firstTime === "yes",
         height_cm: v.heightCm,
         weight_kg: v.weightKg,
-        bp_systolic: v.bpSystolic,
-        bp_diastolic: v.bpDiastolic,
-        hemoglobin_gdl: v.hemoglobin,
         medications: v.medications,
         status: "registered",
       },
-      // A second submission of the same form — a double tap, a back button —
+      // A second submission of the same form (a double tap, a back button)
       // updates the row the unique constraint already guarantees, instead of
       // failing with a duplicate-key error the donor cannot act on.
+      //
+      // Note what is NOT in the payload: blood pressure and haemoglobin. This
+      // upsert must never null out a reading the screening desk has already
+      // recorded, which is exactly what would happen if those columns were
+      // listed here and the donor re-opened their own form.
       { onConflict: "camp_id,donor_id" },
     );
   if (regError) return { error: "Could not complete your registration. Try again in a moment." };

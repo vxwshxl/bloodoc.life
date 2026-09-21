@@ -13,7 +13,7 @@ const STEPS = [
     icon: ClipboardCheck,
     minutes: "2 min",
     title: "You register",
-    body: "The form on this page, once. It takes about two minutes and you never fill it again — the next camp already knows you.",
+    body: "The form on this page, once. It takes about two minutes and you never fill it again, because the next camp already knows you.",
   },
   {
     icon: UserCheck,
@@ -114,7 +114,7 @@ export function HowBand() {
   );
 
   return (
-    <section id="how" className="relative overflow-hidden px-6 py-24 sm:py-32">
+    <section id="how" className="relative overflow-hidden px-5 py-16 sm:px-6 sm:py-32">
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-bloom-center" />
 
       <div ref={root} className="relative mx-auto max-w-4xl">
@@ -143,7 +143,7 @@ export function HowBand() {
             <li
               key={s.title}
               data-how-step
-              className="relative pb-12 pl-[4.5rem] last:pb-0 motion-safe:opacity-0"
+              className="relative pb-10 pl-16 last:pb-0 sm:pb-12 sm:pl-[4.5rem] motion-safe:opacity-0"
             >
               <span
                 aria-hidden

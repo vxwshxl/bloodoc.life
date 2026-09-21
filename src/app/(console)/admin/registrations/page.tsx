@@ -3,6 +3,7 @@ import Link from "next/link";
 import { listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { StatusControl } from "@/components/admin/registration-row";
+import { VitalsCell } from "@/components/admin/vitals-cell";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +76,7 @@ export default async function RegistrationsPage({
             <table className="w-full min-w-[46rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-app-line-soft">
-                  {["Donor", "Group", "History", "Vitals", "Camp", "Status"].map((h) => (
+                  {["Donor", "Group", "History", "Screening", "Camp", "Status"].map((h) => (
                     <th
                       key={h}
                       className="px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
@@ -92,7 +93,7 @@ export default async function RegistrationsPage({
                       <span className="block font-medium">{r.donor.full_name}</span>
                       <span className="block text-xs text-muted-foreground">
                         {r.donor.kind === "other"
-                          ? r.donor.occupation || "—"
+                          ? r.donor.occupation || "–"
                           : `${r.donor.kind}${r.donor.department ? ` · ${r.donor.department}` : ""}`}
                       </span>
                       <span className="block text-xs text-muted-foreground">
@@ -111,33 +112,8 @@ export default async function RegistrationsPage({
                         `${r.donor.prior_donations} before`
                       )}
                     </td>
-                    <td
-                      className="px-5 py-3 text-xs text-muted-foreground"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
-                    >
-                      {r.bp_systolic && r.bp_diastolic ? `${r.bp_systolic}/${r.bp_diastolic}` : "—"}
-                      {r.weight_kg ? ` · ${r.weight_kg}kg` : ""}
-                      {/* Below 12.5 g/dL is the usual Indian cutoff, so a low
-                          reading is the single most useful thing on this row at
-                          the screening desk — it is the reason for most
-                          deferrals, and it is called out rather than left to be
-                          read off a run of grey numbers. */}
-                      {r.hemoglobin_gdl != null && (
-                        <span
-                          className={
-                            r.hemoglobin_gdl < 12.5
-                              ? "font-semibold text-destructive"
-                              : undefined
-                          }
-                        >
-                          {` · Hb ${r.hemoglobin_gdl}`}
-                        </span>
-                      )}
-                      {r.medications ? (
-                        <span className="mt-0.5 block max-w-40 truncate text-foreground" title={r.medications}>
-                          {r.medications}
-                        </span>
-                      ) : null}
+                    <td className="px-5 py-3">
+                      <VitalsCell reg={r} />
                     </td>
                     <td className="px-5 py-3 text-xs text-muted-foreground">
                       <span className="block max-w-40 truncate">{r.camp.title}</span>

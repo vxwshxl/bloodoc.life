@@ -22,7 +22,7 @@ export default function SignInPage() {
           <Link href="/#camp" className="font-medium text-foreground underline underline-offset-4">
             Register for the next camp
           </Link>{" "}
-          — that creates your record.
+          . That creates your record.
         </>
       }
     >

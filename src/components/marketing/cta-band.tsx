@@ -5,7 +5,7 @@ import { CONTACT_PHONE, WHATSAPP_HREF } from "@/lib/brand-contact";
 
 export function CtaBand() {
   return (
-    <section className="relative overflow-hidden px-6 py-28 sm:py-36">
+    <section className="relative overflow-hidden px-5 py-20 sm:px-6 sm:py-36">
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade-y" />
       {/* Centred, not anchored to an edge. Pinning the bloom to the bottom puts
           its brightest point exactly on the seam with the footer, and pinning

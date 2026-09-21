@@ -16,7 +16,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const COPY_TITLE = "One record. Every camp.";
 const COPY_BODY =
-  "You fill the form once. Your group, your last donation and what you are taking carry to every camp after it — so the desk already knows you, and the only queue left is the one for the needle.";
+  "You fill the form once. Your group, your last donation and what you are taking carry to every camp after it, so the desk already knows you and the only queue left is the one for the needle.";
 
 const CARDS = {
   collected: { icon: Droplet, title: "171 units collected", detail: "25 Sept · by 2pm" },
@@ -40,10 +40,7 @@ const CARDS = {
  * one-second catch-up lets it arrive under its own momentum, which is the whole
  * reason for driving this from scroll instead of a button.
  *
- * The headline leaves on blur, not opacity alone. Two full-contrast layers
- * crossfading at hero size is where a crossfade looks most like two objects;
- * the blur collapses them into one transition.
- *
+
  * `gsap.matchMedia` owns every breakpoint and the reduced-motion case, and GSAP
  * reverts each context when its query stops matching — so resizing from desktop
  * to phone tears down the pin and the transforms it wrote rather than leaving a
@@ -61,7 +58,13 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
       // The section becomes an ordinary stacked hero and everything is visible
       // from the first frame — the content never needed the scroll, only the
       // choreography did.
-      mm.add("(prefers-reduced-motion: reduce)", () => {
+      // A phone is treated exactly like reduced motion: no pin, no scrub,
+      // nothing driven by scroll position. Pinning a section for three viewport
+      // heights and cross-fading between layers is a desktop gesture; on a
+      // phone it turns "scroll down to the camp" into a wait, and on a slow
+      // handset the fades stutter through it. The content was never what needed
+      // the choreography.
+      mm.add("(max-width: 639px), (prefers-reduced-motion: reduce)", () => {
         // Explicit values rather than `clearProps: "all"`. clearProps strips
         // every inline style GSAP has written — including the `opacity: 1` set
         // in this very call — which would drop the copy and the float cards
@@ -73,33 +76,29 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
           x: 0,
           y: 0,
           xPercent: 0,
-          filter: "none",
         });
       });
 
       mm.add(
         {
-          // Three cases, not two. A tablet is not a big phone here: it has room
-          // to show the card at its natural size in the middle of the stage the
-          // way the desktop does, and the phone treatment at 768px would put an
-          // oversized card straight over the headline.
+          // Two cases, both at 640px and up. A tablet has room to show the card
+          // at its natural size in the middle of the stage the way the desktop
+          // does; only the side column differs.
           isDesktop: "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
           isTablet:
             "(min-width: 640px) and (max-width: 1023px) and (prefers-reduced-motion: no-preference)",
-          isPhone: "(max-width: 639px) and (prefers-reduced-motion: no-preference)",
         },
         (ctx) => {
-          const { isDesktop, isPhone } = ctx.conditions as {
+          const { isDesktop } = ctx.conditions as {
             isDesktop: boolean;
             isTablet: boolean;
-            isPhone: boolean;
           };
 
           const tl = gsap.timeline({
             scrollTrigger: {
               trigger: root.current,
               start: "top top",
-              end: isPhone ? "+=180%" : "+=280%",
+              end: "+=280%",
               pin: ".hero-stage",
               pinSpacing: true,
               scrub: 1,
@@ -118,14 +117,7 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
           // 1 — the headline hands off.
           tl.to(
             ".hero-intro",
-            {
-              opacity: 0,
-              scale: 0.94,
-              y: isPhone ? -96 : -64,
-              filter: "blur(10px)",
-              ease: "power2.in",
-              duration: 0.9,
-            },
+            { opacity: 0, scale: 0.94, y: -64, ease: "power2.in", duration: 0.9 },
             0,
           );
 
@@ -133,8 +125,8 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
           // stage as the headline leaves, on every breakpoint.
           tl.fromTo(
             ".hero-card",
-            { opacity: 0, scale: 0.7, y: 120, filter: "blur(8px)" },
-            { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", ease: "power2.out", duration: 1.4 },
+            { opacity: 0, scale: 0.7, y: 120 },
+            { opacity: 1, scale: 1, y: 0, ease: "power2.out", duration: 1.4 },
             0.25,
           );
 
@@ -143,8 +135,8 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
             tl.to(".hero-card", { xPercent: 20, scale: 0.86, ease: "power2.inOut", duration: 1 }, 1.7);
             tl.fromTo(
               ".hero-copy",
-              { opacity: 0, x: -48, filter: "blur(8px)" },
-              { opacity: 1, x: 0, filter: "blur(0px)", ease: "power2.out", duration: 1 },
+              { opacity: 0, x: -48 },
+              { opacity: 1, x: 0, ease: "power2.out", duration: 1 },
               1.9,
             );
           }
@@ -154,8 +146,8 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
             // is stacked under the card and simply rises into place.
             tl.fromTo(
               ".hero-copy-m",
-              { opacity: 0, y: 24, filter: "blur(8px)" },
-              { opacity: 1, y: 0, filter: "blur(0px)", ease: "power2.out", duration: 1 },
+              { opacity: 0, y: 24 },
+              { opacity: 1, y: 0, ease: "power2.out", duration: 1 },
               1.7,
             );
           }
@@ -197,24 +189,38 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
 
   return (
     <div ref={root} className="relative">
-      {/* Under `prefers-reduced-motion` the pin never runs, so a stage of
-          absolutely-positioned layers would collapse into one unreadable pile.
-          The motion-safe / motion-reduce pairs below give that case a real
-          layout — headline, then camp, then copy, in normal flow. Reduced
-          motion is a different design, not a disabled one. */}
-      <div className="hero-stage relative motion-safe:h-svh motion-safe:overflow-hidden">
+      {/*
+        Two layouts, and the variant that picks between them is `sm:motion-safe:`.
+
+        Base — a phone, or anyone who asked for reduced motion — is ordinary
+        document flow: headline, then the camp, then the copy, stacked and
+        scrolled past like any other page. Nothing is absolutely positioned,
+        nothing starts at zero opacity, and nothing waits for a scroll position
+        before it appears.
+
+        `sm:motion-safe:` turns that into the pinned stage, where the same three
+        blocks are layers over each other and the scroll drives the sequence.
+
+        Writing it this way round matters: the plain, readable layout is the
+        default, so a bundle that never arrives, a phone, or a reduced-motion
+        setting all land on it without needing anything to run.
+      */}
+      <div className="hero-stage relative sm:motion-safe:h-svh sm:motion-safe:overflow-hidden">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade-b" />
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-bloom" />
 
         <span
           aria-hidden
-          className="hero-wordmark pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[18vw] leading-none font-black tracking-tighter text-foreground/[0.035] select-none motion-reduce:hidden"
+          className="hero-wordmark pointer-events-none absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 text-[18vw] leading-none font-black tracking-tighter text-foreground/[0.035] select-none sm:motion-safe:block"
         >
           BLOODOC
         </span>
 
         {/* 1 — headline */}
-        <div className="hero-intro z-20 flex flex-col items-center justify-center px-6 text-center sm:max-md:justify-start sm:max-md:pt-36 md:justify-center motion-safe:absolute motion-safe:inset-0 motion-reduce:static motion-reduce:pt-32 motion-reduce:pb-16">
+        {/* `pt-36`, measured rather than guessed: the nav island is two rows on
+            a phone, 104px tall, floating 16px down. `pt-28` put the eyebrow at
+            112px, eight pixels underneath it. */}
+        <div className="hero-intro z-20 flex flex-col items-center justify-center px-5 pt-36 pb-10 text-center sm:px-6 sm:max-md:justify-start sm:max-md:pt-36 md:justify-center sm:motion-safe:absolute sm:motion-safe:inset-0 sm:motion-safe:py-0">
           <span className="flex items-center gap-4 text-center text-[0.6875rem] font-semibold tracking-[0.16em] text-primary uppercase sm:text-xs sm:tracking-[0.2em]">
             <span aria-hidden className="h-px w-8 bg-primary/40 max-sm:hidden" />
             {date ? `${date.day} ${date.month} ${date.year} · ${camp?.city ?? "Guwahati"}` : "Blood donation camps"}
@@ -238,8 +244,8 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-balance text-muted-foreground sm:mt-8 sm:text-lg">
-            One donation is separated into red cells, plasma and platelets —
-            three patients, out of one hour of your morning.
+            One donation is separated into red cells, plasma and platelets.
+            Three patients, out of one hour of your morning.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3 max-sm:hidden">
@@ -258,7 +264,7 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
         {/* 2 — the camp */}
         <div
           id="camp"
-          className="z-10 flex items-center justify-center px-6 max-lg:flex-col max-lg:gap-10 max-lg:pt-24 max-sm:gap-9 motion-safe:absolute motion-safe:inset-0 motion-reduce:static motion-reduce:items-center motion-reduce:pb-16"
+          className="z-10 flex items-center justify-center px-5 pb-12 sm:px-6 max-lg:flex-col max-lg:gap-10 max-sm:gap-8 sm:motion-safe:absolute sm:motion-safe:inset-0 sm:motion-safe:pb-0 sm:max-lg:motion-safe:pt-24"
         >
           {/*
             Two elements, not one. The outer holds the resting pose and GSAP
@@ -279,7 +285,7 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
               vanished. Declaring the same start state as a class means the
               first painted frame is already the one the timeline begins from.
             */}
-            <div className="hero-card motion-safe:opacity-0">
+            <div className="hero-card sm:motion-safe:opacity-0">
               {camp ? (
                 <EventCard camp={camp} registered={registered} />
               ) : (
@@ -305,16 +311,16 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
             <FloatCard
               {...CARDS.collected}
               compactOnPhone
-              className="hero-float-m absolute -top-5 -right-2 z-30 lg:hidden motion-safe:opacity-0 motion-reduce:hidden sm:-right-4"
+              className="hero-float-m absolute -top-5 -right-4 z-30 hidden sm:motion-safe:block lg:sm:motion-safe:hidden sm:motion-safe:opacity-0"
             />
             <FloatCard
               {...CARDS.matched}
               compactOnPhone
-              className="hero-float-m absolute -bottom-6 -left-2 z-30 lg:hidden motion-safe:opacity-0 motion-reduce:hidden sm:-left-4"
+              className="hero-float-m absolute -bottom-6 -left-4 z-30 hidden sm:motion-safe:block lg:sm:motion-safe:hidden sm:motion-safe:opacity-0"
             />
           </div>
 
-          <div className="hero-copy-m pointer-events-none max-w-md text-center lg:hidden motion-safe:opacity-0">
+          <div className="hero-copy-m pointer-events-none max-w-md text-center lg:hidden sm:motion-safe:opacity-0">
             <h2 className="text-2xl leading-tight font-bold tracking-tight text-balance sm:text-3xl">
               {COPY_TITLE}
             </h2>
@@ -325,7 +331,7 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
         </div>
 
         {/* 3 — supporting copy, desktop only */}
-        <div className="hero-copy pointer-events-none z-20 hidden flex-col justify-center lg:flex motion-safe:absolute motion-safe:inset-y-0 motion-safe:left-0 motion-safe:w-1/3 motion-safe:pl-10 motion-safe:opacity-0 xl:motion-safe:pl-16 motion-reduce:mx-auto motion-reduce:max-w-3xl motion-reduce:px-6 motion-reduce:pb-28 motion-reduce:text-center">
+        <div className="hero-copy pointer-events-none z-20 mx-auto hidden max-w-3xl flex-col justify-center px-6 pb-24 text-center lg:flex lg:motion-safe:absolute lg:motion-safe:inset-y-0 lg:motion-safe:left-0 lg:motion-safe:mx-0 lg:motion-safe:w-1/3 lg:motion-safe:max-w-none lg:motion-safe:pb-0 lg:motion-safe:pl-10 lg:motion-safe:text-left lg:motion-safe:opacity-0 xl:motion-safe:pl-16">
           <h2 className="text-4xl leading-tight font-bold tracking-tight text-balance">
             {COPY_TITLE}
           </h2>

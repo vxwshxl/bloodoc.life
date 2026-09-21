@@ -33,7 +33,7 @@ export function AuthShell({
           <Wordmark />
         </Link>
 
-        <div className="grain mt-8 rounded-3xl border border-border bg-card p-7 shadow-[var(--panel-shadow)] sm:p-9">
+        <div className="grain mt-8 rounded-3xl border border-border bg-card p-5 shadow-[var(--panel-shadow)] sm:p-9">
           <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>
           {subtitle && (
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>

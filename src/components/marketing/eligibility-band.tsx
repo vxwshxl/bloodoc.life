@@ -63,7 +63,7 @@ const COLUMNS = [
 
 export function EligibilityBand() {
   return (
-    <section id="eligibility" className="relative px-6 py-24 sm:py-32">
+    <section id="eligibility" className="relative px-5 py-16 sm:px-6 sm:py-32">
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-3xl">
           <span className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
@@ -83,7 +83,7 @@ export function EligibilityBand() {
             <Reveal
               key={col.key}
               delay={i * 70}
-              className={`rounded-2xl border p-7 shadow-card ${col.tone}`}
+              className={`rounded-2xl border p-5 shadow-card sm:p-7 ${col.tone}`}
             >
               <span
                 className={`inline-flex size-9 items-center justify-center rounded-xl ${col.badge}`}
@@ -108,10 +108,10 @@ export function EligibilityBand() {
 
         <Reveal
           delay={120}
-          className="mt-6 rounded-2xl border border-border bg-muted/40 px-6 py-5 text-sm leading-relaxed text-muted-foreground"
+          className="mt-6 rounded-2xl border border-border bg-muted/40 px-5 py-4 text-sm leading-relaxed text-muted-foreground sm:px-6 sm:py-5"
         >
           None of this is a clearance. The medical officer at the camp screens
-          you on the day and their answer is the one that counts — which is why
+          you on the day and their answer is the one that counts. Which is why
           it is always worth turning up and asking.{" "}
           <Link href="/eligibility" className="font-medium text-foreground underline underline-offset-4">
             The longer list

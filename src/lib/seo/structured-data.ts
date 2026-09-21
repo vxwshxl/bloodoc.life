@@ -23,8 +23,9 @@ import {
 } from "@/lib/brand-contact";
 import type { Camp } from "@/lib/db/types";
 import { TEAM } from "@/lib/team";
+import { SITE_URL } from "@/lib/site-url";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
+const siteUrl = SITE_URL;
 
 export const PRODUCT_NAME = "BlooDoc";
 export const PRODUCT_TAGLINE = "Blood donation camps, from the sign-up form to the roster.";

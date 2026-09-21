@@ -151,16 +151,16 @@ export default async function MePage() {
                   {[
                     ["Name", donor.full_name],
                     ["Sex", donor.sex],
-                    ["Age", donor.age ? String(donor.age) : "—"],
-                    ["Date of birth", donor.date_of_birth ?? "—"],
-                    ["Father's name", donor.father_name ?? "—"],
-                    ["Mother's name", donor.mother_name ?? "—"],
+                    ["Age", donor.age ? String(donor.age) : "–"],
+                    ["Date of birth", donor.date_of_birth ?? "–"],
+                    ["Father's name", donor.father_name ?? "–"],
+                    ["Mother's name", donor.mother_name ?? "–"],
                     ["You are", donor.kind],
-                    ["Department", donor.department ?? "—"],
+                    ["Department", donor.department ?? "–"],
                     ["Email", donor.email],
                     ["Phone", donor.phone],
-                    ["Alternate phone", donor.alt_phone ?? "—"],
-                    ["Address", donor.address ?? "—"],
+                    ["Alternate phone", donor.alt_phone ?? "–"],
+                    ["Address", donor.address ?? "–"],
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between gap-4 border-b border-app-line-soft py-2 last:border-b-0">
                       <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -170,7 +170,7 @@ export default async function MePage() {
                 </dl>
                 <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
                   Something wrong? Correct it when you register for the next camp
-                  — the form is pre-filled from this record and saving it updates
+                  . The form is pre-filled from this record and saving it updates
                   this page. Or{" "}
                   <a href="mailto:hello@bloodoc.life" className="font-medium text-foreground underline underline-offset-4">
                     write to us

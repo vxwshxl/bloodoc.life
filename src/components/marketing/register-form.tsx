@@ -227,7 +227,7 @@ export function RegisterForm({
           You&rsquo;re on the roster{state.donorName ? `, ${state.donorName}` : ""}.
         </h3>
         <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          We have emailed you the details. Bring a photo ID on the day — it is
+          We have emailed you the details. Bring a photo ID on the day. It is
           the only thing you need to carry. Eat a normal meal and drink water
           before you come.
         </p>
@@ -389,7 +389,7 @@ export function RegisterForm({
         </div>
       </Section>
 
-      <Section step={4} title="As a donor" note="Nothing here disqualifies you — it tells the desk what to expect.">
+      <Section step={4} title="As a donor" note="Nothing here disqualifies you. It tells the desk what to expect.">
         <div className="grid gap-4 sm:grid-cols-6">
           <Field label="Blood group" name="bloodGroup" error={e.bloodGroup} className="sm:col-span-2">
             <Dropdown
@@ -421,15 +421,19 @@ export function RegisterForm({
       <Section
         step={5}
         title="How you are today"
-        note="Leave anything you don't know blank — it is all taken again at the desk."
+        note="Roughly is fine. Everything here is checked again at the desk."
       >
         {/*
-          Three rows, grouped by what each measurement is for rather than by
-          what fits: body (height, weight), then the two circulatory readings
-          that decide most deferrals (blood pressure, haemoglobin), then the
-          one free-text answer. Medication was a cramped two-line box wedged
-          beside four number fields; it is the only question here a person
-          writes a sentence into, so it gets the full width and the last word.
+          Height and weight on one line, then medication at full width.
+
+          Blood pressure and haemoglobin used to sit here and have been taken
+          out on purpose: both are measured at the desk, and a figure somebody
+          types from memory at home lands in the same column as a real reading
+          with no way to tell them apart later. The screening team records those
+          two in the console.
+
+          Medication stays, and gets the whole width. It is the only question on
+          this form a person answers in a sentence.
         */}
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -455,55 +459,11 @@ export function RegisterForm({
             </Field>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Blood pressure"
-              name="bpSystolic"
-              error={e.bpSystolic ?? e.bpDiastolic}
-              hint="Upper / lower."
-            >
-              <div className="flex items-center gap-2">
-                <Input
-                  id="bpSystolic"
-                  name="bpSystolic"
-                  inputMode="numeric"
-                  className={FIELD}
-                  placeholder="120"
-                  aria-invalid={!!e.bpSystolic || undefined}
-                />
-                <span aria-hidden className="text-muted-foreground">/</span>
-                <Input
-                  id="bpDiastolic"
-                  name="bpDiastolic"
-                  inputMode="numeric"
-                  className={FIELD}
-                  placeholder="80"
-                  aria-invalid={!!e.bpDiastolic || undefined}
-                />
-              </div>
-            </Field>
-            <Field
-              label="Haemoglobin (g/dL)"
-              name="hemoglobin"
-              error={e.hemoglobin}
-              hint="Tested free at the camp if you don't know it."
-            >
-              <Input
-                id="hemoglobin"
-                name="hemoglobin"
-                inputMode="decimal"
-                className={FIELD}
-                placeholder="e.g. 13.5"
-                aria-invalid={!!e.hemoglobin || undefined}
-              />
-            </Field>
-          </div>
-
           <Field
             label="Any medication you are taking"
             name="medications"
             error={e.medications}
-            hint="Routine medication rarely stops you giving. Name it anyway — it is the answer the medical officer most needs."
+            hint="Routine medication rarely stops you giving. Name it anyway. It is the answer the medical officer most needs."
           >
             <Textarea
               id="medications"

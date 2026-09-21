@@ -48,8 +48,41 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
       {camp && <input type="hidden" name="id" value={camp.id} />}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="title" className="text-xs font-medium text-muted-foreground">Title</Label>
+        <Label htmlFor="title" className="text-xs font-medium text-muted-foreground">
+          Title (English)
+        </Label>
         <Input id="title" name="title" defaultValue={camp?.title} className="h-10" required />
+      </div>
+
+      {/* The translated titles rotate with the English one on the camp page and
+          the home card. Left blank, that title simply does not appear in the
+          rotation — a camp with only an English name shows only English rather
+          than cycling through two copies of the same string. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="titleAs" className="text-xs font-medium text-muted-foreground">
+            Title (Assamese)
+          </Label>
+          <Input
+            id="titleAs"
+            name="titleAs"
+            defaultValue={camp?.title_as ?? ""}
+            className="h-10"
+            placeholder="Optional"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="titleHi" className="text-xs font-medium text-muted-foreground">
+            Title (Hindi)
+          </Label>
+          <Input
+            id="titleHi"
+            name="titleHi"
+            defaultValue={camp?.title_hi ?? ""}
+            className="h-10"
+            placeholder="Optional"
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -57,6 +90,10 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           Summary
         </Label>
         <Textarea id="summary" name="summary" rows={2} defaultValue={camp?.summary ?? ""} />
+        <p className="text-xs text-muted-foreground">
+          Shown under the title, and used as the description in link previews and
+          search results.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -128,6 +165,29 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           />
         </div>
         <div className="flex flex-col gap-1.5">
+          <Label htmlFor="organiser" className="text-xs font-medium text-muted-foreground">
+            Organiser
+          </Label>
+          <Input
+            id="organiser"
+            name="organiser"
+            defaultValue={camp?.organiser ?? ""}
+            className="h-10"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="contactPhone" className="text-xs font-medium text-muted-foreground">
+            Contact number
+          </Label>
+          <Input
+            id="contactPhone"
+            name="contactPhone"
+            defaultValue={camp?.contact_phone ?? ""}
+            className="h-10"
+            placeholder="For the day itself"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="capacity" className="text-xs font-medium text-muted-foreground">
             Capacity
           </Label>
@@ -153,13 +213,37 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="draft">Draft — not on the site</SelectItem>
-              <SelectItem value="published">Published — open for registration</SelectItem>
-              <SelectItem value="closed">Closed — no new registrations</SelectItem>
+              <SelectItem value="draft">Draft, not on the site</SelectItem>
+              <SelectItem value="published">Published, open for registration</SelectItem>
+              <SelectItem value="closed">Closed, no new registrations</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
+
+      {/*
+        Two separate questions, deliberately not one dropdown.
+
+        Status is whether the page may be opened at all. Listing is whether we
+        advertise it. A published-but-unlisted camp is reachable by anyone with
+        the link and appears nowhere on the site, which is what a staff-only
+        drive or a rescheduled camp needs.
+      */}
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-app-line bg-muted/40 p-4">
+        <input
+          type="checkbox"
+          name="listed"
+          defaultChecked={camp?.listed ?? true}
+          className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
+        />
+        <span className="text-xs leading-relaxed">
+          <span className="block font-semibold">Show on the home page and the camps list</span>
+          <span className="mt-0.5 block text-muted-foreground">
+            Untick to hide it from both. The camp page stays reachable by its
+            direct link, so anyone you have already sent it to is unaffected.
+          </span>
+        </span>
+      </label>
 
       {state.error && (
         <p role="alert" className="text-sm font-medium text-destructive">{state.error}</p>

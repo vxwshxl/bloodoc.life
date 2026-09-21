@@ -73,7 +73,7 @@ export async function verifySignInCode(
 ): Promise<AuthState> {
   const parsed = emailSchema.safeParse(formData.get("email"));
   const code = String(formData.get("code") ?? "").replace(/\D/g, "");
-  if (!parsed.success) return { error: "Start again — that email address is not valid." };
+  if (!parsed.success) return { error: "Start again. That email address is not valid." };
   if (code.length !== 6) return { error: "Enter the six digits from the email.", sent: true, email: parsed.data };
 
   const email = parsed.data;

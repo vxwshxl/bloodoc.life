@@ -70,6 +70,7 @@ export async function getOverview(): Promise<Overview> {
     .from("camps")
     .select("*")
     .eq("status", "published")
+    .eq("listed", true)
     .gte("starts_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .order("starts_at", { ascending: true })
     .limit(1);
