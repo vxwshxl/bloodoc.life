@@ -8,7 +8,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { LayoutDashboard } from "lucide-react";
 import { SliderNav, type SliderNavItem } from "@/components/ui/slider-nav";
 import { Wordmark } from "@/components/brand";
-import { ThemeSwitch } from "@/components/theme-switch";
 import { cn } from "@/lib/utils";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -147,8 +146,7 @@ export function TopNav({
           {/* Below md the nav drops to its own full-width row. Four labels plus
               a wordmark plus the controls cannot share 390px without one of
               them being cut off, and the one that gets cut is always the last
-              link. A second row costs 40px and keeps everything reachable —
-              including the theme switch. */}
+              link. A second row costs 40px and keeps every item reachable. */}
           <div className="order-3 w-full min-w-0 md:order-2 md:mx-auto md:w-auto">
             <SliderNav
               items={ITEMS}
@@ -162,7 +160,6 @@ export function TopNav({
           </div>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-2 md:order-3 md:ml-0">
-            <ThemeSwitch />
             {dashboardHref ? (
               // Signed in: straight back to their console. Unlike "Register",
               // this one stays on phones as an icon, since it is the only way

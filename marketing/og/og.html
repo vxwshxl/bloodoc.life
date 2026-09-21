@@ -1,0 +1,100 @@
+<!doctype html>
+<!--
+  Source for public/og.png — the 1200x630 card every link preview shows.
+
+  A real banner, not the favicon: a square logo gets letterboxed or
+  centre-cropped by every platform that renders a link card, which is how a
+  shared link ends up looking like a stray icon.
+
+  Re-render with:  node marketing/og/render.mjs
+  Then bump the ?v= in src/lib/seo/page-metadata.ts — WhatsApp, LinkedIn and
+  Facebook cache the image by URL for weeks.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden;
+    font-family: Geist, -apple-system, system-ui, sans-serif;
+    background: #ffffff;
+    color: #141414;
+    position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 0 76px;
+  }
+  /* The same hairline grid and crimson bloom as the site's hero, so a link
+     preview and the page it opens are recognisably one thing. */
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(20,20,20,.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(20,20,20,.05) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  }
+  .bloom {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(60% 55% at 50% 0%, rgba(196,31,34,.20) 0%, transparent 70%),
+      radial-gradient(90% 75% at 50% 12%, rgba(196,31,34,.07) 0%, transparent 75%);
+  }
+  .inner { position: relative; }
+  .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 44px; }
+  .brand svg { width: 52px; height: 52px; }
+  .name { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+  .name span { color: #C41F22; }
+  h1 {
+    font-size: 84px; line-height: 1.02; font-weight: 900; letter-spacing: -.045em;
+    max-width: 960px;
+  }
+  h1 em { font-style: normal; color: #C41F22; position: relative; }
+  h1 em::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 7px;
+    border-radius: 99px;
+    background: linear-gradient(to right, #C41F22 0%, #C41F22 70%, transparent 100%);
+    box-shadow: 0 0 26px 3px rgba(196,31,34,.34);
+  }
+  p.sub { margin-top: 40px; font-size: 27px; line-height: 1.45; color: #5d5d5d; max-width: 880px; }
+  .foot {
+    position: absolute; left: 76px; right: 76px; bottom: 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 20px; font-weight: 500; color: #5d5d5d;
+  }
+  .pill {
+    background: rgba(196,31,34,.1); color: #C41F22; font-weight: 700;
+    padding: 9px 18px; border-radius: 99px; font-size: 19px;
+    letter-spacing: .04em;
+  }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="bloom"></div>
+
+  <div class="inner">
+    <div class="brand">
+      <svg viewBox="0 0 32 32">
+        <defs><linearGradient id="d" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#E4443C"/><stop offset=".55" stop-color="#C41F22"/><stop offset="1" stop-color="#8E1418"/>
+        </linearGradient></defs>
+        <path d="M16 2.2c.5 0 .9.22 1.18.6C19.9 6.5 26 14.2 26 19.3A10 10 0 0 1 6 19.3C6 14.2 12.1 6.5 14.82 2.8c.28-.38.68-.6 1.18-.6Z" fill="url(#d)"/>
+        <path d="M9.2 20h2.9l1.7-4.4 2.7 8.1 1.9-3.7h4.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="name">Bloo<span>Doc</span></span>
+    </div>
+
+    <h1>Roll up a sleeve,<br><em>save three lives.</em></h1>
+    <p class="sub">Blood donation camps, from the sign-up form to the roster. Register in two minutes.</p>
+  </div>
+
+  <div class="foot">
+    <span>bloodoc.life</span>
+    <span class="pill">GIVE BLOOD, GIVE LIFE</span>
+  </div>
+</body>
+</html>

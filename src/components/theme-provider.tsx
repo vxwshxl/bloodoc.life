@@ -3,21 +3,27 @@
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 /**
- * Light / dark / system, system by default, with an explicit choice persisted
- * to localStorage. next-themes writes the resolved class onto <html> from a
- * blocking inline script, so the first paint is already the right theme — which
- * is why the root layout carries `suppressHydrationWarning` on <html>.
+ * Light only.
  *
- * `disableTransitionOnChange` suppresses transitions for the single frame in
- * which the class flips. Without it every colour transition in the tree fires
- * at once on toggle, and a switch reads as a smear.
+ * `forcedTheme` pins the class on <html> to "light" whatever the OS or a
+ * previously saved choice says, so there is exactly one set of colours to
+ * design against and review.
+ *
+ * The dark tokens are still in globals.css, deliberately: they are written
+ * (dark is not the light values dimmed — the blooms carry more chroma, the
+ * panels are lighter than their ground rather than darker, the hairlines
+ * invert), and throwing them away would mean writing them again. To turn dark
+ * mode back on: drop `forcedTheme` here, set `defaultTheme="system"` with
+ * `enableSystem`, and put a three-way Light / Dark / System control back in the
+ * header. Nothing else needs to change.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem
+      defaultTheme="light"
+      forcedTheme="light"
+      enableSystem={false}
       disableTransitionOnChange
     >
       {children}
