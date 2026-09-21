@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Clock, MapPin, Users } from "lucide-react";
 import { getCampBySlug } from "@/lib/camps/queries";
+import { getCampPartners } from "@/lib/partners/queries";
+import { partnerDisplay } from "@/lib/partners/display";
 import { getDashboardHref } from "@/lib/auth/dal";
 import { TopNav } from "@/components/site/top-nav";
 import { SiteFooter } from "@/components/site/footer";
@@ -34,12 +36,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function CampPage({ params }: Params) {
   const { slug } = await params;
   const [camp, dashboardHref] = await Promise.all([getCampBySlug(slug), getDashboardHref()]);
+  // Keyed on the camp's id, so this cannot join the Promise.all above.
+  const partnerRows = camp ? await getCampPartners(camp.id) : null;
   // A draft is a camp nobody outside the console should know exists, so it is a
   // 404 rather than a "not yet published" page — which would confirm it exists.
   if (!camp || camp.status === "draft") notFound();
 
   const d = campDateParts(camp.starts_at);
   const jsonLd = campEvent(camp);
+  const bodies = partnerDisplay(camp, partnerRows);
 
   return (
     <>
@@ -160,25 +165,32 @@ export default async function CampPage({ params }: Params) {
           )}
         </div>
 
-        {(camp.collaboration || camp.partner_name) && (
+        {(bodies.collaborators.length > 0 || bodies.bloodBanks.length > 0) && (
           <div className="mx-auto grid w-full max-w-3xl gap-4 px-5 pb-24 sm:grid-cols-2 sm:px-6">
-            {camp.collaboration && (
+            {bodies.collaborators.length > 0 && (
               <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
                 <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   In collaboration with
                 </p>
-                <p className="mt-1.5 font-semibold">{camp.collaboration}</p>
+                {bodies.collaborators.map((b) => (
+                  <div key={b.name} className="mt-1.5">
+                    <p className="font-semibold">{b.name}</p>
+                    {b.note && <p className="text-sm text-muted-foreground">{b.note}</p>}
+                  </div>
+                ))}
               </div>
             )}
-            {camp.partner_name && (
+            {bodies.bloodBanks.length > 0 && (
               <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
                 <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                  Blood bank partner
+                  {bodies.bloodBanks.length > 1 ? "Blood bank partners" : "Blood bank partner"}
                 </p>
-                <p className="mt-1.5 font-semibold">{camp.partner_name}</p>
-                {camp.partner_note && (
-                  <p className="mt-0.5 text-sm text-muted-foreground">{camp.partner_note}</p>
-                )}
+                {bodies.bloodBanks.map((b) => (
+                  <div key={b.name} className="mt-1.5">
+                    <p className="font-semibold">{b.name}</p>
+                    {b.note && <p className="text-sm text-muted-foreground">{b.note}</p>}
+                  </div>
+                ))}
               </div>
             )}
           </div>

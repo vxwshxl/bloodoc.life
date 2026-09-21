@@ -17,6 +17,15 @@ export type CampStatus = "draft" | "published" | "closed";
 export type RegistrationStatus =
   | "registered" | "screened" | "donated" | "deferred" | "cancelled";
 
+/**
+ * What kind of body a partner is. Not cosmetic: a blood bank may record a
+ * screening result and a donation, an organisation may not. See
+ * `is_camp_bloodbank()` in 0008.
+ */
+export type PartnerKind = "organisation" | "blood_bank";
+export type PartnerMemberRole = "owner" | "member";
+export type CertificateStatus = "pending" | "approved" | "revoked";
+
 export type Profile = {
   id: string;
   email: string;
@@ -110,6 +119,79 @@ export type EmailLog = {
   created_at: string;
 };
 
+/**
+ * A collaborating body: an NSS unit, a service organisation, a blood bank.
+ *
+ * Replaces the `collaboration` / `partner_name` / `partner_note` text columns
+ * on `camps`, which could be printed but never queried, joined or logged into.
+ */
+export type Partner = {
+  id: string;
+  slug: string;
+  name: string;
+  /** What fits in a table cell — "NSS, RGU" rather than the full legal name. */
+  short_name: string | null;
+  kind: PartnerKind;
+  /** "Gauhati Medical College & Hospital" for a blood centre inside a hospital. */
+  parent_institution: string | null;
+  city: string | null;
+  address: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  website: string | null;
+  logo_url: string | null;
+  /** Stopped collaborating. Never deleted — past camps must keep resolving. */
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * Who may sign into a partner's panel.
+ *
+ * `profile_id` is null until that address signs in for the first time; the
+ * signup trigger claims the row. Adding the email IS the invite.
+ */
+export type PartnerMember = {
+  id: string;
+  partner_id: string;
+  profile_id: string | null;
+  email: string;
+  full_name: string | null;
+  title: string | null;
+  role: PartnerMemberRole;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Which bodies ran which camp, and in what capacity at that camp. */
+export type CampPartner = {
+  camp_id: string;
+  partner_id: string;
+  role: PartnerKind;
+  is_host: boolean;
+  sort_order: number;
+  created_at: string;
+};
+
+/**
+ * One per donation, minted `pending` by a trigger the moment a registration
+ * reaches `donated` and valid only once a human approves it.
+ */
+export type Certificate = {
+  id: string;
+  registration_id: string;
+  /** The public handle: BD-2026-9F3A7C. Printed, and typed into /verify. */
+  code: string;
+  status: CertificateStatus;
+  issued_at: string | null;
+  issued_by: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -135,6 +217,10 @@ export type Database = {
         created_at: string;
       }>;
       email_log: Table<EmailLog>;
+      partners: Table<Partner>;
+      partner_members: Table<PartnerMember>;
+      camp_partners: Table<CampPartner>;
+      certificates: Table<Certificate>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -145,6 +231,9 @@ export type Database = {
       blood_group: BloodGroup;
       camp_status: CampStatus;
       registration_status: RegistrationStatus;
+      partner_kind: PartnerKind;
+      partner_member_role: PartnerMemberRole;
+      certificate_status: CertificateStatus;
     };
     CompositeTypes: Record<string, never>;
   };

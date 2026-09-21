@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/db/types";
+import type { Partner, PartnerMember, Profile } from "@/lib/db/types";
 
 /**
  * The data access layer: every check of "who is this and what are they allowed
@@ -55,9 +55,56 @@ export async function requireAdmin(): Promise<Profile> {
   return profile;
 }
 
-/** Where a signed-in visitor's "Dashboard" link points, or null when signed out. */
+/**
+ * The partners this account may act for, with the body itself joined on.
+ *
+ * Partner access is a membership, not a value in `profiles.role`. One person
+ * can be the NSS coordinator and a blood bank officer, and a role column would
+ * force them into two accounts. It also means revoking access is deleting a
+ * row rather than rewriting the account that person also donates with.
+ */
+export const getMyMemberships = cache(
+  async (): Promise<(PartnerMember & { partner: Partner })[]> => {
+    const user = await getUser();
+    if (!user) return [];
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("partner_members")
+      .select("*, partner:partners(*)")
+      .eq("profile_id", user.id);
+    return (data as (PartnerMember & { partner: Partner })[] | null) ?? [];
+  },
+);
+
+/**
+ * Gate for the partner panel.
+ *
+ * Mirrors `requireAdmin`: a redirect rather than a 403, because someone whose
+ * membership was removed is not an attacker. RLS refuses the rows underneath
+ * either way — this only saves the round trip.
+ */
+export async function requirePartner() {
+  const profile = await getProfile();
+  if (!profile) redirect("/signin");
+  const memberships = await getMyMemberships();
+  if (memberships.length === 0) {
+    // An admin who wanders in belongs in the console, not at their own /me.
+    redirect(profile.role === "admin" ? "/admin" : "/me");
+  }
+  return { profile, memberships };
+}
+
+/**
+ * Where a signed-in visitor's "Dashboard" link points, or null when signed out.
+ *
+ * Admin wins over a partner membership, and a partner membership over /me: an
+ * account is sent to the widest thing it can see, because the narrower pages
+ * are all reachable from there and the reverse is not true.
+ */
 export async function getDashboardHref(): Promise<string | null> {
   const profile = await getProfile();
   if (!profile) return null;
-  return profile.role === "admin" ? "/admin" : "/me";
+  if (profile.role === "admin") return "/admin";
+  const memberships = await getMyMemberships();
+  return memberships.length > 0 ? "/partner" : "/me";
 }

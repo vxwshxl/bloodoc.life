@@ -11,7 +11,7 @@ import { updateSession } from "@/lib/supabase/proxy";
  * tried to enforce roles would be a second, weaker copy of the rules, and the
  * two would drift.
  */
-const PROTECTED_PREFIXES = ["/admin", "/me"];
+const PROTECTED_PREFIXES = ["/admin", "/me", "/partner"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

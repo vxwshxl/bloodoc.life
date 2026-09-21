@@ -3,6 +3,7 @@ import { ArrowRight, Clock, MapPin, Users } from "lucide-react";
 import { RotatingTitle } from "@/components/marketing/rotating-title";
 import { campTitles } from "@/lib/camps/titles";
 import { campDateParts, countdownLabel, formatTimeRange } from "@/lib/format";
+import { partnerDisplay, type CampPartnerWithBody } from "@/lib/partners/display";
 import { cn } from "@/lib/utils";
 import type { Camp } from "@/lib/db/types";
 
@@ -28,10 +29,17 @@ import type { Camp } from "@/lib/db/types";
  */
 export function EventCard({
   camp,
+  partners,
   registered,
   className,
 }: {
   camp: Camp;
+  /**
+   * The bodies behind the camp, read from `camp_partners`. Optional, and
+   * `partnerDisplay` falls back to the legacy text columns when it is missing —
+   * so a caller that has not been updated still renders the same card.
+   */
+  partners?: CampPartnerWithBody[] | null;
   /** Places already taken, when the page knows. Drives the capacity line. */
   registered?: number;
   className?: string;
@@ -39,12 +47,17 @@ export function EventCard({
   const d = campDateParts(camp.starts_at);
   const countdown = countdownLabel(camp.starts_at);
   const full = camp.capacity != null && registered != null && registered >= camp.capacity;
+  const bodies = partnerDisplay(camp, partners);
 
   return (
       <Link
         href={`/camps/${camp.slug}#register`}
         className={cn(
-          "group/card press grain relative block w-full overflow-hidden rounded-3xl border border-border bg-card text-left shadow-[var(--panel-shadow)]",
+          // `cursor-pointer select-none`: the card is one control, not a
+          // passage of text. Without them a drag across the title starts a
+          // selection and the cursor reads as an I-beam over most of the
+          // surface, both of which say "document" where the card means "button".
+          "group/card press grain relative block w-full cursor-pointer overflow-hidden rounded-3xl border border-border bg-card text-left shadow-[var(--panel-shadow)] select-none",
           "transition-[border-color,box-shadow] duration-300 ease-out-strong hover:border-primary/40",
           "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
           className,
@@ -120,31 +133,33 @@ export function EventCard({
             {/* Who else is behind it, and where the units go. Both are things a
                 donor weighs before deciding to turn up, so they sit on the card
                 rather than a page deeper in. */}
-            {(camp.collaboration || camp.partner_name) && (
+            {(bodies.collaborators.length > 0 || bodies.bloodBanks.length > 0) && (
               <span className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:mt-5">
-                {camp.collaboration && (
+                {bodies.collaborators.length > 0 && (
                   <span className="block">
                     <span className="block text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                       In collaboration with
                     </span>
-                    <span className="mt-1 block text-sm font-semibold">
-                      {camp.collaboration}
-                    </span>
+                    {bodies.collaborators.map((b) => (
+                      <span key={b.name} className="mt-1 block text-sm font-semibold">
+                        {b.name}
+                      </span>
+                    ))}
                   </span>
                 )}
-                {camp.partner_name && (
+                {bodies.bloodBanks.length > 0 && (
                   <span className="block">
                     <span className="block text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                       Blood bank partner
                     </span>
-                    <span className="mt-1 block text-sm font-semibold">
-                      {camp.partner_name}
-                    </span>
-                    {camp.partner_note && (
-                      <span className="block text-xs text-muted-foreground">
-                        {camp.partner_note}
+                    {bodies.bloodBanks.map((b) => (
+                      <span key={b.name} className="mt-1 block">
+                        <span className="block text-sm font-semibold">{b.name}</span>
+                        {b.note && (
+                          <span className="block text-xs text-muted-foreground">{b.note}</span>
+                        )}
                       </span>
-                    )}
+                    ))}
                   </span>
                 )}
               </span>

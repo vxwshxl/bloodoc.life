@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/marketing/event-card";
 import { FloatCard } from "@/components/marketing/float-card";
 import { campDateParts } from "@/lib/format";
+import type { CampPartnerWithBody } from "@/lib/partners/display";
 import type { Camp } from "@/lib/db/types";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -46,7 +47,16 @@ const CARDS = {
  * to phone tears down the pin and the transforms it wrote rather than leaving a
  * half-applied desktop timeline behind.
  */
-export function HeroScroll({ camp, registered }: { camp: Camp | null; registered?: number }) {
+export function HeroScroll({
+  camp,
+  partners,
+  registered,
+}: {
+  camp: Camp | null;
+  /** Passed straight through to the card; see EventCard for the fallback. */
+  partners?: CampPartnerWithBody[] | null;
+  registered?: number;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const date = camp ? campDateParts(camp.starts_at) : null;
 
@@ -115,18 +125,32 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
           });
 
           // 1 — the headline hands off.
+          //
+          // `autoAlpha`, not `opacity`. The two layers are stacked `absolute
+          // inset-0` on this stage and the headline sits above the card, so a
+          // headline faded to `opacity: 0` is still a full-screen sheet of
+          // pointer targets: the card underneath could not be clicked and the
+          // cursor over it was the I-beam belonging to the invisible <h1>.
+          // autoAlpha writes `visibility: hidden` at zero, which takes the
+          // layer out of hit-testing and out of text selection, and restores it
+          // on the way back. This is why the card worked in the phone layout
+          // (ordinary flow, nothing overlapping) and not on a desktop.
           tl.to(
             ".hero-intro",
-            { opacity: 0, scale: 0.94, y: -64, ease: "power2.in", duration: 0.9 },
+            { autoAlpha: 0, scale: 0.94, y: -64, ease: "power2.in", duration: 0.9 },
             0,
           );
 
           // 2 — the camp arrives. Hidden at rest, growing into the middle of the
           // stage as the headline leaves, on every breakpoint.
+          //
+          // autoAlpha here too, and for the mirror of the same reason: at rest
+          // the card is invisible but centred, and on `opacity` alone it was an
+          // invisible click target sitting under the headline's buttons.
           tl.fromTo(
             ".hero-card",
-            { opacity: 0, scale: 0.7, y: 120 },
-            { opacity: 1, scale: 1, y: 0, ease: "power2.out", duration: 1.4 },
+            { autoAlpha: 0, scale: 0.7, y: 120 },
+            { autoAlpha: 1, scale: 1, y: 0, ease: "power2.out", duration: 1.4 },
             0.25,
           );
 
@@ -178,7 +202,10 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
           // because the wordmark is already running its own opacity tween and
           // two tweens on one property fight; a parent's opacity multiplies
           // through instead.
-          tl.to(".hero-stage", { opacity: 0, ease: "power1.in", duration: 0.5 }, 3.5);
+          // autoAlpha again: the stage is still pinned for the last stretch of
+          // the scrub, so a stage left at `opacity: 0` keeps the card and the
+          // float cards catching clicks over the section that follows it.
+          tl.to(".hero-stage", { autoAlpha: 0, ease: "power1.in", duration: 0.5 }, 3.5);
         },
       );
 
@@ -285,9 +312,13 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
               vanished. Declaring the same start state as a class means the
               first painted frame is already the one the timeline begins from.
             */}
-            <div className="hero-card sm:motion-safe:opacity-0">
+            {/* `invisible` alongside `opacity-0`: the same reasoning as the
+                tween above, applied to the frames before GSAP has run. Without
+                it the server-rendered card is transparent but still clickable,
+                sitting under the headline's own buttons. */}
+            <div className="hero-card sm:motion-safe:invisible sm:motion-safe:opacity-0">
               {camp ? (
-                <EventCard camp={camp} registered={registered} />
+                <EventCard camp={camp} partners={partners} registered={registered} />
               ) : (
                 <div className="grain rounded-3xl border border-border bg-card p-8 text-center shadow-[var(--panel-shadow)]">
                   <p className="font-display text-xl font-bold tracking-tight">

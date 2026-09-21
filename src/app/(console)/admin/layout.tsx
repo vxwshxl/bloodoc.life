@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import {
+  Building2,
   CalendarDays,
   Droplet,
   LayoutDashboard,
@@ -21,6 +22,7 @@ const NAV: NavItem[] = [
   { href: "/admin/camps", label: "Camps", icon: CalendarDays },
   { href: "/admin/registrations", label: "Registrations", icon: Droplet },
   { href: "/admin/donors", label: "Donors", icon: Users },
+  { href: "/admin/partners", label: "Partners", icon: Building2 },
   { href: "/admin/email", label: "Email", icon: Mail },
   { href: "/admin/assistant", label: "Assistant", icon: Sparkles },
 ];

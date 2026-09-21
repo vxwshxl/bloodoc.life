@@ -1,4 +1,5 @@
 import { getNextCamp } from "@/lib/camps/queries";
+import { getCampPartners } from "@/lib/partners/queries";
 import { getDashboardHref } from "@/lib/auth/dal";
 import { siteStructuredData } from "@/lib/seo/structured-data";
 import { TopNav } from "@/components/site/top-nav";
@@ -27,6 +28,9 @@ import { CtaBand } from "@/components/marketing/cta-band";
  */
 export default async function HomePage() {
   const [camp, dashboardHref] = await Promise.all([getNextCamp(), getDashboardHref()]);
+  // Sequential on purpose: the partner rows are keyed on the camp's id, which
+  // the call above is what produces.
+  const partners = camp ? await getCampPartners(camp.id) : null;
   const jsonLd = siteStructuredData(camp);
 
   return (
@@ -50,7 +54,7 @@ export default async function HomePage() {
         <SmoothScroll />
         <TopNav overlay dashboardHref={dashboardHref} />
 
-        <HeroScroll camp={camp} />
+        <HeroScroll camp={camp} partners={partners} />
         <MarqueeBand />
         <ImpactBand />
         <HowBand />
