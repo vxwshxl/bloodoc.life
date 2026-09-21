@@ -44,6 +44,9 @@ const campSchema = z.object({
     .transform((s) => (s === "" ? null : Number(s)))
     .refine((n) => n === null || (Number.isInteger(n) && n > 0), "Capacity must be a whole number."),
   status: z.enum(["draft", "published", "closed"]),
+  collaboration: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
+  partnerName: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
+  partnerNote: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
 });
 
 /** "2026-09-25T09:00" in IST → an ISO instant. */
@@ -74,6 +77,9 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
     ends_at: endsAt,
     capacity: v.capacity,
     status: v.status,
+    collaboration: v.collaboration,
+    partner_name: v.partnerName,
+    partner_note: v.partnerNote,
   };
 
   if (v.id) {

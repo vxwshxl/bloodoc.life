@@ -56,7 +56,7 @@ export function EventCard({
             is the correct priority for a dated event. */}
         <span className="flex items-center justify-between gap-3 bg-primary px-5 py-2.5 text-primary-foreground sm:px-7">
           <span className="text-[0.6875rem] font-semibold tracking-[0.18em] uppercase">
-            Next donation camp
+            Next upcoming donation camp
           </span>
           <span className="flex items-center gap-2 text-[0.6875rem] font-semibold tracking-wide">
             <span
@@ -105,6 +105,8 @@ export function EventCard({
                   {camp.city ? `, ${camp.city}` : ""}
                 </span>
               </span>
+              {/* Only when a camp actually declares a cap. A published number
+                  that turns out to be wrong turns donors away at the door. */}
               {camp.capacity != null && (
                 <span className="flex items-start gap-2.5">
                   <Users className="mt-0.5 size-4 shrink-0" strokeWidth={1.9} aria-hidden />
@@ -114,6 +116,39 @@ export function EventCard({
                 </span>
               )}
             </span>
+
+            {/* Who else is behind it, and where the units go. Both are things a
+                donor weighs before deciding to turn up, so they sit on the card
+                rather than a page deeper in. */}
+            {(camp.collaboration || camp.partner_name) && (
+              <span className="mt-5 flex flex-col gap-3 border-t border-border pt-4">
+                {camp.collaboration && (
+                  <span className="block">
+                    <span className="block text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                      In collaboration with
+                    </span>
+                    <span className="mt-1 block text-sm font-semibold">
+                      {camp.collaboration}
+                    </span>
+                  </span>
+                )}
+                {camp.partner_name && (
+                  <span className="block">
+                    <span className="block text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                      Blood bank partner
+                    </span>
+                    <span className="mt-1 block text-sm font-semibold">
+                      {camp.partner_name}
+                    </span>
+                    {camp.partner_note && (
+                      <span className="block text-xs text-muted-foreground">
+                        {camp.partner_note}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </span>
+            )}
 
             <span className="mt-6 flex items-center gap-2 text-sm font-semibold text-primary">
               {full ? "Join the waiting list" : "Register to donate"}

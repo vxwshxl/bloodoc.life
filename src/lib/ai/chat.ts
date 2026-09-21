@@ -6,21 +6,30 @@ import { TOOL_DEFS, runTool } from "@/lib/ai/tools";
  * Assistant configuration.
  *
  * Read from the environment on every call rather than captured at module load,
- * so rotating the key does not need a redeploy. `ASSISTANT_API_KEY` is never
+ * so rotating the key does not need a redeploy. `SARVAM_API_KEY` is never
  * referenced outside this file and is not prefixed `NEXT_PUBLIC_`, so it cannot
  * reach a client bundle, and nothing exported here lets a caller read it back.
  *
- * Any OpenAI-compatible chat-completions endpoint works — the default is
- * Sarvam, which is the same provider the sibling console uses.
+ * The endpoint is OpenAI-compatible, so any such provider works by pointing
+ * `SARVAM_BASE_URL` elsewhere; the variable names match the sibling console so
+ * one `.env` serves both.
+ *
+ * `SARVAM_SYSTEM_MESSAGE` is deliberately **not** read. The instructions below
+ * carry rules about not giving medical advice and not telling anyone they are
+ * eligible to donate, and those are not an environment knob — a value copied
+ * across from another project would silently replace them, and the first sign
+ * would be the assistant telling a donor they are cleared to give blood.
  */
 function config() {
-  const apiKey = process.env.ASSISTANT_API_KEY?.trim() ?? "";
+  const apiKey = process.env.SARVAM_API_KEY?.trim() ?? "";
   return {
     apiKey,
     configured: apiKey.length > 0,
-    baseUrl: process.env.ASSISTANT_BASE_URL?.trim() || "https://api.sarvam.ai/v1",
-    model: process.env.ASSISTANT_MODEL_ID?.trim() || "sarvam-105b",
-    maxTokens: Number(process.env.ASSISTANT_MAX_TOKENS ?? 2048),
+    baseUrl: process.env.SARVAM_BASE_URL?.trim() || "https://api.sarvam.ai/v1",
+    model: process.env.SARVAM_MODEL_ID?.trim() || "sarvam-105b",
+    temperature: Number(process.env.SARVAM_TEMPERATURE ?? 0.4),
+    topP: Number(process.env.SARVAM_TOP_P ?? 1),
+    maxTokens: Number(process.env.SARVAM_MAX_TOKENS ?? 2048),
   };
 }
 
@@ -74,7 +83,7 @@ export type ChatResult = { ok: true; reply: string } | { ok: false; error: strin
 export async function chat(history: ChatMessage[], question: string): Promise<ChatResult> {
   const c = config();
   if (!c.configured) {
-    return { ok: false, error: "The assistant is not configured (ASSISTANT_API_KEY)." };
+    return { ok: false, error: "The assistant is not configured (SARVAM_API_KEY)." };
   }
 
   const messages: WireMessage[] = [
@@ -103,6 +112,10 @@ export async function chat(history: ChatMessage[], question: string): Promise<Ch
           model: c.model,
           messages,
           tools: TOOL_DEFS,
+          // Low by default. This assistant reports counts and names out of a
+          // database; a creative one invents a donor.
+          temperature: c.temperature,
+          top_p: c.topP,
           max_tokens: c.maxTokens,
         }),
       });

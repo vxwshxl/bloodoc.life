@@ -61,6 +61,12 @@ export type Camp = {
   capacity: number | null;
   organiser: string | null;
   contact_phone: string | null;
+  /** "In collaboration with …" — the partnering body. */
+  collaboration: string | null;
+  /** The blood bank that receives the units. */
+  partner_name: string | null;
+  /** Its address or parent institution. */
+  partner_note: string | null;
   status: CampStatus;
   created_at: string;
   updated_at: string;
@@ -76,6 +82,8 @@ export type Registration = {
   weight_kg: number | null;
   bp_systolic: number | null;
   bp_diastolic: number | null;
+  /** g/dL, as measured at the desk. Below the cutoff is a deferral, not a bug. */
+  hemoglobin_gdl: number | null;
   medications: string | null;
   deferral_reason: string | null;
   created_at: string;

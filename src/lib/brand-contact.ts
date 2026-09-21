@@ -8,8 +8,8 @@
 
 /** Digits only, no "+" or separators — what wa.me expects. */
 export const CONTACT_PHONES = [
-  { label: "+91 70994 34612", digits: "917099434612", whatsapp: true },
-  { label: "+91 80999 87961", digits: "918099987961", whatsapp: true },
+  { label: "+91 60031 81933", digits: "916003181933", whatsapp: true },
+  { label: "+91 88228 51224", digits: "918822851224", whatsapp: true },
 ] as const;
 
 export const CONTACT_PHONE = CONTACT_PHONES[0];

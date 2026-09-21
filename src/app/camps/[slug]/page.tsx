@@ -101,6 +101,30 @@ export default async function CampPage({ params }: Params) {
                 {camp.capacity} places
               </p>
             )}
+
+            {(camp.collaboration || camp.partner_name) && (
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {camp.collaboration && (
+                  <div className="rounded-2xl border border-border bg-card p-5">
+                    <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                      In collaboration with
+                    </p>
+                    <p className="mt-1.5 font-semibold">{camp.collaboration}</p>
+                  </div>
+                )}
+                {camp.partner_name && (
+                  <div className="rounded-2xl border border-border bg-card p-5">
+                    <p className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                      Blood bank partner
+                    </p>
+                    <p className="mt-1.5 font-semibold">{camp.partner_name}</p>
+                    {camp.partner_note && (
+                      <p className="mt-0.5 text-sm text-muted-foreground">{camp.partner_note}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

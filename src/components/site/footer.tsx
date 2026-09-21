@@ -23,6 +23,7 @@ const COLUMNS: { heading: string; links: { href: string; label: string }[] }[] =
     heading: "Organisers",
     links: [
       { href: "/#console", label: "The console" },
+      { href: "/#team", label: "Who is behind it" },
       { href: "/#impact", label: "Impact" },
       { href: "/faq", label: "FAQ" },
       { href: "/admin", label: "Sign in to the console" },

@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Camp } from "@/lib/db/types";
 
 /** An ISO instant → the "YYYY-MM-DDTHH:mm" a datetime-local input wants, in IST. */
@@ -53,6 +60,40 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor="collaboration" className="text-xs font-medium text-muted-foreground">
+            In collaboration with
+          </Label>
+          <Input
+            id="collaboration"
+            name="collaboration"
+            defaultValue={camp?.collaboration ?? ""}
+            className="h-10"
+            placeholder="e.g. Terapanth Yuvak Parishad, Guwahati"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="partnerName" className="text-xs font-medium text-muted-foreground">
+            Blood bank partner
+          </Label>
+          <Input
+            id="partnerName"
+            name="partnerName"
+            defaultValue={camp?.partner_name ?? ""}
+            className="h-10"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="partnerNote" className="text-xs font-medium text-muted-foreground">
+            Partner&rsquo;s institution
+          </Label>
+          <Input
+            id="partnerNote"
+            name="partnerNote"
+            defaultValue={camp?.partner_note ?? ""}
+            className="h-10"
+          />
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="venue" className="text-xs font-medium text-muted-foreground">Venue</Label>
           <Input id="venue" name="venue" defaultValue={camp?.venue} className="h-10" required />
@@ -103,16 +144,20 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           <Label htmlFor="status" className="text-xs font-medium text-muted-foreground">
             Status
           </Label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={camp?.status ?? "draft"}
-            className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="draft">Draft — not on the site</option>
-            <option value="published">Published — open for registration</option>
-            <option value="closed">Closed — no new registrations</option>
-          </select>
+          {/* The same custom dropdown the public form uses, so the console's
+              menus are not the one place in the product that opens an OS
+              widget. `name` keeps the hidden native select underneath, so the
+              value still arrives in FormData. */}
+          <Select name="status" defaultValue={camp?.status ?? "draft"}>
+            <SelectTrigger id="status" className="h-10 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">Draft — not on the site</SelectItem>
+              <SelectItem value="published">Published — open for registration</SelectItem>
+              <SelectItem value="closed">Closed — no new registrations</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

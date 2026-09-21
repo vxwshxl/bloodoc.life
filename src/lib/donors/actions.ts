@@ -121,6 +121,7 @@ export async function registerDonor(
         weight_kg: v.weightKg,
         bp_systolic: v.bpSystolic,
         bp_diastolic: v.bpDiastolic,
+        hemoglobin_gdl: v.hemoglobin,
         medications: v.medications,
         status: "registered",
       },
@@ -138,6 +139,8 @@ export async function registerDonor(
       when: `${formatCampDate(camp.starts_at)}, ${formatTimeRange(camp.starts_at, camp.ends_at)}`,
       venue: [camp.venue, camp.city].filter(Boolean).join(", "),
       bloodGroup: v.bloodGroup === "unknown" ? "To be tested" : v.bloodGroup,
+      collaboration: camp.collaboration,
+      partner: [camp.partner_name, camp.partner_note].filter(Boolean).join(", ") || null,
     });
     // Best-effort: the registration is already recorded, and a mail outage is
     // not a reason to tell someone their slot did not go through.

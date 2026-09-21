@@ -54,9 +54,9 @@ export function Assistant({ configured }: { configured: boolean }) {
           The assistant is not switched on.
         </p>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Set <code className="font-mono text-xs">ASSISTANT_API_KEY</code> (and optionally{" "}
-          <code className="font-mono text-xs">ASSISTANT_BASE_URL</code> /{" "}
-          <code className="font-mono text-xs">ASSISTANT_MODEL_ID</code>) and restart. Any
+          Set <code className="font-mono text-xs">SARVAM_API_KEY</code> (and optionally{" "}
+          <code className="font-mono text-xs">SARVAM_BASE_URL</code> /{" "}
+          <code className="font-mono text-xs">SARVAM_MODEL_ID</code>) and restart. Any
           OpenAI-compatible endpoint works.
         </p>
       </div>

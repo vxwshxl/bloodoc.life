@@ -130,7 +130,7 @@ export async function runTool(name: string, args: Args): Promise<string> {
     case "list_camps": {
       const { data } = await supabase
         .from("camps")
-        .select("id, title, venue, city, starts_at, ends_at, status, capacity")
+        .select("id, title, venue, city, starts_at, ends_at, status, capacity, collaboration, partner_name")
         .order("starts_at", { ascending: false })
         .limit(25);
       const camps = data ?? [];
@@ -146,6 +146,8 @@ export async function runTool(name: string, args: Args): Promise<string> {
             venue: [c.venue, c.city].filter(Boolean).join(", "),
             status: c.status,
             capacity: c.capacity,
+            collaboration: c.collaboration,
+            blood_bank_partner: c.partner_name,
             registered: count ?? 0,
           };
         }),

@@ -6,10 +6,10 @@ export const TITLE_SUFFIX = "BlooDoc";
 export const OG_IMAGE = {
   // Bump ?v= whenever the image is re-rendered: link-preview crawlers
   // (WhatsApp, LinkedIn, Facebook) cache by URL for weeks.
-  url: "/og.png?v=1",
+  url: "/og.png?v=2",
   width: 1200,
   height: 630,
-  alt: "BlooDoc — roll up a sleeve, save three lives.",
+  alt: "BlooDoc — roll up a sleeve, save three lives. Register in two minutes.",
 };
 
 /**

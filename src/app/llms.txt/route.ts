@@ -1,6 +1,7 @@
 import { getUpcomingCamps } from "@/lib/camps/queries";
 import { BRAND_ALTERNATE_NAMES, SERVICE_LIST } from "@/lib/seo/structured-data";
 import { CONTACT_EMAIL, CONTACT_PHONES } from "@/lib/brand-contact";
+import { TEAM } from "@/lib/team";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
@@ -38,11 +39,23 @@ ${
     ? camps
         .map(
           (c) =>
-            `- ${c.title} — ${formatCampDate(c.starts_at)}, ${formatTimeRange(c.starts_at, c.ends_at)}, ${[c.venue, c.city].filter(Boolean).join(", ")}. Register: ${siteUrl}/camps/${c.slug}`,
+            [
+              `- ${c.title} — ${formatCampDate(c.starts_at)}, ${formatTimeRange(c.starts_at, c.ends_at)}, ${[c.venue, c.city].filter(Boolean).join(", ")}.`,
+              c.collaboration ? `In collaboration with ${c.collaboration}.` : "",
+              c.partner_name
+                ? `Blood bank partner: ${[c.partner_name, c.partner_note].filter(Boolean).join(", ")}.`
+                : "",
+              `Register: ${siteUrl}/camps/${c.slug}`,
+            ]
+              .filter(Boolean)
+              .join(" "),
         )
         .join("\n")
     : "- None scheduled at the moment."
 }
+
+## Who runs it
+${TEAM.map((m) => `- ${m.name} — ${m.role}`).join("\n")}
 
 ## Who can donate (India, general rules)
 - Age 18 to 65, weight 45kg or more, feeling well on the day.

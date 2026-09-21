@@ -41,6 +41,8 @@ export function registrationConfirmedEmail(input: {
   when: string;
   venue: string;
   bloodGroup: string;
+  collaboration?: string | null;
+  partner?: string | null;
 }) {
   return {
     subject: `You're registered — ${input.campTitle}`,
@@ -56,6 +58,10 @@ export function registrationConfirmedEmail(input: {
           { label: "When", value: input.when },
           { label: "Where", value: input.venue },
           { label: "Blood group", value: input.bloodGroup },
+          ...(input.collaboration
+            ? [{ label: "In collaboration with", value: input.collaboration }]
+            : []),
+          ...(input.partner ? [{ label: "Blood bank partner", value: input.partner }] : []),
         ]),
         button("View your registration", `${site()}/me`),
         paragraph(

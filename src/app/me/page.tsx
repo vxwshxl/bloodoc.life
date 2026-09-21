@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/site/footer";
 import { Panel } from "@/components/shell/page-header";
 import { signOut } from "@/lib/auth/actions";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
+import { CONTACT_EMAIL, CONTACT_EMAIL_HREF, CONTACT_PHONE } from "@/lib/brand-contact";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -226,11 +227,17 @@ export default async function MePage() {
               </Panel>
 
               <div className="mt-8 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <a href="mailto:hello@bloodoc.life" className="inline-flex items-center gap-2 hover:text-foreground">
-                  <Mail className="size-4" strokeWidth={1.9} /> hello@bloodoc.life
+                <a
+                  href={CONTACT_EMAIL_HREF}
+                  className="inline-flex items-center gap-2 hover:text-foreground"
+                >
+                  <Mail className="size-4" strokeWidth={1.9} /> {CONTACT_EMAIL}
                 </a>
-                <a href="tel:+917099434612" className="inline-flex items-center gap-2 hover:text-foreground">
-                  <Phone className="size-4" strokeWidth={1.9} /> +91 70994 34612
+                <a
+                  href={`tel:+${CONTACT_PHONE.digits}`}
+                  className="inline-flex items-center gap-2 hover:text-foreground"
+                >
+                  <Phone className="size-4" strokeWidth={1.9} /> {CONTACT_PHONE.label}
                 </a>
               </div>
             </>

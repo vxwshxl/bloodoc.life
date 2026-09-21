@@ -91,6 +91,11 @@ export const donorRegistrationSchema = z
     weightKg: optionalNumber(30, 300, "Weight"),
     bpSystolic: optionalNumber(60, 260, "Systolic pressure"),
     bpDiastolic: optionalNumber(30, 160, "Diastolic pressure"),
+    // The range is deliberately wider than the donation cutoff (12.5 g/dL in
+    // India). A donor who is turned away for a low reading still has that
+    // reading recorded, and a field that refused to hold it would be a field
+    // that only works for people who pass.
+    hemoglobin: optionalNumber(3, 25, "Haemoglobin"),
     medications: optionalText,
 
     // --- Which camp ---
@@ -132,18 +137,23 @@ export const donorRegistrationSchema = z
         message: "The lower number should be below the upper one.",
       });
     }
-    if (v.kind === "student" && !v.department) {
+    // Which of the two boxes is asked for depends on `kind`, and only the one
+    // that was shown is required. "Other" is the catch-all — a shopkeeper has
+    // an occupation and no department, and asking them for one is how a form
+    // tells somebody it was not written for them.
+    if (v.kind !== "other" && !v.department) {
       ctx.addIssue({
         code: "custom",
         path: ["department"],
-        message: "Which department?",
+        message:
+          v.kind === "student" ? "Which department?" : "Which faculty or department?",
       });
     }
-    if (v.kind === "faculty" && !v.department) {
+    if (v.kind === "other" && !v.occupation) {
       ctx.addIssue({
         code: "custom",
-        path: ["department"],
-        message: "Which faculty or department?",
+        path: ["occupation"],
+        message: "What do you do?",
       });
     }
   });

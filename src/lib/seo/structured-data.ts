@@ -22,6 +22,7 @@ import {
   ORG_REGION,
 } from "@/lib/brand-contact";
 import type { Camp } from "@/lib/db/types";
+import { TEAM } from "@/lib/team";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bloodoc.life";
 
@@ -88,6 +89,19 @@ export function siteStructuredData(camp?: Camp | null) {
         availableLanguage: ["en", "hi", "as"],
       })),
       knowsAbout: SERVICE_LIST,
+      // A named person attached to an organisation is one of the strongest
+      // signals that the organisation is an entity rather than a page. Founders
+      // are declared as such; everyone else is an employee with their title.
+      founder: TEAM.filter((m) => m.founder).map((m) => ({
+        "@type": "Person",
+        name: m.name,
+        jobTitle: m.role,
+      })),
+      employee: TEAM.map((m) => ({
+        "@type": "Person",
+        name: m.name,
+        jobTitle: m.role,
+      })),
     },
     {
       "@type": "WebSite",

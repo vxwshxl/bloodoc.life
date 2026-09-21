@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Camp } from "@/lib/db/types";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
@@ -27,7 +34,21 @@ import { formatCampDate, formatTimeRange } from "@/lib/format";
  * itself, because the page already knows which one you clicked.
  */
 
-const FIELD = "h-10 md:h-10";
+/**
+ * One height for every control on this form.
+ *
+ * It has to be applied to the Select's `data-[size=default]:h-8` as well as to
+ * `h-8` on the Input: those are different variants, so tailwind-merge does not
+ * treat them as the same declaration and a bare `h-10` loses to the more
+ * specific data-attribute rule. Passing both is what makes a dropdown and a
+ * text box the same height — which, when they sit side by side in a grid, is
+ * the difference between a form and a ransom note.
+ *
+ * 40px rather than the app's default 32px: this is a twenty-box form filled in
+ * on a phone by somebody standing up, and 32px is below the comfortable touch
+ * target on every platform guideline there is.
+ */
+const FIELD = "h-10 data-[size=default]:h-10";
 
 function Field({
   label,
@@ -88,52 +109,72 @@ function Section({
   );
 }
 
-/** A native <select>, styled to match Input. */
-function NativeSelect({
+/**
+ * A dropdown that draws its own menu.
+ *
+ * Radix rather than a native `<select>`: the platform picker renders its list
+ * with the OS's own background and type, which on this form sits a slab of
+ * system grey in the middle of a page that is otherwise entirely our own. This
+ * one opens onto `bg-popover` with our border, radius and easing, so the menu
+ * belongs to the page it opened from.
+ *
+ * `name` still gives Radix a hidden native select underneath, so the value
+ * reaches the server action through ordinary FormData and the form keeps
+ * working exactly as it did.
+ */
+function Dropdown({
   name,
   defaultValue,
-  children,
+  placeholder,
+  options,
   invalid,
   onChange,
 }: {
   name: string;
   defaultValue?: string;
-  children: React.ReactNode;
+  placeholder?: string;
+  options: readonly { value: string; label: string }[];
   invalid?: boolean;
   onChange?: (value: string) => void;
 }) {
   return (
-    <select
-      id={name}
-      name={name}
-      defaultValue={defaultValue}
-      aria-invalid={invalid || undefined}
-      onChange={(e) => onChange?.(e.target.value)}
-      // A native select rather than the Radix one, for this form only. Inside a
-      // scrolling dialog on a phone, the platform picker is both the faster
-      // control and the one that cannot be scrolled away from its trigger.
-      className={cn(
-        FIELD,
-        "w-full appearance-none rounded-lg border border-input bg-transparent bg-[length:16px] bg-[right_0.6rem_center] bg-no-repeat px-2.5 pr-8 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30",
-      )}
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
-      }}
-    >
-      {children}
-    </select>
+    <Select name={name} defaultValue={defaultValue} onValueChange={onChange}>
+      <SelectTrigger
+        id={name}
+        aria-invalid={invalid || undefined}
+        className={cn(FIELD, "w-full text-base md:text-sm")}
+      >
+        <SelectValue placeholder={placeholder ?? "Select"} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
-/** Yes / No, as a pair of radios drawn as a segmented control. */
+/**
+ * Yes / No, as a pair of radios drawn as a segmented control.
+ *
+ * `w-fit` on the track and a fixed segment width, rather than letting it fill
+ * the grid cell. Stretched to a third of the row it read as two enormous
+ * buttons next to two ordinary inputs, which made the least consequential
+ * question on the form look like the most important one.
+ *
+ * The outer height matches `FIELD` so it sits on the same baseline as the two
+ * boxes beside it.
+ */
 function YesNo({ name, defaultValue = "no" }: { name: string; defaultValue?: string }) {
   return (
-    <div className="inline-flex rounded-lg border border-input p-0.5">
+    <div className="inline-flex h-10 w-fit items-center rounded-lg border border-input p-1">
       {["yes", "no"].map((v) => (
         <label
           key={v}
-          className="relative cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground transition-colors has-checked:bg-primary has-checked:text-primary-foreground"
+          className="relative flex h-8 w-[3.25rem] cursor-pointer items-center justify-center rounded-md text-sm font-medium text-muted-foreground transition-colors has-checked:bg-primary has-checked:text-primary-foreground"
         >
           <input
             type="radio"
@@ -235,12 +276,7 @@ export function RegisterForm({
             <Input id="fullName" name="fullName" className={FIELD} autoComplete="name" required aria-invalid={!!e.fullName || undefined} />
           </Field>
           <Field label="Sex" name="sex" error={e.sex} className="sm:col-span-2">
-            <NativeSelect name="sex" defaultValue="" invalid={!!e.sex}>
-              <option value="" disabled>Select</option>
-              {SEXES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </NativeSelect>
+            <Dropdown name="sex" options={SEXES} invalid={!!e.sex} />
           </Field>
 
           <Field
@@ -273,33 +309,59 @@ export function RegisterForm({
       <Section step={2} title="What you do" note="So the organisers can group the roster by department.">
         <div className="grid gap-4 sm:grid-cols-6">
           <Field label="You are a" name="kind" error={e.kind} className="sm:col-span-2">
-            <NativeSelect name="kind" defaultValue="student" invalid={!!e.kind} onChange={setKind}>
-              {DONOR_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>{k.label}</option>
-              ))}
-            </NativeSelect>
+            <Dropdown
+              name="kind"
+              defaultValue="student"
+              options={DONOR_KINDS}
+              invalid={!!e.kind}
+              onChange={setKind}
+            />
           </Field>
+
+          {/*
+            One box, not two side by side.
+
+            The paper form has a single "Occupation — Department / Faculty"
+            line, and which half of it applies depends entirely on who is
+            filling it in. Showing both means a student stares at an Occupation
+            box that means nothing to them and a shopkeeper stares at a
+            Department box they have no answer for — and whichever they leave
+            blank, the roster ends up with a column that is empty for most
+            people. So the question that applies is the only one asked.
+
+            Both inputs stay mounted rather than being swapped, so switching
+            "You are a" does not throw away what was already typed in the
+            other one.
+          */}
           <Field
-            // One box on the paper form, and one column in the database. The
-            // label is what changes, because "Department" means something
-            // different to a student and to a member of the estate staff.
-            label={
-              kind === "student" ? "Department" : kind === "faculty" ? "Faculty / department" : "Department or unit"
-            }
+            label={kind === "student" ? "Department" : "Faculty / department"}
             name="department"
             error={e.department}
-            className="sm:col-span-2"
+            className={cn("sm:col-span-4", kind === "other" && "hidden")}
           >
-            <Input id="department" name="department" className={FIELD} placeholder="e.g. Physics" aria-invalid={!!e.department || undefined} />
+            <Input
+              id="department"
+              name="department"
+              className={FIELD}
+              placeholder={kind === "student" ? "e.g. Physics" : "e.g. Zoology"}
+              aria-invalid={!!e.department || undefined}
+            />
           </Field>
+
           <Field
             label="Occupation"
             name="occupation"
             error={e.occupation}
-            hint={kind === "student" ? "Course, if you like." : undefined}
-            className="sm:col-span-2"
+            hint="What you do for a living."
+            className={cn("sm:col-span-4", kind !== "other" && "hidden")}
           >
-            <Input id="occupation" name="occupation" className={FIELD} />
+            <Input
+              id="occupation"
+              name="occupation"
+              className={FIELD}
+              placeholder="e.g. Shopkeeper"
+              aria-invalid={!!e.occupation || undefined}
+            />
           </Field>
         </div>
       </Section>
@@ -330,13 +392,15 @@ export function RegisterForm({
       <Section step={4} title="As a donor" note="Nothing here disqualifies you — it tells the desk what to expect.">
         <div className="grid gap-4 sm:grid-cols-6">
           <Field label="Blood group" name="bloodGroup" error={e.bloodGroup} className="sm:col-span-2">
-            <NativeSelect name="bloodGroup" defaultValue="unknown" invalid={!!e.bloodGroup}>
-              {BLOOD_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {g === "unknown" ? "I don't know" : g}
-                </option>
-              ))}
-            </NativeSelect>
+            <Dropdown
+              name="bloodGroup"
+              defaultValue="unknown"
+              options={BLOOD_GROUPS.map((g) => ({
+                value: g,
+                label: g === "unknown" ? "I don't know" : g,
+              }))}
+              invalid={!!e.bloodGroup}
+            />
           </Field>
           <Field
             label="Times donated before"
@@ -357,35 +421,97 @@ export function RegisterForm({
       <Section
         step={5}
         title="How you are today"
-        note="Leave anything you don't know blank — it is taken again at the desk."
+        note="Leave anything you don't know blank — it is all taken again at the desk."
       >
-        <div className="grid gap-4 sm:grid-cols-6">
-          <Field label="Height (cm)" name="heightCm" error={e.heightCm} className="sm:col-span-3 md:col-span-1">
-            <Input id="heightCm" name="heightCm" inputMode="decimal" className={FIELD} aria-invalid={!!e.heightCm || undefined} />
-          </Field>
-          <Field label="Weight (kg)" name="weightKg" error={e.weightKg} className="sm:col-span-3 md:col-span-1">
-            <Input id="weightKg" name="weightKg" inputMode="decimal" className={FIELD} aria-invalid={!!e.weightKg || undefined} />
-          </Field>
-          <Field
-            label="Blood pressure"
-            name="bpSystolic"
-            error={e.bpSystolic ?? e.bpDiastolic}
-            hint="Upper / lower."
-            className="sm:col-span-6 md:col-span-2"
-          >
-            <div className="flex items-center gap-2">
-              <Input id="bpSystolic" name="bpSystolic" inputMode="numeric" className={FIELD} placeholder="120" aria-invalid={!!e.bpSystolic || undefined} />
-              <span aria-hidden className="text-muted-foreground">/</span>
-              <Input id="bpDiastolic" name="bpDiastolic" inputMode="numeric" className={FIELD} placeholder="80" aria-invalid={!!e.bpDiastolic || undefined} />
-            </div>
-          </Field>
+        {/*
+          Three rows, grouped by what each measurement is for rather than by
+          what fits: body (height, weight), then the two circulatory readings
+          that decide most deferrals (blood pressure, haemoglobin), then the
+          one free-text answer. Medication was a cramped two-line box wedged
+          beside four number fields; it is the only question here a person
+          writes a sentence into, so it gets the full width and the last word.
+        */}
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Height (cm)" name="heightCm" error={e.heightCm}>
+              <Input
+                id="heightCm"
+                name="heightCm"
+                inputMode="decimal"
+                className={FIELD}
+                placeholder="e.g. 168"
+                aria-invalid={!!e.heightCm || undefined}
+              />
+            </Field>
+            <Field label="Weight (kg)" name="weightKg" error={e.weightKg}>
+              <Input
+                id="weightKg"
+                name="weightKg"
+                inputMode="decimal"
+                className={FIELD}
+                placeholder="e.g. 62"
+                aria-invalid={!!e.weightKg || undefined}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Blood pressure"
+              name="bpSystolic"
+              error={e.bpSystolic ?? e.bpDiastolic}
+              hint="Upper / lower."
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  id="bpSystolic"
+                  name="bpSystolic"
+                  inputMode="numeric"
+                  className={FIELD}
+                  placeholder="120"
+                  aria-invalid={!!e.bpSystolic || undefined}
+                />
+                <span aria-hidden className="text-muted-foreground">/</span>
+                <Input
+                  id="bpDiastolic"
+                  name="bpDiastolic"
+                  inputMode="numeric"
+                  className={FIELD}
+                  placeholder="80"
+                  aria-invalid={!!e.bpDiastolic || undefined}
+                />
+              </div>
+            </Field>
+            <Field
+              label="Haemoglobin (g/dL)"
+              name="hemoglobin"
+              error={e.hemoglobin}
+              hint="Tested free at the camp if you don't know it."
+            >
+              <Input
+                id="hemoglobin"
+                name="hemoglobin"
+                inputMode="decimal"
+                className={FIELD}
+                placeholder="e.g. 13.5"
+                aria-invalid={!!e.hemoglobin || undefined}
+              />
+            </Field>
+          </div>
+
           <Field
             label="Any medication you are taking"
             name="medications"
             error={e.medications}
-            className="sm:col-span-6 md:col-span-2"
+            hint="Routine medication rarely stops you giving. Name it anyway — it is the answer the medical officer most needs."
           >
-            <Textarea id="medications" name="medications" rows={2} placeholder="Name them, or write None." />
+            <Textarea
+              id="medications"
+              name="medications"
+              rows={3}
+              className="min-h-24"
+              placeholder="Name anything you take regularly, or write None."
+            />
           </Field>
         </div>
       </Section>

@@ -117,6 +117,22 @@ export default async function RegistrationsPage({
                     >
                       {r.bp_systolic && r.bp_diastolic ? `${r.bp_systolic}/${r.bp_diastolic}` : "—"}
                       {r.weight_kg ? ` · ${r.weight_kg}kg` : ""}
+                      {/* Below 12.5 g/dL is the usual Indian cutoff, so a low
+                          reading is the single most useful thing on this row at
+                          the screening desk — it is the reason for most
+                          deferrals, and it is called out rather than left to be
+                          read off a run of grey numbers. */}
+                      {r.hemoglobin_gdl != null && (
+                        <span
+                          className={
+                            r.hemoglobin_gdl < 12.5
+                              ? "font-semibold text-destructive"
+                              : undefined
+                          }
+                        >
+                          {` · Hb ${r.hemoglobin_gdl}`}
+                        </span>
+                      )}
                       {r.medications ? (
                         <span className="mt-0.5 block max-w-40 truncate text-foreground" title={r.medications}>
                           {r.medications}

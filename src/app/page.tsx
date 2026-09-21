@@ -11,6 +11,7 @@ import { ImpactBand } from "@/components/marketing/impact-band";
 import { HowBand } from "@/components/marketing/how-band";
 import { EligibilityBand } from "@/components/marketing/eligibility-band";
 import { ConsoleSection } from "@/components/marketing/console-section";
+import { TeamBand } from "@/components/marketing/team-band";
 import { CtaBand } from "@/components/marketing/cta-band";
 
 /**
@@ -55,6 +56,7 @@ export default async function HomePage() {
         <HowBand />
         <EligibilityBand />
         <ConsoleSection />
+        <TeamBand />
         <CtaBand />
       </main>
 
