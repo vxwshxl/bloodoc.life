@@ -14,6 +14,16 @@
  * So the fallback chain here never resolves to localhost anywhere a real
  * request can reach it:
  *
+ * 0. A localhost value is discarded outright when the build is on Vercel. This
+ *    is not hypothetical tidying: `.env.local` gets copied into a hosting
+ *    dashboard wholesale, `NEXT_PUBLIC_SITE_URL=http://localhost:3000` comes
+ *    along with it, and because it is set explicitly it beats every fallback
+ *    below. The symptom is a production site whose only broken URLs are the
+ *    ones nothing on the site itself links to — og:image, the sitemap, the
+ *    links inside emails — so it looks fine to everyone except the crawlers.
+ *    No deployment is ever served from localhost, so the value is simply wrong
+ *    and is treated as absent.
+ *
  * 1. `NEXT_PUBLIC_SITE_URL` — the explicit answer, and the only one that knows
  *    about a custom domain. Set this in production.
  * 2. Vercel's production domain, which the platform injects into every build of
@@ -27,17 +37,22 @@
  * would silently see `undefined`. Nothing imports it from the client today;
  * this is what stops that becoming a bug the day something does.
  */
-function resolve(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return explicit.replace(/\/+$/, "");
+const isLocal = (url: string) => /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(url);
 
+function resolve(): string {
   const production =
     process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-  if (production) return `https://${production.replace(/\/+$/, "")}`;
-
   const deployment =
     process.env.NEXT_PUBLIC_VERCEL_URL?.trim() || process.env.VERCEL_URL?.trim();
+  const onVercel = !!(production || deployment);
+
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  // Honoured unless it is a localhost origin on a deployed build, which cannot
+  // be what anyone meant.
+  if (explicit && !(onVercel && isLocal(explicit))) return explicit;
+
+  if (production) return `https://${production.replace(/\/+$/, "")}`;
   if (deployment) return `https://${deployment.replace(/\/+$/, "")}`;
 
   return "http://localhost:3000";

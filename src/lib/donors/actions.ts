@@ -119,7 +119,11 @@ export async function registerDonor(
         first_time: v.firstTime === "yes",
         height_cm: v.heightCm,
         weight_kg: v.weightKg,
-        medications: v.medications,
+        // "No" clears the column rather than leaving whatever was typed before
+        // the donor changed their mind. The box stays mounted while the form is
+        // open, so without this a switch back to No would still submit its
+        // contents.
+        medications: v.onMedication === "yes" ? v.medications : null,
         status: "registered",
       },
       // A second submission of the same form (a double tap, a back button)

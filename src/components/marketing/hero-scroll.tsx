@@ -250,7 +250,7 @@ export function HeroScroll({ camp, registered }: { camp: Camp | null; registered
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3 max-sm:hidden">
             <Button asChild size="lg" className="group h-11 rounded-full px-6 text-sm">
-              <Link href="#camp">
+              <Link href="/camps">
                 See the next camp
                 <ArrowUpRight className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>

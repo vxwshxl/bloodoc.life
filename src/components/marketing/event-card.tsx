@@ -15,12 +15,16 @@ import type { Camp } from "@/lib/db/types";
  * wrapper and then repeats itself. So the visible call to action is a `<span>`
  * and the link is the card.
  *
- * It goes to the camp page, which opens on "Register as donor" with the date,
- * time and venue in one compact row and the form immediately under them. This
- * used to open a dialog, which on a phone meant a twenty-field form scrolling
- * inside a sheet that was itself inside a scrolling page, and the fastest way
- * to lose the form was to flick slightly wrong. A real URL scrolls normally,
- * and is shareable and back-buttonable.
+ * It links straight to the form, not to the top of the camp page: `#register`
+ * is the section holding the fields, and that section carries `scroll-mt-32`
+ * so the heading clears the fixed, translucent header instead of arriving
+ * underneath it.
+ *
+ * This used to open a dialog. On a phone that meant a twenty-field form
+ * scrolling inside a sheet that was itself inside a scrolling page, and the
+ * fastest way to lose the form was to flick slightly wrong. A real URL scrolls
+ * normally, is shareable and back-buttonable, and the camp's date, venue and
+ * partners stay readable above the fields rather than being replaced by them.
  */
 export function EventCard({
   camp,
@@ -38,7 +42,7 @@ export function EventCard({
 
   return (
       <Link
-        href={`/camps/${camp.slug}`}
+        href={`/camps/${camp.slug}#register`}
         className={cn(
           "group/card press grain relative block w-full overflow-hidden rounded-3xl border border-border bg-card text-left shadow-[var(--panel-shadow)]",
           "transition-[border-color,box-shadow] duration-300 ease-out-strong hover:border-primary/40",

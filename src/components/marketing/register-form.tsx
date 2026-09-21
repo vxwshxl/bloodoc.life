@@ -168,7 +168,15 @@ function Dropdown({
  * The outer height matches `FIELD` so it sits on the same baseline as the two
  * boxes beside it.
  */
-function YesNo({ name, defaultValue = "no" }: { name: string; defaultValue?: string }) {
+function YesNo({
+  name,
+  defaultValue = "no",
+  onChange,
+}: {
+  name: string;
+  defaultValue?: string;
+  onChange?: (value: string) => void;
+}) {
   return (
     <div className="inline-flex h-10 w-fit items-center rounded-lg border border-input p-1">
       {["yes", "no"].map((v) => (
@@ -181,6 +189,7 @@ function YesNo({ name, defaultValue = "no" }: { name: string; defaultValue?: str
             name={name}
             value={v}
             defaultChecked={v === defaultValue}
+            onChange={() => onChange?.(v)}
             className="sr-only"
           />
           {v === "yes" ? "Yes" : "No"}
@@ -206,6 +215,7 @@ export function RegisterForm({
     {},
   );
   const [kind, setKind] = useState<string>("student");
+  const [onMedication, setOnMedication] = useState<string>("no");
   const topRef = useRef<HTMLDivElement>(null);
   const errorId = useId();
   const e = state.fieldErrors ?? {};
@@ -432,8 +442,9 @@ export function RegisterForm({
           with no way to tell them apart later. The screening team records those
           two in the console.
 
-          Medication stays, and gets the whole width. It is the only question on
-          this form a person answers in a sentence.
+          Medication stays, and gets the whole width. It is asked as a yes/no
+          first so that "I take nothing" is a recorded answer rather than an
+          empty box, and the free-text field only appears on "yes".
         */}
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -459,20 +470,43 @@ export function RegisterForm({
             </Field>
           </div>
 
-          <Field
-            label="Any medication you are taking"
-            name="medications"
-            error={e.medications}
-            hint="Routine medication rarely stops you giving. Name it anyway. It is the answer the medical officer most needs."
-          >
-            <Textarea
-              id="medications"
-              name="medications"
-              rows={3}
-              className="min-h-24"
-              placeholder="Name anything you take regularly, or write None."
-            />
-          </Field>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                Are you on medications?
+              </Label>
+              <YesNo name="onMedication" defaultValue="no" onChange={setOnMedication} />
+              <p className="text-xs text-muted-foreground">
+                Routine medication rarely stops you giving.
+              </p>
+            </div>
+
+            {/*
+              Rendered only on "yes", so a donor who is on nothing never sees a
+              box asking them to describe it. It is not merely hidden with a
+              class: an always-mounted textarea keeps whatever was typed into it
+              and submits that alongside a "no", which is how a record ends up
+              saying both things at once.
+            */}
+            {onMedication === "yes" && (
+              <Field
+                label="What are you taking?"
+                name="medications"
+                error={e.medications}
+                hint="Brand or generic name is fine. This is the answer the medical officer most needs."
+              >
+                <Textarea
+                  id="medications"
+                  name="medications"
+                  rows={3}
+                  autoFocus
+                  className="min-h-24"
+                  placeholder="e.g. Thyroxine 50mcg, daily"
+                  aria-invalid={!!e.medications || undefined}
+                />
+              </Field>
+            )}
+          </div>
         </div>
       </Section>
 

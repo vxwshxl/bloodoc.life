@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Users } from "lucide-react";
+import { Clock, MapPin, Users } from "lucide-react";
 import { getCampBySlug } from "@/lib/camps/queries";
 import { getDashboardHref } from "@/lib/auth/dal";
 import { TopNav } from "@/components/site/top-nav";
@@ -67,62 +67,51 @@ export default async function CampPage({ params }: Params) {
             )}
 
             {/*
-              One horizontal strip, not three stacked blocks.
+              One card, three rows on a phone and three columns from `sm`.
 
-              Label and value sit side by side inside each segment and each
-              segment sits beside the next, so the whole thing reads as a single
-              line of "when and where" rather than as three cards to work
-              through. The segments are divided by hairlines instead of being
-              separate bordered boxes: three borders in a row at phone width is
-              more chrome than content.
+              Each fact gets its own line rather than sharing one: at 390px the
+              single-line version could only fit by scrolling sideways, which
+              hid the venue behind a swipe nobody was told about. Stacked, all
+              three are readable without touching anything.
 
-              Below `sm` the strip is one unbroken line that scrolls sideways.
-              That is a real trade (the venue runs off the right edge until you
-              swipe) and it is the right one here, because the alternative is
-              either truncating the floor of the building somebody is
-              navigating to, or going back to a stack that pushed the form off
-              the screen. The scrollbar is hidden and the right edge is masked,
-              so it reads as "there is more this way".
-
-              From `sm` there is room to do it properly: nothing scrolls, the
-              mask comes off, and the venue segment takes the remaining width
-              and wraps inside itself. Keeping the phone's nowrap up here would
-              push the venue out past the card's own border, since the three
-              segments together are wider than the 3xl column.
+              From `sm` there is width for them to sit side by side, so they do,
+              and the row dividers become column dividers. It stays one card
+              either way: three separate bordered boxes in a row is more chrome
+              than content for three short facts.
             */}
-            <dl className="scrollbar-none max-sm:mask-fade-x mt-5 flex items-stretch gap-4 overflow-x-auto rounded-2xl border border-border bg-card px-4 py-3 sm:mt-8 sm:gap-6 sm:overflow-x-visible sm:px-6 sm:py-4">
-              <div className="flex shrink-0 items-baseline gap-2">
-                <dt className="shrink-0 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+            <dl className="mt-5 grid divide-y divide-border rounded-2xl border border-border bg-card sm:mt-8 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <div className="px-4 py-3 sm:px-5 sm:py-4">
+                <dt className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   Date
                 </dt>
-                <dd className="flex items-baseline gap-1.5 text-sm font-semibold whitespace-nowrap">
+                <dd className="mt-1 font-display text-base font-bold tracking-tight sm:text-lg">
                   {d.day} {d.month}
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {d.weekday}, {d.year}
-                  </span>
+                </dd>
+                <dd className="text-xs text-muted-foreground">
+                  {d.weekday}, {d.year}
                 </dd>
               </div>
 
-              <span aria-hidden className="w-px shrink-0 self-stretch bg-border" />
-
-              <div className="flex shrink-0 items-baseline gap-2">
-                <dt className="shrink-0 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+              <div className="px-4 py-3 sm:px-5 sm:py-4">
+                <dt className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   Time
                 </dt>
-                <dd className="text-sm font-semibold whitespace-nowrap">
+                <dd className="mt-1 flex items-center gap-2 text-sm font-semibold sm:text-base">
+                  <Clock className="size-4 shrink-0 text-primary" strokeWidth={1.9} />
                   {formatTimeRange(camp.starts_at, camp.ends_at)}
                 </dd>
               </div>
 
-              <span aria-hidden className="w-px shrink-0 self-stretch bg-border" />
-
-              <div className="flex shrink-0 items-baseline gap-2 pr-2 sm:min-w-0 sm:shrink sm:pr-0">
-                <dt className="shrink-0 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+              <div className="px-4 py-3 sm:px-5 sm:py-4">
+                <dt className="text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   Venue
                 </dt>
-                <dd className="text-sm font-semibold whitespace-nowrap sm:whitespace-normal">
-                  {camp.venue}
-                  {camp.city ? `, ${camp.city}` : ""}
+                <dd className="mt-1 flex items-start gap-2 text-sm font-semibold sm:text-base">
+                  <MapPin className="mt-0.5 size-4 shrink-0 text-primary" strokeWidth={1.9} />
+                  <span>
+                    {camp.venue}
+                    {camp.city ? `, ${camp.city}` : ""}
+                  </span>
                 </dd>
               </div>
             </dl>

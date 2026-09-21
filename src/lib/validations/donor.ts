@@ -97,6 +97,13 @@ export const donorRegistrationSchema = z
     // and the 45kg minimum is worth flagging before someone travels.
     heightCm: optionalNumber(100, 250, "Height"),
     weightKg: optionalNumber(30, 300, "Weight"),
+    // Asked as a yes/no first, with the box only appearing on "yes".
+    //
+    // A single free-text field cannot tell "I take nothing" from "I skipped
+    // this question", and those are opposite answers to the one question on
+    // the form the medical officer most needs settled. A deliberate No is a
+    // recorded answer; a blank box is a shrug.
+    onMedication: z.enum(["yes", "no"]),
     medications: optionalText,
 
     // --- Which camp ---
@@ -133,6 +140,13 @@ export const donorRegistrationSchema = z
         path: ["department"],
         message:
           v.kind === "student" ? "Which department?" : "Which faculty or department?",
+      });
+    }
+    if (v.onMedication === "yes" && !v.medications) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["medications"],
+        message: "Name what you are taking.",
       });
     }
     if (v.kind === "other" && !v.occupation) {
