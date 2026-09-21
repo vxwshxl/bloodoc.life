@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="BlooDoc">
+  <defs>
+    <linearGradient id="d" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E4443C"/>
+      <stop offset="0.55" stop-color="#C41F22"/>
+      <stop offset="1" stop-color="#8E1418"/>
+    </linearGradient>
+  </defs>
+  <path d="M16 2.2c.5 0 .9.22 1.18.6C19.9 6.5 26 14.2 26 19.3A10 10 0 0 1 6 19.3C6 14.2 12.1 6.5 14.82 2.8c.28-.38.68-.6 1.18-.6Z" fill="url(#d)"/>
+  <path d="M9.2 20h2.9l1.7-4.4 2.7 8.1 1.9-3.7h4.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

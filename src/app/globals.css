@@ -1,0 +1,828 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+ * Motion system. CSS's built-in easings are too weak to read as intentional, so
+ * every transition in the app pulls from these three curves:
+ *   ease-out-strong     entering / exiting   — starts fast, so it feels instant
+ *   ease-in-out-strong  on-screen movement   — natural acceleration + decay
+ *   ease-drawer         sheets / drawers     — the iOS curve, via Ionic
+ * Registering them in Tailwind's `--ease-*` namespace generates the matching
+ * `ease-out-strong` utilities, and tw-animate-css reads the same `--tw-ease`,
+ * so one utility drives both a `transition` and the `animate-in`/`animate-out`
+ * keyframes on every Radix layer.
+ * ------------------------------------------------------------------------- */
+@theme {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Every bare `transition`, `transition-colors` and `transition-opacity` in
+   * the app — several hundred of them — resolves through these two defaults.
+   * Overriding them here re-curves the whole codebase at once, which is the
+   * only sane way to do it: the alternative is an `ease-` utility appended to
+   * every call site, where it would drift out of sync within a release.
+   * The literal is `--ease-out-strong`, written out because a theme value that
+   * references another theme value cannot be relied on to resolve in order. */
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Press displacement lives in a variable so the reduced-motion block at the
+ * bottom of this file can flatten it to 1 without touching the colour and
+ * opacity transitions that actually explain what changed. */
+:root {
+  --press-scale: 0.97;
+  --press-scale-sm: 0.98;
+}
+
+/* Modal scrim. A 10% black veil separates a dialog from a white page, but over
+ * the near-black dark canvas it dims nothing at all and the dialog reads as
+ * floating on the page rather than above it — so dark mode needs a much
+ * heavier veil to do the same job. */
+:root {
+  --scrim: oklch(0 0 0 / 0.1);
+}
+
+.dark {
+  --scrim: oklch(0 0 0 / 0.55);
+}
+
+/* SliderNav's highlighter. These were raw rgba() literals inside the component,
+ * which is why a nav tuned for a white pill turns to mud the moment dark mode is
+ * switched on: the same crimson that reads as a warm droplet on a white bar has
+ * to gain lightness and lose saturation to survive the near-black canvas, and
+ * its label has to flip with it. Both palettes live here and swap with the
+ * theme. (SchoolERP's signature pill is gold; BlooDoc's is the brand crimson,
+ * so the header belongs to the same palette as everything below it.) */
+:root {
+  --nav-pill-bg: linear-gradient(
+    135deg,
+    rgba(150, 22, 26, 0.3) 0%,
+    rgba(196, 38, 40, 0.44) 35%,
+    rgba(224, 82, 78, 0.4) 55%,
+    rgba(150, 22, 26, 0.32) 100%
+  );
+  --nav-pill-border: rgba(172, 30, 32, 0.52);
+  --nav-pill-shadow: inset 0 1px 0 rgba(255, 224, 220, 0.34),
+    0 1px 12px rgba(180, 34, 34, 0.26);
+  --nav-pill-shimmer: rgba(255, 206, 200, 0.62);
+  --nav-pill-label: oklch(0.3 0.11 22);
+}
+
+.dark {
+  --nav-pill-bg: linear-gradient(
+    135deg,
+    rgba(186, 44, 44, 0.38) 0%,
+    rgba(240, 138, 130, 0.48) 35%,
+    rgba(255, 190, 182, 0.4) 55%,
+    rgba(186, 44, 44, 0.32) 100%
+  );
+  --nav-pill-border: rgba(240, 150, 142, 0.44);
+  --nav-pill-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1px 14px rgba(240, 138, 130, 0.22);
+  --nav-pill-shimmer: rgba(255, 196, 188, 0.55);
+  --nav-pill-label: oklch(0.26 0.1 22);
+}
+
+/* ---------------------------------------------------------------------------
+ * Marketing surface. Only the public landing pulls these in; the app shell
+ * never touches them. Every value resolves from the same primary/border/
+ * foreground tokens the product uses, so the landing recolours with the theme
+ * and there is no second palette to keep in sync. The dark values are not the
+ * light ones dimmed — a hairline grid that reads at 5.5% on white disappears
+ * entirely on near-black, and a crimson glow needs more chroma to survive it.
+ * ------------------------------------------------------------------------- */
+:root {
+  --hero-grid: oklch(0.16 0 0 / 0.05);
+  --hero-glow: oklch(0.55 0.2 22 / 0.2);
+  --hero-glow-soft: oklch(0.55 0.2 22 / 0.07);
+  --hero-halo: oklch(0.55 0.2 22 / 0.34);
+  --hero-vignette: oklch(1 0 0);
+  /* Device bezel + screen. A mock phone/browser is a physical object: it stays
+   * dark in both themes, the way a real one on a desk does. Only the screen
+   * inside follows the theme. */
+  --bezel: oklch(0.24 0 0);
+  --bezel-edge: oklch(0.42 0 0);
+  --panel-shadow: 0 32px 80px -24px oklch(0.16 0 0 / 0.28), 0 4px 16px -4px oklch(0.16 0 0 / 0.1);
+  /* Window-control dots. Part of the hardware, not the palette, so they are
+   * fixed in both themes — the same reason the bezel is. */
+  --tl-red: oklch(0.7 0.17 25);
+  --tl-amber: oklch(0.8 0.15 85);
+  --tl-green: oklch(0.75 0.17 145);
+}
+
+.dark {
+  --hero-grid: oklch(1 0 0 / 0.055);
+  --hero-glow: oklch(0.7 0.19 22 / 0.24);
+  --hero-glow-soft: oklch(0.7 0.19 22 / 0.11);
+  --hero-halo: oklch(0.7 0.19 22 / 0.42);
+  --hero-vignette: oklch(0.13 0 0);
+  --bezel: oklch(0.2 0 0);
+  --bezel-edge: oklch(0.38 0 0);
+  --panel-shadow: 0 32px 80px -24px oklch(0 0 0 / 0.7), 0 4px 16px -4px oklch(0 0 0 / 0.5);
+}
+
+/* WhatsApp's brand green. Fixed in both themes, like the device bezel above:
+ * it is someone else's mark, not part of our palette, and a WhatsApp button
+ * that is a different green in dark mode stops being recognisable as one —
+ * which is the entire reason for using the brand colour at all. */
+:root {
+  --whatsapp: oklch(0.76 0.185 150);
+  --whatsapp-hover: oklch(0.71 0.18 150);
+  --whatsapp-foreground: oklch(1 0 0);
+}
+
+/* ---------------------------------------------------------------------------
+ * App shell. Every logged-in console — tenant, platform admin, agent — sits on
+ * an ambient ground rather than a flat page: a near-white base lit by three soft
+ * colour blooms, so the panels above it read as floating rather than as regions
+ * of the same sheet. The blooms are fixed, so they stay put while a long donor
+ * roster scrolls past instead of sliding up out of the window.
+ *
+ * Dark mode is not the light values dimmed. A bloom that reads at 6% on white
+ * is invisible on near-black, so the dark ones carry far more chroma; and a
+ * floating panel has to be *lighter* than its ground there, where the light one
+ * is darker than its own. The hairlines invert for the same reason — a 8% black
+ * line disappears on a dark canvas.
+ * ------------------------------------------------------------------------- */
+:root {
+  --app-bg: oklch(0.966 0.002 265);
+  --app-bloom-1: oklch(0.93 0.032 275 / 0.85);
+  --app-bloom-2: oklch(0.95 0.032 55 / 0.8);
+  --app-bloom-3: oklch(0.948 0.032 22 / 0.8);
+  --app-line: oklch(0.16 0 0 / 0.08);
+  --app-line-soft: oklch(0.16 0 0 / 0.05);
+  --app-shadow-card: 0 1px 2px oklch(0.22 0.03 265 / 0.04),
+    0 10px 28px -14px oklch(0.22 0.03 265 / 0.16);
+  --app-shadow-raised: 0 2px 4px oklch(0.22 0.03 265 / 0.04),
+    0 20px 44px -20px oklch(0.22 0.03 265 / 0.22);
+  /* Drives the sidebar column, the drawer and everything that reflows with
+   * them, so collapsing to the icon rail is a single value change. */
+  --rail-w: 16rem;
+}
+
+.dark {
+  --app-bg: oklch(0.115 0 0);
+  --app-bloom-1: oklch(0.46 0.11 275 / 0.34);
+  --app-bloom-2: oklch(0.48 0.1 55 / 0.24);
+  --app-bloom-3: oklch(0.47 0.115 22 / 0.32);
+  --app-line: oklch(1 0 0 / 0.1);
+  --app-line-soft: oklch(1 0 0 / 0.07);
+  --app-shadow-card: 0 1px 2px oklch(0 0 0 / 0.4),
+    0 10px 28px -14px oklch(0 0 0 / 0.6);
+  --app-shadow-raised: 0 2px 4px oklch(0 0 0 / 0.4),
+    0 20px 44px -20px oklch(0 0 0 / 0.7);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-display);
+  --font-display: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-hover: var(--whatsapp-hover);
+  --color-whatsapp-foreground: var(--whatsapp-foreground);
+  --color-app-line: var(--app-line);
+  --color-app-line-soft: var(--app-line-soft);
+  --shadow-card: var(--app-shadow-card);
+  --shadow-raised: var(--app-shadow-raised);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* BlooDoc — near-monochrome ground, one crimson accent. The grayscale is what
+ * lets a single blood-red carry every call to action without competing with
+ * anything; the moment a second hue enters, the donate button stops being the
+ * loudest thing on the page. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.16 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.16 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.16 0 0);
+  --primary: oklch(0.52 0.205 22);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.965 0 0);
+  --secondary-foreground: oklch(0.17 0 0);
+  --muted: oklch(0.965 0 0);
+  --muted-foreground: oklch(0.48 0 0);
+  --accent: oklch(0.962 0.022 22);
+  --accent-foreground: oklch(0.36 0.1 22);
+  --destructive: oklch(0.58 0.185 41);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.91 0 0);
+  --input: oklch(0.91 0 0);
+  --ring: oklch(0.52 0.205 22);
+  --chart-1: oklch(0.58 0.2 22);
+  --chart-2: oklch(0.62 0.16 245);
+  --chart-3: oklch(0.76 0.15 75);
+  --chart-4: oklch(0.6 0.18 300);
+  --chart-5: oklch(0.63 0.2 15);
+  --radius: 0.7rem;
+  color-scheme: light;
+  /* The sidebar is a panel that floats on the app ground, not a dark rail
+   * welded to the edge of the window. `primary` is the fill of the item you
+   * are standing on and `accent` the wash under the pointer — they were the
+   * other way round when the rail was black, which is why every nav wrote
+   * `bg-sidebar-accent` for active and `/60` of the same colour for hover. */
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.16 0 0);
+  --sidebar-primary: oklch(0.16 0 0);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.96 0 0);
+  --sidebar-accent-foreground: oklch(0.16 0 0);
+  --sidebar-border: oklch(0.16 0 0 / 0.06);
+  --sidebar-ring: oklch(0.52 0.205 22);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.13 0 0);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.17 0 0);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.17 0 0);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.72 0.175 22);
+  --primary-foreground: oklch(0.15 0.04 22);
+  --secondary: oklch(0.24 0 0);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.24 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+  --accent: oklch(0.28 0.055 22);
+  --accent-foreground: oklch(0.93 0.05 22);
+  --destructive: oklch(0.74 0.16 45);
+  --destructive-foreground: oklch(0.16 0.03 45);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.72 0.165 22);
+  --chart-1: oklch(0.7 0.18 22);
+  --chart-2: oklch(0.7 0.15 245);
+  --chart-3: oklch(0.8 0.14 75);
+  --chart-4: oklch(0.68 0.17 300);
+  --chart-5: oklch(0.7 0.18 15);
+  /* Lighter than the ground it floats on, where the light panel was darker
+   * than its own. A floating surface catches the light in both themes; the
+   * old value (0.1) sat *below* the 0.13 canvas and read as a hole in it. */
+  --sidebar: oklch(0.19 0 0);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-primary: oklch(0.95 0 0);
+  --sidebar-primary-foreground: oklch(0.16 0 0);
+  --sidebar-accent: oklch(0.26 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(1 0 0 / 0.09);
+  --sidebar-ring: oklch(0.72 0.175 22);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+  }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    /* Kill the rubber-band overscroll glow at the top/bottom of the page. */
+    overscroll-behavior-y: none;
+  }
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  /* Scroll without the bar. For strips that must scroll sideways on a phone
+   * (tab rails, chip rows) where a visible scrollbar would eat a third of the
+   * control's height and never be dragged anyway. The content still scrolls by
+   * touch, trackpad and keyboard. */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ---- App shell ---------------------------------------------------------
+   * The ambient ground the logged-in console floats on. `color-mix` supplies
+   * the transparent end of each bloom rather than the `transparent` keyword,
+   * which is rgba(0,0,0,0) and drags a grey bruise through the middle of the
+   * fade on the way there. */
+  .bg-app-ground {
+    background:
+      radial-gradient(
+        900px 520px at 10% -8%,
+        var(--app-bloom-1) 0%,
+        color-mix(in oklab, var(--app-bloom-1), transparent 100%) 62%
+      ),
+      radial-gradient(
+        820px 470px at 92% -4%,
+        var(--app-bloom-2) 0%,
+        color-mix(in oklab, var(--app-bloom-2), transparent 100%) 60%
+      ),
+      radial-gradient(
+        760px 520px at 82% 100%,
+        var(--app-bloom-3) 0%,
+        color-mix(in oklab, var(--app-bloom-3), transparent 100%) 58%
+      ),
+      var(--app-bg);
+  }
+
+  /* The console grid. Animating `grid-template-columns` rather than the
+   * sidebar's own width is what keeps the main column welded to the rail as it
+   * narrows — animate the aside instead and the content jumps the full 10rem on
+   * the first frame and then waits for the rail to catch up. */
+  .app-shell {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    transition: grid-template-columns 220ms var(--ease-out-strong);
+  }
+  .app-shell[data-rail="collapsed"] {
+    --rail-w: 4.75rem;
+  }
+  /* Below the sidebar breakpoint the sidebar is a drawer laid over the page, so
+   * the column it would have occupied goes away entirely and the rail width is
+   * irrelevant — a collapse preference set on a laptop must never produce an
+   * icon-only drawer on a phone. */
+  @media (width < 64rem) {
+    .app-shell,
+    .app-shell[data-rail="collapsed"] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* ---- The collapsed rail ------------------------------------------------
+   * Wide layout only, for the reason above. Everything here is CSS rather than
+   * a `collapsed` prop threaded down because the shell is handed its nav as an
+   * already-rendered node — the three consoles build their own — and it has no
+   * way to tell forty nav rows to drop their labels. A data attribute on the
+   * shell can. */
+  @media (width >= 64rem) {
+    /* Hidden, not removed: keeping the labels in the tree means the nav does
+     * not reflow from scratch when they come back. */
+    .app-shell[data-rail="collapsed"] [data-rail-hide] {
+      display: none;
+    }
+
+    .app-shell[data-rail="collapsed"] [data-rail-compact] {
+      justify-content: center;
+      padding-inline: 0.5rem;
+    }
+
+    /* A count has nowhere to sit on a 76px rail, but "there is something here"
+     * is exactly what a badge is for — so the number becomes the dot it was
+     * standing in for, and keeps its title attribute for the real figure. */
+    .app-shell[data-rail="collapsed"] [data-rail-dot] {
+      position: absolute;
+      top: 0.25rem;
+      right: 0.25rem;
+      min-width: 0.5rem;
+      width: 0.5rem;
+      height: 0.5rem;
+      padding: 0;
+      overflow: hidden;
+      font-size: 0;
+      line-height: 0;
+    }
+
+    /* The section heading becomes the rule it was implying. Losing the words
+     * is unavoidable at this width; losing the grouping as well is not. */
+    .app-shell[data-rail="collapsed"] [data-nav-group] {
+      height: 1px;
+      margin: 0.5rem 0.5rem 0.25rem;
+      padding: 0;
+      overflow: hidden;
+      font-size: 0;
+      line-height: 0;
+      background: var(--app-line-soft);
+    }
+  }
+
+  /* Press feedback for pressable surfaces built outside the Button component —
+   * icon buttons, chips, tiles, CTAs. A named utility rather than an inlined
+   * `active:scale-…` at 30 call sites so the curve lives in one place, and so
+   * the reduced-motion block flattens all of them at once via --press-scale.
+   * Row-shaped controls deliberately don't use this: scaling a full-width row
+   * shears it against its neighbours, so those press with a colour tint. */
+  .press {
+    transition: scale 150ms var(--ease-out-strong);
+  }
+  .press:active {
+    scale: var(--press-scale);
+  }
+
+  /* Cascading entrance for a grid or list that has just rendered. Purely
+   * decorative: every item is interactive from its first frame, so the cascade
+   * never gates input. Driven by CSS rather than JS because this fires while
+   * the page is still settling — exactly when a main-thread stagger drops the
+   * frames that make it worth having.
+   *
+   * 40ms between items: enough to read as a cascade, short enough that ten of
+   * them finish in under half a second. Past the tenth everything shares the
+   * last delay, so a long list never crawls in. */
+  .stagger > * {
+    animation: rise 260ms var(--ease-out-strong) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(7) { animation-delay: 240ms; }
+  .stagger > *:nth-child(8) { animation-delay: 280ms; }
+  .stagger > *:nth-child(9) { animation-delay: 320ms; }
+  .stagger > *:nth-child(10) { animation-delay: 360ms; }
+  .stagger > *:nth-child(n + 11) { animation-delay: 400ms; }
+
+  /* ---- Marketing surface utilities -------------------------------------
+   * Landing-page only. Kept here rather than in the component files because
+   * they are all pure-CSS (so they run off the main thread while GSAP owns the
+   * scroll on it) and because the reduced-motion block at the bottom needs a
+   * single place to disarm them. */
+
+  /* Hairline graph-paper backdrop. 64px keeps it on the 4px grid and large
+   * enough that it reads as texture rather than noise. */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, var(--hero-grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--hero-grid) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  /* Crimson bloom behind the hero and the CTA. Two stops rather than one so it
+   * falls off softly instead of ending on a visible ring. */
+  .bg-bloom {
+    background-image:
+      radial-gradient(60% 50% at 50% 0%, var(--hero-glow) 0%, transparent 70%),
+      radial-gradient(90% 70% at 50% 10%, var(--hero-glow-soft) 0%, transparent 75%);
+  }
+
+  /* The bloom, re-centred for a band that sits mid-document rather than under
+   * the top of the viewport. */
+  .bg-bloom-center {
+    background-image:
+      radial-gradient(55% 45% at 50% 46%, var(--hero-glow) 0%, transparent 70%),
+      radial-gradient(85% 65% at 50% 50%, var(--hero-glow-soft) 0%, transparent 75%);
+  }
+
+  /* Fades a decorative layer out before it reaches the section edge, so the
+   * grid and the bloom never terminate on a hard line. */
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+  }
+  /* Fades a layer in *and* out along the block axis. `mask-fade-b` is right for
+   * a section whose decoration starts at the very top of the page (the hero);
+   * a band in the middle of the document needs its top edge softened too, or
+   * the grid lines switch on along a visible horizontal seam. */
+  .mask-fade-y {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 22%, black 68%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 22%, black 68%, transparent 100%);
+  }
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  }
+
+  .animate-bar {
+    transform-origin: bottom;
+    animation: bar-grow 720ms var(--ease-out-strong) both;
+  }
+
+  /* Marquee. Constant motion, so `linear` — any easing would make it visibly
+   * pulse each time the track loops. The track holds the content twice and
+   * travels exactly -50%, which is why the loop is seamless at any width. */
+  .animate-marquee {
+    animation: marquee-x var(--marquee-duration, 40s) linear infinite;
+    will-change: transform;
+  }
+  .animate-marquee-reverse {
+    animation: marquee-x var(--marquee-duration, 40s) linear infinite reverse;
+    will-change: transform;
+  }
+  .marquee-paused .animate-marquee,
+  .marquee-paused .animate-marquee-reverse {
+    animation-play-state: paused;
+  }
+
+  /* Scroll reveal. A transition rather than a keyframe so a fast scroll that
+   * re-enters an element mid-fade retargets instead of restarting, and blur
+   * rather than movement alone because it hides the moment two nearby items
+   * cross each other's paths. 6px stays well under the 20px where blur starts
+   * costing real time in Safari. */
+  .reveal {
+    transition:
+      opacity 700ms var(--ease-out-strong),
+      transform 700ms var(--ease-out-strong),
+      filter 700ms var(--ease-out-strong);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  /* The hidden half is gated on scripting being available, because only script
+   * ever removes it. Declared unconditionally, a failed or blocked bundle
+   * leaves every section on the page at `opacity: 0` — the hero renders and
+   * the rest of the site is a blank column. `scripting: enabled` is false in
+   * exactly the cases that matter (JS off, bundle never arrives) and true
+   * everywhere the observer will run, so the fallback costs nothing.
+   *
+   * Print takes the same escape hatch: a printed page is one paint with no
+   * scrolling, so anything still waiting to be revealed would come out blank. */
+  @media (scripting: enabled) {
+    .reveal:not([data-shown]) {
+      opacity: 0;
+      transform: translate3d(0, 20px, 0);
+      filter: blur(6px);
+    }
+  }
+  @media print {
+    .reveal:not([data-shown]) {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  /* Accent underline that glows, used on the second line of the hero headline.
+   * Drawn as a child element so it can animate its own scaleX from the left
+   * without the text inheriting the transform. */
+  .glow-rule {
+    transform-origin: left center;
+    background: linear-gradient(
+      to right,
+      var(--color-primary) 0%,
+      var(--color-primary) 70%,
+      transparent 100%
+    );
+    box-shadow: 0 0 24px 2px var(--hero-halo);
+  }
+
+  /* Subtle parchment grain + warm radial wash used on hero/auth surfaces. */
+  .bg-parchment {
+    background-image:
+      radial-gradient(120% 120% at 0% 0%, oklch(0.36 0.082 266 / 0.06) 0%, transparent 45%),
+      radial-gradient(120% 120% at 100% 0%, oklch(0.84 0.12 78 / 0.08) 0%, transparent 40%);
+  }
+  .text-balance { text-wrap: balance; }
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  }
+}
+
+/* Bars grow from their baseline, which is where a bar chart's zero actually is
+ * — not from nothing. `0.02` rather than `0` so there is always a hairline of
+ * bar to grow from; a column that materialises out of an empty axis reads as a
+ * glitch rather than as data arriving. */
+@keyframes bar-grow {
+  from { transform: scaleY(0.02); }
+  to   { transform: scaleY(1); }
+}
+
+@keyframes marquee-x {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Opacity-only twin of `rise`, swapped in under reduced motion below. */
+@keyframes rise-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-rise { animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion. Not "no animation" — fewer and gentler ones. Fades and colour
+ * changes stay, because they are what explains that something appeared, moved
+ * or changed; only travel and scaling are removed.
+ *
+ * Every Radix layer (dialog, dropdown, popover, select, sheet) animates through
+ * tw-animate-css's shared `enter`/`exit` keyframes, which read their distance
+ * from these custom properties. Flattening the transform channels here disarms
+ * the movement app-wide in one place while the opacity channel plays untouched.
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --press-scale: 1;
+    --press-scale-sm: 1;
+  }
+
+  *,
+  *::before,
+  *::after {
+    --tw-enter-translate-x: 0 !important;
+    --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: 0 !important;
+    --tw-exit-translate-y: 0 !important;
+    --tw-enter-scale: 1 !important;
+    --tw-exit-scale: 1 !important;
+    --tw-enter-rotate: 0 !important;
+    --tw-exit-rotate: 0 !important;
+  }
+
+  /* The rail snaps between its two widths. Collapsing is a layout change the
+   * reader asked for by clicking, not something that needs explaining with
+   * 220ms of travel across the whole page. */
+  .app-shell {
+    transition: none;
+  }
+
+  .animate-rise {
+    animation-name: rise-fade;
+    animation-duration: 0.3s;
+  }
+
+  .stagger > * {
+    animation-name: rise-fade;
+    animation-delay: 0ms !important;
+  }
+
+  /* Landing page. The reveal keeps its fade — that is what explains a section
+   * arrived — and loses only the travel and the blur. The marquees stop
+   * outright: a band of text sliding forever is the one thing on the page that
+   * never stops, which is exactly what this setting exists to prevent. */
+  .reveal {
+    transition: opacity 300ms var(--ease-out-strong);
+  }
+  .reveal:not([data-shown]) {
+    transform: none;
+    filter: none;
+  }
+  .animate-marquee,
+  .animate-marquee-reverse {
+    animation: none;
+  }
+  .animate-bar {
+    animation: none;
+  }
+}
+/* Global affordance: clickable elements get a pointer cursor (unlayered so it
+   overrides framework defaults), disabled ones show not-allowed. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="menuitem"],
+[role="menuitemcheckbox"],
+[role="menuitemradio"],
+[role="option"],
+[role="tab"],
+a[href],
+label[for],
+summary,
+select {
+  cursor: pointer;
+}
+button:disabled,
+[aria-disabled="true"],
+[data-disabled] {
+  cursor: not-allowed;
+}
+
+/* Global thin, subtle scrollbars. The thumb uses currentColor at low opacity so
+   it stays light on the dark sidebar and dark on light surfaces automatically. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, currentColor 20%, transparent) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, currentColor 36%, transparent);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+ * Print: only the page content prints. The app shell (sidebar / top bar) is
+ * hidden via `print:hidden` in the tenant layout; here we drop the browser's
+ * own page header/footer (@page margin 0) and give the printed content clean
+ * margins. Used by the donor card / camp roster print views.
+ * ------------------------------------------------------------------------- */
+@page {
+  margin: 0;
+}
+@media print {
+  /* Center the printed content on the page (both axes) with a small uniform
+   * margin, so a donor card sits in the middle and fits one page on any
+   * paper size (down to A5); larger sizes fit trivially. */
+  main {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 8mm !important;
+  }
+  /* Keep the donor card's bordered, rounded frame in the PDF as a single unit. */
+  #print-area {
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---- Table print preview (DataTable → TablePrintPreview) -----------------
+   * The overlay is portaled to <body> as a sibling of the app shell. When it's
+   * present, print ONLY it: hide every other top-level node (app grid, toasts,
+   * other portals). Unlike the donor card, a roster may span many pages — so we do
+   * NOT center or avoid breaks; instead the header row repeats per page and
+   * rows stay whole. */
+  body:has(> .table-print-portal) > *:not(.table-print-portal) {
+    display: none !important;
+  }
+  .table-print-portal {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .table-print-portal .no-print {
+    display: none !important;
+  }
+  /* Neutralise the on-screen scroll frame so content flows onto the page.
+   * Keep a uniform margin here (rather than via @page, which the donor card owns)
+   * so the table never prints edge-to-edge. Left/right hold on every page; the
+   * top/bottom apply once at the start/end of the flow. */
+  .table-print-portal .print-scroll {
+    overflow: visible !important;
+    padding: 10mm !important;
+    background: transparent !important;
+  }
+  .table-print-portal thead {
+    display: table-header-group; /* repeat header on every printed page */
+  }
+  .table-print-portal tr {
+    break-inside: avoid;
+  }
+
+}
