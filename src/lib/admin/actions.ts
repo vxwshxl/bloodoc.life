@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { ROLE_VALUES } from "@/lib/roles";
 import { requireAdmin } from "@/lib/auth/dal";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { campReminderEmail } from "@/lib/email/templates";
@@ -487,7 +488,7 @@ export async function setUserRole(
 ): Promise<ActionState> {
   const me = await requireAdmin();
   const parsed = z
-    .object({ profileId: z.uuid(), role: z.enum(["admin", "donor"]) })
+    .object({ profileId: z.uuid(), role: z.enum(ROLE_VALUES) })
     .safeParse({ profileId: formData.get("profileId"), role: formData.get("role") });
   if (!parsed.success) return { error: "Unknown user or role." };
   const v = parsed.data;

@@ -27,3 +27,14 @@ export const ROLES: { value: UserRole; label: string; hint: string }[] = [
   },
   { value: "donor", label: "Donor", hint: "Sees only their own record" },
 ];
+
+/**
+ * The same list as a tuple, for `z.enum`.
+ *
+ * Derived rather than written out a second time. The server action had its own
+ * hand-kept `z.enum(["admin", "donor"])`, which nobody updated when 0013 added
+ * `verifier` — so choosing Verifier failed validation and reported "Unknown
+ * user or role", while the label map three lines below it already knew the
+ * role existed. A second copy of a list is a second thing to forget.
+ */
+export const ROLE_VALUES = ROLES.map((r) => r.value) as [UserRole, ...UserRole[]];
