@@ -9,6 +9,7 @@ import { TopNav } from "@/components/site/top-nav";
 import { SiteFooter } from "@/components/site/footer";
 import { RegisterForm } from "@/components/marketing/register-form";
 import { RotatingTitle } from "@/components/marketing/rotating-title";
+import { Live } from "@/components/shell/live";
 import { campTitles } from "@/lib/camps/titles";
 import { campEvent } from "@/lib/seo/structured-data";
 import { pageMetadata } from "@/lib/seo/page-metadata";
@@ -48,6 +49,10 @@ export default async function CampPage({ params }: Params) {
 
   return (
     <>
+      {/* The camp on this page can be edited, published or pulled from the
+          console at any moment, including while somebody is reading it. This
+          redraws the page when that happens. */}
+      <Live tables={["camps", "registrations"]} />
       <main className="relative z-10 flex flex-1 flex-col bg-background">
         <script
           type="application/ld+json"

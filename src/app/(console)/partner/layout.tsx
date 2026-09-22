@@ -6,6 +6,7 @@ import type { NavIndexItem } from "@/components/shell/nav-index";
 import { redirect } from "next/navigation";
 import { getEffectiveProfile } from "@/lib/auth/impersonation";
 import { ViewAsBanner } from "@/components/shell/view-as-banner";
+import { Live } from "@/components/shell/live";
 import { signOut } from "@/lib/auth/actions";
 
 export const metadata: Metadata = {
@@ -69,6 +70,10 @@ export default async function PartnerLayout({ children }: { children: React.Reac
       defaultCollapsed={collapsed}
       banner={<ViewAsBanner />}
     >
+      {/* Live from here down: a partner's panel is its camps and who came to them. It refreshes the
+          route rather than patching rows, so every page underneath keeps
+          its server-side filtering and pagination and simply redraws. */}
+      <Live tables={["registrations", "certificates", "camps", "camp_partners"]} />
       {children}
     </ConsoleShell>
   );

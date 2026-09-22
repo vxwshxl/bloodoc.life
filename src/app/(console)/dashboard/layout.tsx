@@ -8,6 +8,7 @@ import { getEffectiveProfile } from "@/lib/auth/impersonation";
 import { signOut } from "@/lib/auth/actions";
 import { ViewAsBanner } from "@/components/shell/view-as-banner";
 import { Assistant } from "@/components/admin/assistant";
+import { Live } from "@/components/shell/live";
 import { isAssistantConfigured } from "@/lib/ai/chat";
 
 export const metadata: Metadata = {
@@ -68,6 +69,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
       defaultCollapsed={collapsed}
       banner={<ViewAsBanner />}
     >
+      {/* Live from here down: a donor's own record, and the camps they can see. It refreshes the
+          route rather than patching rows, so every page underneath keeps
+          its server-side filtering and pagination and simply redraws. */}
+      <Live tables={["registrations", "certificates", "camps", "donors"]} />
       {children}
     </ConsoleShell>
   );

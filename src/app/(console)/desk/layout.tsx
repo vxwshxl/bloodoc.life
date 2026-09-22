@@ -6,6 +6,7 @@ import type { NavIndexItem } from "@/components/shell/nav-index";
 import { requireVerifier } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
 import { ViewAsBanner } from "@/components/shell/view-as-banner";
+import { Live } from "@/components/shell/live";
 
 export const metadata: Metadata = {
   title: { default: "Desk", template: "%s · BlooDoc Desk" },
@@ -50,6 +51,10 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
       defaultCollapsed={collapsed}
       banner={<ViewAsBanner />}
     >
+      {/* Live from here down: the desk only ever shows a roster. It refreshes the
+          route rather than patching rows, so every page underneath keeps
+          its server-side filtering and pagination and simply redraws. */}
+      <Live tables={["registrations", "donors", "camps"]} />
       {children}
     </ConsoleShell>
   );

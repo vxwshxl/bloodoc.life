@@ -5,6 +5,7 @@ import { getUpcomingCamps } from "@/lib/camps/queries";
 import { getDashboardHref } from "@/lib/auth/dal";
 import { TopNav } from "@/components/site/top-nav";
 import { SiteFooter } from "@/components/site/footer";
+import { Live } from "@/components/shell/live";
 import { pageMetadata } from "@/lib/seo/page-metadata";
 import { campDateParts, formatTimeRange, countdownLabel } from "@/lib/format";
 
@@ -20,6 +21,10 @@ export default async function CampsPage() {
 
   return (
     <>
+      {/* The camp on this page can be edited, published or pulled from the
+          console at any moment, including while somebody is reading it. This
+          redraws the page when that happens. */}
+      <Live tables={["camps"]} />
       <main className="relative z-10 flex flex-1 flex-col bg-background">
         <TopNav activeIndex={1} dashboardHref={dashboardHref} />
 

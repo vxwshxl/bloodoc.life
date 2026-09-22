@@ -1,7 +1,8 @@
 "use client";
 
+import { useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Check, ListFilter, X } from "lucide-react";
+import { Check, ListFilter, Loader2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +48,7 @@ export function FilterMenu({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const [pending, startTransition] = useTransition();
 
   const current = options.find((o) => o.value === active);
 
@@ -59,7 +61,14 @@ export function FilterMenu({
     // which reads as "no results" for a filter that has plenty.
     next.delete("page");
     const qs = next.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    // `replace` inside a transition, and no scroll. Changing a filter is a
+    // refinement of the list you are looking at, not a place you navigate to
+    // and might want to come back from one step at a time — and the old
+    // `push` left the page frozen with no feedback while the rows were
+    // fetched, then jumped to the top of the document when they arrived.
+    startTransition(() => {
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    });
   }
 
   return (
@@ -76,7 +85,11 @@ export function FilterMenu({
                 : "border-app-line bg-card text-muted-foreground hover:text-foreground",
             )}
           >
-            <ListFilter className="size-4 shrink-0" strokeWidth={1.9} aria-hidden />
+            {pending ? (
+              <Loader2 className="size-4 shrink-0 animate-spin" strokeWidth={1.9} aria-hidden />
+            ) : (
+              <ListFilter className="size-4 shrink-0" strokeWidth={1.9} aria-hidden />
+            )}
             <span className="max-w-44 truncate">{current ? current.label : label}</span>
           </button>
         </DropdownMenuTrigger>

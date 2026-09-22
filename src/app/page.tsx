@@ -16,6 +16,7 @@ import { EligibilityBand } from "@/components/marketing/eligibility-band";
 import { ConsoleSection } from "@/components/marketing/console-section";
 import { TeamBand } from "@/components/marketing/team-band";
 import { CtaBand } from "@/components/marketing/cta-band";
+import { Live } from "@/components/shell/live";
 
 /**
  * The BlooDoc home page.
@@ -45,6 +46,10 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* The camp on this page can be edited, published or pulled from the
+          console at any moment, including while somebody is reading it. This
+          redraws the page when that happens. */}
+      <Live tables={["camps"]} />
       {/* `overflow-x-clip` rather than `overflow-x-hidden`: clip does not create
           a scroll container, so the pinned hero and every sticky child keep
           working, while the decorative layers that deliberately bleed past the

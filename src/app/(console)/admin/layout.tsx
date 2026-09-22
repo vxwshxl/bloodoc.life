@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
 import { ViewAsBanner } from "@/components/shell/view-as-banner";
 import { Assistant } from "@/components/admin/assistant";
+import { Live } from "@/components/shell/live";
 import { isAssistantConfigured } from "@/lib/ai/chat";
 
 export const metadata: Metadata = {
@@ -90,6 +91,10 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
       defaultCollapsed={collapsed}
       banner={<ViewAsBanner />}
     >
+      {/* Live from here down: the console sees everything, so it listens for everything. It refreshes the
+          route rather than patching rows, so every page underneath keeps
+          its server-side filtering and pagination and simply redraws. */}
+      <Live tables={["camps", "registrations", "donors", "certificates", "partners", "partner_members", "camp_partners", "profiles", "email_log", "audit_log"]} />
       {children}
     </ConsoleShell>
   );
