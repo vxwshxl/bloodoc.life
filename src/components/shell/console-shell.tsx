@@ -3,15 +3,56 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, X } from "lucide-react";
+import {
+  BadgeCheck,
+  Building2,
+  CalendarDays,
+  Droplet,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Menu,
+  Sparkles,
+  Users,
+  X,
+} from "lucide-react";
 import { Wordmark } from "@/components/brand";
 import { useMediaQuery } from "./use-media-query";
 import { cn } from "@/lib/utils";
 
+/**
+ * The nav's icons, resolved here rather than passed in.
+ *
+ * A layout is a Server Component and this is a Client Component, so anything
+ * crossing between them has to be serializable. An icon used to survive that
+ * trip because lucide-react shipped its icons as client modules, which made an
+ * imported icon a client *reference* rather than a function. As of lucide-react
+ * 1.x only `Icon`, `context` and `DynamicIcon` carry "use client", so the icon
+ * arrives as a bare forwardRef object and React refuses it:
+ *
+ *   Functions cannot be passed directly to Client Components…
+ *     {$$typeof: ..., render: function LayoutDashboard}
+ *
+ * Passing a string key instead means the boundary only ever carries data, which
+ * is true regardless of how the icon library decides to package itself next.
+ */
+const NAV_ICONS = {
+  overview: LayoutDashboard,
+  camps: CalendarDays,
+  registrations: Droplet,
+  donors: Users,
+  partners: Building2,
+  email: Mail,
+  assistant: Sparkles,
+  certificates: BadgeCheck,
+} as const;
+
+export type NavIcon = keyof typeof NAV_ICONS;
+
 export type NavItem = {
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: NavIcon;
   /** Only highlight on an exact match — for an index route that prefixes others. */
   exact?: boolean;
 };
@@ -123,7 +164,10 @@ export function ConsoleShell({
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
                 )}
               >
-                <item.icon className="size-4.5" strokeWidth={1.9} />
+                {(() => {
+                  const Icon = NAV_ICONS[item.icon];
+                  return <Icon className="size-4.5" strokeWidth={1.9} />;
+                })()}
                 {item.label}
               </Link>
             );

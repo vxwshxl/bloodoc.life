@@ -1,13 +1,4 @@
 import type { Metadata } from "next";
-import {
-  Building2,
-  CalendarDays,
-  Droplet,
-  LayoutDashboard,
-  Mail,
-  Sparkles,
-  Users,
-} from "lucide-react";
 import { ConsoleShell, type NavItem } from "@/components/shell/console-shell";
 import { requireAdmin } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
@@ -18,13 +9,13 @@ export const metadata: Metadata = {
 };
 
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/admin/camps", label: "Camps", icon: CalendarDays },
-  { href: "/admin/registrations", label: "Registrations", icon: Droplet },
-  { href: "/admin/donors", label: "Donors", icon: Users },
-  { href: "/admin/partners", label: "Partners", icon: Building2 },
-  { href: "/admin/email", label: "Email", icon: Mail },
-  { href: "/admin/assistant", label: "Assistant", icon: Sparkles },
+  { href: "/admin", label: "Overview", icon: "overview", exact: true },
+  { href: "/admin/camps", label: "Camps", icon: "camps" },
+  { href: "/admin/registrations", label: "Registrations", icon: "registrations" },
+  { href: "/admin/donors", label: "Donors", icon: "donors" },
+  { href: "/admin/partners", label: "Partners", icon: "partners" },
+  { href: "/admin/email", label: "Email", icon: "email" },
+  { href: "/admin/assistant", label: "Assistant", icon: "assistant" },
 ];
 
 export default async function ConsoleLayout({ children }: { children: React.ReactNode }) {

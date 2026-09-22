@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { BadgeCheck, CalendarDays, Droplet, LayoutDashboard } from "lucide-react";
 import { ConsoleShell, type NavItem } from "@/components/shell/console-shell";
 import { requirePartner } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
@@ -10,10 +9,10 @@ export const metadata: Metadata = {
 };
 
 const NAV: NavItem[] = [
-  { href: "/partner", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/partner/registrations", label: "Roster", icon: Droplet },
-  { href: "/partner/certificates", label: "Certificates", icon: BadgeCheck },
-  { href: "/partner/camps", label: "Camps", icon: CalendarDays },
+  { href: "/partner", label: "Overview", icon: "overview", exact: true },
+  { href: "/partner/registrations", label: "Roster", icon: "registrations" },
+  { href: "/partner/certificates", label: "Certificates", icon: "certificates" },
+  { href: "/partner/camps", label: "Camps", icon: "camps" },
 ];
 
 /**
