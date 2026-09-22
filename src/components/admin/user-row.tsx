@@ -54,7 +54,12 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
       >
         <td className="px-5 py-3">
           <span className="block font-medium">
-            {user.full_name ?? donor?.full_name ?? "—"}
+            {/* A bare dash reads as missing data. These accounts genuinely have
+                no name yet — a partner invite or an admin who has never
+                registered — and saying so is more useful than a placeholder. */}
+            {user.full_name ?? donor?.full_name ?? (
+              <span className="font-normal text-muted-foreground italic">No name yet</span>
+            )}
             {isSelf && (
               <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase">
                 You

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -153,6 +153,28 @@ export function ConsoleShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  // What the rail was before the assistant borrowed the space, so closing the
+  // panel puts the sidebar back rather than leaving it narrowed for good.
+  const railBeforeAssistant = useRef<boolean | null>(null);
+
+  function openAssistant() {
+    // Collapsing here writes no cookie on purpose: making room for a panel is
+    // not a statement about how this person likes their sidebar, and it must
+    // not outlive the panel.
+    if (isDesktop && !collapsed) {
+      railBeforeAssistant.current = collapsed;
+      setCollapsed(true);
+    }
+    setAssistantOpen(true);
+  }
+
+  function closeAssistant() {
+    setAssistantOpen(false);
+    if (railBeforeAssistant.current !== null) {
+      setCollapsed(railBeforeAssistant.current);
+      railBeforeAssistant.current = null;
+    }
+  }
   // `true` on the server: the console is a desktop tool first, and guessing
   // "phone" would render every first paint as a drawer and then reflow.
   const isDesktop = useMediaQuery("(min-width: 64rem)", true);
@@ -201,6 +223,7 @@ export function ConsoleShell({
     <div
       className="app-shell relative grid min-h-dvh flex-1 gap-0 lg:p-3"
       data-rail={collapsed ? "collapsed" : "expanded"}
+      data-assistant={assistant && assistantOpen ? "open" : "closed"}
     >
       {/* The ambient ground. Fixed rather than absolute so the blooms cover the
           viewport and not the document — they should not stretch to the length
@@ -243,7 +266,7 @@ export function ConsoleShell({
           {assistant ? (
             <button
               type="button"
-              onClick={() => setAssistantOpen(true)}
+              onClick={openAssistant}
               title="Assistant"
               aria-label="Open the assistant"
               aria-expanded={assistantOpen}
@@ -516,20 +539,29 @@ export function ConsoleShell({
       */}
       {assistant && (
         <>
+          {/* Backdrop below lg only. On a wide screen the panel sits in its own
+              column and covers nothing, so there is nothing to dim — and
+              blurring the page you are asking questions about was exactly
+              backwards. */}
           {assistantOpen && (
             <button
               type="button"
               aria-label="Close the assistant"
-              onClick={() => setAssistantOpen(false)}
-              className="fixed inset-0 z-50 hidden bg-(--scrim) backdrop-blur-[2px] lg:block"
+              onClick={closeAssistant}
+              className="fixed inset-0 z-40 bg-(--scrim) lg:hidden"
             />
           )}
           <aside
             aria-label="Assistant"
             inert={!assistantOpen}
             className={cn(
-              "fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-app-line-soft bg-background shadow-card transition-transform duration-200 ease-drawer motion-reduce:transition-none lg:max-w-[28rem]",
-              assistantOpen ? "translate-x-0" : "translate-x-full",
+              // Below lg: an overlay that slides in. From lg: a real grid
+              // column, so `fixed` and the slide come off and the panel simply
+              // occupies space the main column gave up.
+              "z-50 flex flex-col border-app-line-soft bg-card",
+              "max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:w-full max-lg:border-l max-lg:shadow-card max-lg:transition-transform max-lg:duration-200 max-lg:ease-drawer motion-reduce:max-lg:transition-none",
+              "lg:sticky lg:top-3 lg:my-3 lg:mr-3 lg:h-[calc(100dvh-1.5rem)] lg:rounded-2xl lg:border lg:shadow-card",
+              assistantOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full lg:hidden",
             )}
           >
             <div className="flex items-center justify-between gap-2 border-b border-app-line-soft px-4 py-3">
@@ -539,7 +571,7 @@ export function ConsoleShell({
               </span>
               <button
                 type="button"
-                onClick={() => setAssistantOpen(false)}
+                onClick={closeAssistant}
                 aria-label="Close the assistant"
                 className="press flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >

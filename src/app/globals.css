@@ -315,6 +315,25 @@
     }
   }
 
+  /* ---- The assistant panel --------------------------------------------
+   * On a wide screen the assistant takes a column of the grid rather than
+   * floating over the page. It was a `fixed` overlay with a blurred scrim,
+   * which meant asking a question about a roster hid the roster — the one
+   * thing you were asking about. Giving it a column shrinks the workspace
+   * instead, so both are readable at once.
+   *
+   * The same `grid-template-columns` transition as the rail, so opening the
+   * panel and collapsing the sidebar read as one movement.
+   *
+   * Below 64rem the panel stays an overlay: a 28rem column on a 390px screen
+   * is the whole screen anyway.
+   */
+  @media (width >= 64rem) {
+    .app-shell[data-assistant="open"] {
+      grid-template-columns: var(--rail-w) minmax(0, 1fr) 27rem;
+    }
+  }
+
   /* ---- The collapsed rail ------------------------------------------------
    * Wide layout only, for the reason above. Everything here is CSS rather than
    * a `collapsed` prop threaded down because the shell is handed its nav as an
