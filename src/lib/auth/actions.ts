@@ -154,29 +154,55 @@ export async function verifySignInCode(
   }
 
   const admin = createAdminClient();
-  let type: "magiclink" | "signup" = "magiclink";
-  let link = await admin.auth.admin.generateLink({ type, email });
+
+  // Make sure a *confirmed* account exists, then mint a magiclink against it.
+  //
+  // This used to ask for a magiclink and, when that errored because the account
+  // did not exist yet, fall back to `generateLink({ type: "signup" })`. That
+  // fallback is what broke sign-in in production. A signup link creates the
+  // user immediately but leaves `email_confirmed_at` null until its token is
+  // exchanged — so when the exchange failed for any reason, it left behind a
+  // half-made account, and every later attempt inherited it. Two of the
+  // project's own addresses ended up in exactly that state.
+  //
+  // Creating the user explicitly with `email_confirm: true` removes the second
+  // kind of link and the second kind of account. Marking the address confirmed
+  // is honest here and not a shortcut: we only reach this line because the
+  // donor read a six-digit code out of that inbox and typed it back, which is a
+  // stronger proof of control than clicking a link in it.
+  let link = await admin.auth.admin.generateLink({ type: "magiclink", email });
 
   if (link.error) {
-    // No account yet. A password is required by the signup link API and is
-    // never used by anything: sign-in is the code, every time. A random one
-    // means no shared default exists to be tried against every account.
-    type = "signup";
-    link = await admin.auth.admin.generateLink({
-      type,
+    const created = await admin.auth.admin.createUser({
       email,
+      email_confirm: true,
+      // Required by the API and used by nothing: sign-in is the code, every
+      // time. Random, so no shared default exists to try against every account.
       password: randomBytes(32).toString("base64url"),
     });
+    if (created.error) {
+      // Logged, not shown. The donor can do nothing with a GoTrue message, but
+      // without this in the server log the failure is invisible — which is
+      // precisely why the original outage took a database inspection to find.
+      console.error("[signin] createUser failed", created.error);
+      return { error: "Could not complete sign-in. Try again in a moment.", sent: true, email };
+    }
+    link = await admin.auth.admin.generateLink({ type: "magiclink", email });
   }
 
   const tokenHash = link.data?.properties?.hashed_token;
   if (link.error || !tokenHash) {
+    console.error("[signin] generateLink failed", link.error);
     return { error: "Could not complete sign-in. Try again in a moment.", sent: true, email };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: "magiclink",
+  });
   if (error) {
+    console.error("[signin] verifyOtp failed", error);
     return { error: "Could not complete sign-in. Try again in a moment.", sent: true, email };
   }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Droplet, Mail, Phone } from "lucide-react";
-import { requireUser, getProfile } from "@/lib/auth/dal";
+import { requireUser, getProfile, getDashboardHref } from "@/lib/auth/dal";
 import { getMyRecord } from "@/lib/admin/queries";
 import { getNextCamp } from "@/lib/camps/queries";
 import { TopNav } from "@/components/site/top-nav";
@@ -27,10 +27,11 @@ const STATUS_TONE: Record<string, string> = {
 
 export default async function MePage() {
   await requireUser();
-  const [profile, { donor, registrations }, nextCamp] = await Promise.all([
+  const [profile, { donor, registrations }, nextCamp, dashboardHref] = await Promise.all([
     getProfile(),
     getMyRecord(),
     getNextCamp(),
+    getDashboardHref(),
   ]);
 
   const donated = registrations.filter((r) => r.status === "donated").length;
@@ -44,7 +45,7 @@ export default async function MePage() {
   return (
     <>
       <main className="relative z-10 flex flex-1 flex-col bg-background">
-        <TopNav activeIndex={null} dashboardHref={profile?.role === "admin" ? "/admin" : null} />
+        <TopNav activeIndex={null} dashboardHref={dashboardHref} />
 
         <div className="mx-auto w-full max-w-4xl px-6 py-12 sm:py-16">
           <div className="flex flex-wrap items-end justify-between gap-4">

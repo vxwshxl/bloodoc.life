@@ -159,3 +159,69 @@ export const donorRegistrationSchema = z
   });
 
 export type DonorRegistrationInput = z.infer<typeof donorRegistrationSchema>;
+
+/**
+ * The donor's own profile, edited from /me.
+ *
+ * A deliberate subset of the registration schema, not a reuse of it. Three
+ * groups of fields are missing and each absence is a decision:
+ *
+ *  - `campId`, `consent`, `firstTime` — these belong to an application to a
+ *    particular camp, not to the person. Carrying them here would mean editing
+ *    your phone number re-answered a consent question about a camp you may not
+ *    be attending.
+ *  - `heightCm`, `weightKg`, `medications` — measured or asked at the desk on
+ *    the day, and they change between camps. The registration form still
+ *    collects them per application.
+ *  - Blood pressure and haemoglobin — never donor-supplied anywhere, for the
+ *    reason given above.
+ *
+ * `email` is absent too, and that one matters most: the address is the account.
+ * Letting someone edit it here would either orphan their own record or hand
+ * them a way to point it at somebody else's.
+ */
+export const donorProfileSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Enter your full name.").max(120),
+    sex: z.enum(["male", "female", "other"]),
+    dateOfBirth: z
+      .string()
+      .trim()
+      .transform((s) => (s === "" ? null : s))
+      .refine(
+        (s) => s === null || !Number.isNaN(Date.parse(s)),
+        "That date does not look right.",
+      ),
+    age: optionalNumber(16, 120, "Age"),
+    fatherName: optionalText,
+    motherName: optionalText,
+    kind: z.enum(["student", "faculty", "staff", "other"]),
+    occupation: optionalText,
+    department: optionalText,
+    phone,
+    altPhone: optionalPhone,
+    address: optionalText,
+    bloodGroup: z.enum(BLOOD_GROUPS),
+    priorDonations: optionalNumber(0, 200, "Number of donations"),
+  })
+  .superRefine((v, ctx) => {
+    if (v.age === null && v.dateOfBirth === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["age"],
+        message: "Give your age or your date of birth.",
+      });
+    }
+    if (v.kind !== "other" && !v.department) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["department"],
+        message: v.kind === "student" ? "Which department?" : "Which faculty or department?",
+      });
+    }
+    if (v.kind === "other" && !v.occupation) {
+      ctx.addIssue({ code: "custom", path: ["occupation"], message: "What do you do?" });
+    }
+  });
+
+export type DonorProfileInput = z.infer<typeof donorProfileSchema>;
