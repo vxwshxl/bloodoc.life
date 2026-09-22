@@ -352,6 +352,18 @@
       padding-inline: 0.5rem;
     }
 
+    /* The sidebar header holds two controls — the mark and the assistant — and
+     * side by side they do not fit a 4.75rem rail. Stacked they do, and the
+     * assistant stays reachable: opening it is what collapses the rail in the
+     * first place, so hiding it here would remove the only way back. */
+    .app-shell[data-rail="collapsed"] [data-rail-stack] {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .app-shell[data-rail="collapsed"] [data-rail-stack] > * {
+      margin-left: 0;
+    }
+
     /* A count has nowhere to sit on a 76px rail, but "there is something here"
      * is exactly what a badge is for — so the number becomes the dot it was
      * standing in for, and keeps its title attribute for the real figure. */

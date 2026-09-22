@@ -24,7 +24,7 @@ import {
   IdCard,
   X,
 } from "lucide-react";
-import { Wordmark } from "@/components/brand";
+import { DropMark } from "@/components/brand";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -252,10 +252,28 @@ export function ConsoleShell({
       >
         <div
           data-rail-compact
+          data-rail-stack
           className="flex items-center gap-2 border-b border-app-line-soft px-1 pb-4"
         >
-          <Link href="/" aria-label="BlooDoc home" className="flex min-w-0 items-center rounded-md">
-            <Wordmark subtle />
+          {/* Composed here rather than using <Wordmark>, because the rail has
+              to be able to drop the words and keep the mark. Wordmark is one
+              unit shared with the public site; reaching inside it with a rail
+              attribute would make a marketing component know about a console
+              layout. */}
+          <Link
+            href="/"
+            aria-label="BlooDoc home"
+            className="flex min-w-0 items-center gap-2.5 rounded-md"
+          >
+            <DropMark />
+            <span data-rail-hide className="flex min-w-0 flex-col leading-none">
+              <span className="font-display text-base font-semibold tracking-tight">
+                Bloo<span className="text-primary">Doc</span>
+              </span>
+              <span className="text-[11px] tracking-wide text-sidebar-foreground/60">
+                give blood, give life
+              </span>
+            </span>
           </Link>
 
           {/* A panel, not a page. The assistant is a way to work the console,
@@ -270,7 +288,6 @@ export function ConsoleShell({
               title="Assistant"
               aria-label="Open the assistant"
               aria-expanded={assistantOpen}
-              data-rail-hide
               className="press ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 transition-colors hover:bg-violet-500/25"
             >
               <Sparkles className="size-4.5" strokeWidth={1.9} />
@@ -281,7 +298,6 @@ export function ConsoleShell({
                 href={assistantHref}
                 title="Assistant"
                 aria-label="Assistant"
-                data-rail-hide
                 className="press ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 transition-colors hover:bg-violet-500/25"
               >
                 <Sparkles className="size-4.5" strokeWidth={1.9} />
