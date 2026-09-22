@@ -463,3 +463,60 @@ export async function resetTemplateCopy(
   revalidatePath("/admin/templates");
   return { ok: true, message: "Reset to the built-in wording." };
 }
+
+/**
+ * Change somebody's role.
+ *
+ * Two guards, both of which exist because the failure they prevent is
+ * unrecoverable from inside the app:
+ *
+ *  - You cannot demote yourself. Not paternalism — a single-admin deployment
+ *    where the admin clicks "donor" has nobody left who can undo it, and the
+ *    fix is a SQL console.
+ *  - You cannot remove the last administrator, for the same reason via a
+ *    different route.
+ *
+ * `profiles.role` is what every RLS policy reads, so this is the highest-
+ * privilege write in the console. It runs on the session client, so
+ * `profiles_admin_all` is the rule that actually decides.
+ */
+export async function setUserRole(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const me = await requireAdmin();
+  const parsed = z
+    .object({ profileId: z.uuid(), role: z.enum(["admin", "donor"]) })
+    .safeParse({ profileId: formData.get("profileId"), role: formData.get("role") });
+  if (!parsed.success) return { error: "Unknown user or role." };
+  const v = parsed.data;
+
+  if (v.profileId === me.id && v.role !== "admin") {
+    return { error: "You cannot remove your own administrator access." };
+  }
+
+  const supabase = await createClient();
+
+  if (v.role !== "admin") {
+    const { count } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "admin");
+    if ((count ?? 0) <= 1) {
+      return { error: "This is the only administrator. Promote somebody else first." };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ role: v.role, updated_at: new Date().toISOString() })
+    .eq("id", v.profileId)
+    .select("id, email")
+    .maybeSingle();
+
+  if (error) return { error: "Could not change that role." };
+  if (!data) return { error: "That account could not be updated." };
+
+  revalidatePath("/admin/users");
+  return { ok: true, message: `${data.email} is now ${v.role === "admin" ? "an administrator" : "a donor"}.` };
+}

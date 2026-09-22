@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Camp, Donor, Registration } from "@/lib/db/types";
+import type { Camp, Donor, Profile, Registration } from "@/lib/db/types";
 
 /**
  * Console reads.
@@ -281,5 +281,80 @@ export async function getDashboardExtras(days = 30): Promise<DashboardExtras> {
       organisations: partnerRows.filter((p) => p.kind === "organisation").length,
       bloodBanks: partnerRows.filter((p) => p.kind === "blood_bank").length,
     },
+  };
+}
+
+export type ConsoleUser = Profile & {
+  donor: Pick<Donor, "id" | "full_name" | "phone" | "blood_group" | "kind" | "department" | "prior_donations"> | null;
+  memberships: { partner: { name: string; short_name: string | null; kind: string } | null }[];
+};
+
+/**
+ * Everybody with an account.
+ *
+ * Joined to their donor record and their partner memberships, because "who is
+ * this person" on this page means all three: the account they sign in with,
+ * the donor they are, and the bodies they act for. Three separate lookups per
+ * row would be the same data at forty times the round trips.
+ */
+export async function listUsers(
+  search?: string,
+  page = 1,
+  pageSize = 25,
+  role?: string,
+): Promise<{ rows: ConsoleUser[]; total: number }> {
+  const supabase = await createClient();
+  const from = (page - 1) * pageSize;
+  let q = supabase
+    .from("profiles")
+    .select(
+      "*, donor:donors(id, full_name, phone, blood_group, kind, department, prior_donations), memberships:partner_members(partner:partners(name, short_name, kind))",
+      { count: "exact" },
+    )
+    .order("created_at", { ascending: false })
+    .range(from, from + pageSize - 1);
+
+  if (role === "admin" || role === "donor") q = q.eq("role", role);
+  const term = search?.trim();
+  if (term) {
+    const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    q = q.or(`email.ilike.${like},full_name.ilike.${like}`);
+  }
+
+  const { data, count } = await q;
+  return { rows: (data ?? []) as unknown as ConsoleUser[], total: count ?? 0 };
+}
+
+export type RoleCounts = {
+  admin: number;
+  donor: number;
+  partnerOwner: number;
+  partnerMember: number;
+  bloodBanks: number;
+  organisations: number;
+  unclaimedInvites: number;
+};
+
+/** How many people actually hold each role — the reference page is useless without it. */
+export async function getRoleCounts(): Promise<RoleCounts> {
+  const supabase = await createClient();
+  const [profiles, members, partners] = await Promise.all([
+    supabase.from("profiles").select("role"),
+    supabase.from("partner_members").select("role, profile_id"),
+    supabase.from("partners").select("kind").eq("active", true),
+  ]);
+
+  const p = (profiles.data ?? []) as { role: string }[];
+  const m = (members.data ?? []) as { role: string; profile_id: string | null }[];
+  const pa = (partners.data ?? []) as { kind: string }[];
+
+  return {
+    admin: p.filter((r) => r.role === "admin").length,
+    donor: p.filter((r) => r.role === "donor").length,
+    partnerOwner: m.filter((r) => r.role === "owner").length,
+    partnerMember: m.filter((r) => r.role === "member").length,
+    bloodBanks: pa.filter((r) => r.kind === "blood_bank").length,
+    organisations: pa.filter((r) => r.kind === "organisation").length,
+    unclaimedInvites: m.filter((r) => !r.profile_id).length,
   };
 }

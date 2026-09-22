@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import {
-  ConsoleShell,
-  RAIL_COOKIE,
-  type NavItem,
-} from "@/components/shell/console-shell";
+import { ConsoleShell, type NavItem } from "@/components/shell/console-shell";
+import { RAIL_COOKIE } from "@/lib/shell-cookies";
 import type { NavIndexItem } from "@/components/shell/nav-index";
 import { redirect } from "next/navigation";
 import { getEffectiveProfile } from "@/lib/auth/impersonation";

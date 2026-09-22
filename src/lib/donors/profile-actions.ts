@@ -32,10 +32,7 @@ const PURPOSE = "profile_update";
  * A distinct `purpose` from the sign-in code, so neither can be replayed as
  * the other.
  */
-export async function requestProfileChangeCode(
-  _prev: ProfileState,
-  _formData: FormData,
-): Promise<ProfileState> {
+export async function requestProfileChangeCode(): Promise<ProfileState> {
   await requireUser();
   const profile = await getProfile();
   if (!profile) return { error: "Sign in again to make changes." };

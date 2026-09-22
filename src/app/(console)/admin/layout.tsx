@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import {
-  ConsoleShell,
-  RAIL_COOKIE,
-  type NavItem,
-} from "@/components/shell/console-shell";
+import { ConsoleShell, type NavItem } from "@/components/shell/console-shell";
+import { RAIL_COOKIE } from "@/lib/shell-cookies";
 import type { NavIndexItem } from "@/components/shell/nav-index";
 import { requireAdmin } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
@@ -22,6 +19,15 @@ const NAV: NavItem[] = [
   { href: "/admin/camps", label: "Camps", icon: "camps" },
   { href: "/admin/registrations", label: "Registrations", icon: "registrations" },
   { href: "/admin/donors", label: "Donors", icon: "donors" },
+  {
+    href: "/admin/users",
+    label: "Users",
+    icon: "users",
+    children: [
+      { href: "/admin/users", label: "Accounts" },
+      { href: "/admin/roles", label: "Roles" },
+    ],
+  },
   {
     href: "/admin/partners",
     label: "Partners",

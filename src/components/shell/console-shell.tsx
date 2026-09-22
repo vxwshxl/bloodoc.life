@@ -17,15 +17,26 @@ import {
   PanelLeftOpen,
   ScrollText,
   Sparkles,
+  UserRound,
   Users,
+  IdCard,
   X,
 } from "lucide-react";
 import { Wordmark } from "@/components/brand";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Breadcrumbs } from "./breadcrumbs";
 import { Clock } from "./clock";
 import { CommandPalette } from "./command-palette";
 import { useMediaQuery } from "./use-media-query";
 import type { NavIndexItem } from "./nav-index";
+import { RAIL_COOKIE } from "@/lib/shell-cookies";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,7 +48,6 @@ import { cn } from "@/lib/utils";
  * hydrate, and then snap narrow on every single navigation.
  */
 
-export const RAIL_COOKIE = "bloodoc-rail";
 
 /**
  * The nav's icons, resolved here rather than passed in.
@@ -65,6 +75,7 @@ const NAV_ICONS = {
   assistant: Sparkles,
   certificates: BadgeCheck,
   audit: ScrollText,
+  users: UserRound,
 } as const;
 
 export type NavIcon = keyof typeof NAV_ICONS;
@@ -398,24 +409,75 @@ export function ConsoleShell({
 
           <CommandPalette index={navIndex} />
 
-          <div className="flex min-w-0 items-center gap-2">
-            <span
-              title={accountEmail ?? undefined}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary"
-            >
-              {initials}
-            </span>
-            <span className="hidden min-w-0 flex-col leading-tight sm:flex">
-              <span className="truncate text-xs font-semibold">
-                {accountName ?? accountEmail ?? "Signed in"}
-              </span>
-              {accountRole && (
-                <span className="truncate text-[0.6875rem] text-muted-foreground capitalize">
-                  {accountRole}
+          {/* The account, as a menu rather than a label.
+              It was a static avatar and name, which is a thing you look at —
+              and the first place anybody hunts for "my profile" and "sign
+              out". A menu costs the same room and answers both. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Your account"
+                className="press flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-muted"
+              >
+                <span
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary"
+                >
+                  {initials}
                 </span>
-              )}
-            </span>
-          </div>
+                <span className="hidden min-w-0 flex-col text-left leading-tight sm:flex">
+                  <span className="truncate text-xs font-semibold">
+                    {accountName ?? accountEmail ?? "Signed in"}
+                  </span>
+                  {accountRole && (
+                    <span className="truncate text-[0.6875rem] text-muted-foreground capitalize">
+                      {accountRole}
+                    </span>
+                  )}
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
+                  strokeWidth={2}
+                />
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel className="flex flex-col gap-0.5">
+                <span className="truncate text-sm font-semibold">
+                  {accountName ?? "Signed in"}
+                </span>
+                <span className="truncate text-xs font-normal text-muted-foreground">
+                  {accountEmail}
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/me/profile" className="gap-2">
+                  <UserRound className="size-4" strokeWidth={1.9} aria-hidden />
+                  Your profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/me" className="gap-2">
+                  <IdCard className="size-4" strokeWidth={1.9} aria-hidden />
+                  Your donor record
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                {/* A form, not a link: signing out is a state change and must
+                    not be something a prefetch or a crawler can trigger. */}
+                <form action={signOutAction} className="w-full">
+                  <button type="submit" className="flex w-full items-center gap-2">
+                    <LogOut className="size-4" strokeWidth={1.9} aria-hidden />
+                    Sign out
+                  </button>
+                </form>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         <main className="min-w-0 flex-1 px-4 pt-4 pb-10 lg:px-2 lg:pt-3">

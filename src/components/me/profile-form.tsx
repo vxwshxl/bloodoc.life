@@ -47,8 +47,11 @@ function Field({
  * is parked on the server waiting to be applied.
  */
 export function ProfileForm({ donor, email }: { donor: Donor | null; email: string }) {
+  // `requestProfileChangeCode` takes nothing — the form's values are not sent
+  // until the code comes back — so it is driven with its own tiny reducer
+  // rather than being handed the FormData it would ignore.
   const [codeState, requestCode, sendingCode] = useActionState<ProfileState, FormData>(
-    requestProfileChangeCode,
+    async () => requestProfileChangeCode(),
     {},
   );
   const [saveState, save, saving] = useActionState<ProfileState, FormData>(updateMyProfile, {});
