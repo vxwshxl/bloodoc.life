@@ -66,13 +66,19 @@ export function StatusControl({
               return;
             }
             setAskReason(false);
-            // The form is submitted from the value change rather than a Save
-            // button. Radix hands the value back before its own close
-            // animation finishes, and `requestSubmit` inside that callback
-            // fires while the trigger is still mounted — which is why this is
-            // read from the ref rather than an event target that is about to
-            // go away.
-            formRef.current?.requestSubmit();
+            // Built here and dispatched, rather than `requestSubmit()`.
+            //
+            // Radix writes the new value into its hidden input on its own
+            // schedule, so a submit fired from inside this callback could post
+            // the *previous* status — at a desk that means recording the wrong
+            // outcome against a donor. The other fields are read from the form
+            // as normal; only the racing one is set explicitly, from the value
+            // this callback was handed.
+            const form = formRef.current;
+            if (!form) return;
+            const data = new FormData(form);
+            data.set("status", status);
+            action(data);
           }}
         >
           <SelectTrigger

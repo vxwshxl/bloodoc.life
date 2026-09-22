@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { setUserRole, type ActionState } from "@/lib/admin/actions";
@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(setUserRole, {});
   const [open, setOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -90,22 +89,37 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
         </td>
 
         <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-          <form ref={formRef} action={action} className="flex items-center gap-2">
-            <input type="hidden" name="profileId" value={user.id} />
+          <div className="flex items-center gap-2">
             {pending && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
             <Dropdown
-              name="role"
               defaultValue={user.role}
-              // Submitted from the value change rather than a Save button:
-              // this is a one-field form and a second click to confirm a
-              // choice already made is a click that gets skipped.
-              onValueChange={() => formRef.current?.requestSubmit()}
+              /*
+               * Dispatched with data built here, not by submitting a form.
+               *
+               * This was `formRef.current?.requestSubmit()` inside
+               * `onValueChange`, which fires before Radix has written the new
+               * value into its own hidden input — so the post carried an empty
+               * `role`, zod rejected it, and you got "Unknown user or role"
+               * alongside the success from the submit that did land. Two
+               * toasts for one change.
+               *
+               * Passing the value straight from the callback removes the race
+               * rather than trying to win it: there is no hidden input, no
+               * form, and nothing to be stale. `name` is gone from the
+               * Dropdown for the same reason.
+               */
+              onValueChange={(next) => {
+                const data = new FormData();
+                data.set("profileId", user.id);
+                data.set("role", next);
+                action(data);
+              }}
               options={ROLES.map((r) => ({ value: r.value, label: r.label }))}
               // Tinted by its own value, using the same tone the pill would
               // wear, so the control and the badge never disagree.
               className={cn("h-8 w-auto gap-1.5 border-0 text-xs", TONE_CLASS[statusMeta(user.role).tone])}
             />
-          </form>
+          </div>
         </td>
 
         <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>

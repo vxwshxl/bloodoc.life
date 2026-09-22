@@ -83,7 +83,19 @@ export function OutcomeControl({
               return;
             }
             setAskReason(false);
-            formRef.current?.requestSubmit();
+            // Built here and dispatched, rather than `requestSubmit()`.
+            //
+            // Radix writes the new value into its hidden input on its own
+            // schedule, so a submit fired from inside this callback could post
+            // the *previous* status — at a desk that means recording the wrong
+            // outcome against a donor. The other fields are read from the form
+            // as normal; only the racing one is set explicitly, from the value
+            // this callback was handed.
+            const form = formRef.current;
+            if (!form) return;
+            const data = new FormData(form);
+            data.set("status", s);
+            action(data);
           }}
         >
           <SelectTrigger
