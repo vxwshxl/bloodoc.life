@@ -7,6 +7,7 @@ import {
   campReminderEmail,
   profileChangeCodeEmail,
   registrationConfirmedEmail,
+  signInAlertEmail,
   signInCodeEmail,
 } from "@/lib/email/templates";
 import type { EmailTemplate } from "@/lib/db/types";
@@ -29,6 +30,10 @@ const SAMPLE = {
   when: "Friday, 25 September 2026, 11:00 am – 4:00 pm",
   venue: "The Royal Global University, DEF Block 6th Floor, Guwahati",
   group: "O+",
+  device: "Chrome on Android",
+  location: "Guwahati, AS, IN",
+  ip: "203.0.113.42",
+  time: "25 Sep 2026, 9:14 am",
 };
 
 /** Render one template exactly as it would be sent, with the saved copy. */
@@ -52,6 +57,16 @@ function renderPreview(key: TemplateKey, saved: EmailTemplate | undefined) {
           bloodGroup: SAMPLE.group,
           collaboration: "Terapanth Yuvak Parishad, Guwahati",
           partner: "State of the Art Model Blood Centre, Gauhati Medical College & Hospital",
+        },
+        copy,
+      );
+    case "signin_alert":
+      return signInAlertEmail(
+        {
+          device: SAMPLE.device,
+          location: SAMPLE.location,
+          ip: SAMPLE.ip,
+          time: SAMPLE.time,
         },
         copy,
       );

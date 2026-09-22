@@ -114,6 +114,7 @@ export function ConsoleShell({
    */
   assistantHref,
   assistant,
+  banner,
   signOutAction,
   accountName,
   accountEmail,
@@ -132,6 +133,15 @@ export function ConsoleShell({
    * this file is a Client Component.
    */
   assistant?: React.ReactNode;
+  /**
+   * Full-width strip above the topbar — the "viewing as" banner.
+   *
+   * A slot rather than `children` because it has to sit outside `<main>`: the
+   * banner was being rendered with the page content, so it scrolled with the
+   * table and was pinned to the top of the *content column* rather than the
+   * viewport. A warning that leaves the screen is not a warning.
+   */
+  banner?: React.ReactNode;
   signOutAction: () => Promise<void>;
   accountName?: string | null;
   accountEmail?: string | null;
@@ -367,6 +377,8 @@ export function ConsoleShell({
       )}
 
       <div className="flex min-w-0 flex-col">
+        {banner}
+
         <header className="z-30 flex min-h-14 items-center gap-3 px-4 py-2 max-lg:sticky max-lg:top-0 max-lg:border-b max-lg:border-app-line-soft max-lg:bg-background/85 max-lg:backdrop-blur lg:px-2 print:hidden">
           <button
             type="button"

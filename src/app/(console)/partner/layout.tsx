@@ -67,8 +67,8 @@ export default async function PartnerLayout({ children }: { children: React.Reac
           : "Partner"
       }
       defaultCollapsed={collapsed}
+      banner={<ViewAsBanner />}
     >
-      <ViewAsBanner />
       {children}
     </ConsoleShell>
   );

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
+import { FilterMenu } from "@/components/shell/filter-menu";
 import {
   Pagination,
   pageFromParams,
@@ -88,25 +89,16 @@ export default async function AdminCertificates({
         />
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <Link
-            key={f.value}
-            href={
-              f.value === "all"
-                ? "/admin/certificates"
-                : `/admin/certificates?status=${f.value}`
-            }
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              filter === f.value
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-app-line text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {f.label}
-          </Link>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <FilterMenu
+          label="State"
+          paramName="status"
+          active={filter === "all" ? undefined : filter}
+          options={FILTERS.filter((f) => f.value !== "all").map((f) => ({
+            value: f.value,
+            label: f.label,
+          }))}
+        />
       </div>
 
       {total === 0 ? (

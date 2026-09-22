@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { consumeOtp, issueOtp, normaliseEmail, OTP_TTL_MINUTES } from "@/lib/auth/otp";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
-import { signInCodeEmail } from "@/lib/email/templates";
+import { signInCodeEmail, signInAlertEmail } from "@/lib/email/templates";
+import { getLoginContext } from "@/lib/email/login-context";
 import { copyFor } from "@/lib/email/copy";
 
 export type AuthState = {
@@ -209,6 +210,31 @@ export async function verifySignInCode(
   if (error) {
     console.error("[signin] verifyOtp failed", error);
     return { error: "Could not complete sign-in. Try again in a moment.", sent: true, email };
+  }
+
+  // Tell them it happened.
+  //
+  // Best-effort and deliberately not awaited for its result: a mail outage
+  // must never turn a successful sign-in into a failure. Sent after every
+  // sign-in rather than only unrecognised ones — see the template for why.
+  if (emailConfigured()) {
+    try {
+      const ctx = await getLoginContext();
+      const alertCopy = await copyFor("signin_alert", {
+        device: ctx.device,
+        location: ctx.location,
+        time: ctx.time,
+      });
+      const alert = signInAlertEmail(ctx, alertCopy);
+      await sendEmailNow({
+        to: email,
+        subject: alert.subject,
+        html: alert.html,
+        template: "signin-alert",
+      });
+    } catch (e) {
+      console.error("[signin] alert email failed", e);
+    }
   }
 
   // Where they land depends on who they are, and the profile row exists by now

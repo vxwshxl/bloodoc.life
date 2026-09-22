@@ -88,8 +88,8 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
       accountEmail={profile.email}
       accountRole={profile.role}
       defaultCollapsed={collapsed}
+      banner={<ViewAsBanner />}
     >
-      <ViewAsBanner />
       {children}
     </ConsoleShell>
   );

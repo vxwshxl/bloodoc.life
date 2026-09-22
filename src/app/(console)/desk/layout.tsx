@@ -48,8 +48,8 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
       accountEmail={profile.email}
       accountRole={profile.role === "admin" ? "Admin at the desk" : "Verifier"}
       defaultCollapsed={collapsed}
+      banner={<ViewAsBanner />}
     >
-      <ViewAsBanner />
       {children}
     </ConsoleShell>
   );

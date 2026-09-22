@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { SearchBox } from "@/components/shell/search-box";
+import { FilterMenu } from "@/components/shell/filter-menu";
+import {
+  Pagination,
+  DEFAULT_PAGE_SIZE,
+  pageFromParams,
+} from "@/components/shell/pagination";
 import { OutcomeControl } from "@/components/partner/outcome-control";
 import { requirePartner } from "@/lib/auth/dal";
-import { getPartnerCamps, getPartnerRoster } from "@/lib/partners/queries";
+import { getPartnerCamps, getPartnerRosterPage } from "@/lib/partners/queries";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -12,13 +19,14 @@ export const metadata: Metadata = { title: "Roster" };
 export default async function PartnerRoster({
   searchParams,
 }: {
-  searchParams: Promise<{ camp?: string }>;
+  searchParams: Promise<{ camp?: string; page?: string; q?: string }>;
 }) {
-  const { camp: campId } = await searchParams;
-  const [{ memberships }, camps, rows] = await Promise.all([
+  const { camp: campId, page: pageParam, q } = await searchParams;
+  const page = pageFromParams(pageParam);
+  const [{ memberships }, camps, { rows, total }] = await Promise.all([
     requirePartner(),
     getPartnerCamps(),
-    getPartnerRoster(campId),
+    getPartnerRosterPage(campId, page, DEFAULT_PAGE_SIZE, q),
   ]);
 
   // Recording is the blood bank's right, and it is per camp. With a camp in
@@ -40,40 +48,31 @@ export default async function PartnerRoster({
         title="Roster"
         subtitle={
           active
-            ? `${rows.length} on the roster · ${donated} donated · ${firstTimers} first-timers`
-            : `${rows.length} across every camp you partner`
+            ? `${total} on the roster · ${donated} donated, ${firstTimers} first-timers on this page`
+            : `${total} across every camp you partner`
         }
       />
 
-      {camps.length > 1 && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          <Link
-            href="/partner/registrations"
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              !campId
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-app-line text-muted-foreground hover:bg-muted",
-            )}
-          >
-            All camps
-          </Link>
-          {camps.map((c) => (
-            <Link
-              key={c.id}
-              href={`/partner/registrations?camp=${c.id}`}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                campId === c.id
-                  ? "border-transparent bg-primary text-primary-foreground"
-                  : "border-app-line text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {c.title} · {formatCampDateShort(c.starts_at)}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <SearchBox
+          placeholder="Donor name, email or phone"
+          defaultValue={q}
+          keep={{ camp: campId }}
+          clearHref="/partner/registrations"
+        />
+        {camps.length > 1 && (
+          <FilterMenu
+            label="Camp"
+            paramName="camp"
+            active={campId}
+            options={camps.map((c) => ({
+              value: c.id,
+              label: c.title,
+              hint: formatCampDateShort(c.starts_at),
+            }))}
+          />
+        )}
+      </div>
 
       {!canRecord && rows.length > 0 && (
         <p className="mb-4 text-xs text-muted-foreground">
@@ -82,7 +81,7 @@ export default async function PartnerRoster({
         </p>
       )}
 
-      {rows.length === 0 ? (
+      {total === 0 ? (
         <Panel>
           <EmptyState
             title="Nobody yet"
@@ -169,6 +168,13 @@ export default async function PartnerRoster({
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            total={total}
+            basePath="/partner/registrations"
+            params={{ camp: campId, q }}
+            unit="registration"
+          />
         </Panel>
       )}
     </>

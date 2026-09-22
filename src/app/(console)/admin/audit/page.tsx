@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { FilePlus2, FileX2, PencilLine } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
@@ -10,6 +9,7 @@ import {
   rangeFor,
 } from "@/components/shell/pagination";
 import { SearchBox } from "@/components/shell/search-box";
+import { FilterMenu } from "@/components/shell/filter-menu";
 import { formatDateTime } from "@/lib/format";
 import type { AuditLog } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
@@ -84,32 +84,16 @@ export default async function AuditPage({
         />
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        <Link
-          href="/admin/audit"
-          className={cn(
-            "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-            !active
-              ? "border-transparent bg-primary text-primary-foreground"
-              : "border-app-line text-muted-foreground hover:bg-muted",
-          )}
-        >
-          Everything
-        </Link>
-        {TABLES.map((t) => (
-          <Link
-            key={t}
-            href={`/admin/audit?table=${t}`}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              active === t
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-app-line text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {t.replace(/_/g, " ")}
-          </Link>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {/* A menu, not a chip per table. Eight tables already wrapped to two
+            lines, and every table added to the audit trigger would add
+            another. */}
+        <FilterMenu
+          label="Table"
+          paramName="table"
+          active={active}
+          options={TABLES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))}
+        />
       </div>
 
       {total === 0 ? (

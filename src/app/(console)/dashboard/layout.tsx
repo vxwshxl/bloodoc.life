@@ -66,8 +66,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       accountEmail={e.profile.email}
       accountRole="Donor"
       defaultCollapsed={collapsed}
+      banner={<ViewAsBanner />}
     >
-      <ViewAsBanner />
       {children}
     </ConsoleShell>
   );

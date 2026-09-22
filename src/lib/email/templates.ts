@@ -148,3 +148,44 @@ export function profileChangeCodeEmail(code: string, minutes: number, copy?: Tem
     }),
   };
 }
+
+/**
+ * "Somebody just signed in."
+ *
+ * Sent after every successful sign-in, not just unrecognised ones. A message
+ * that only arrives when the system judges a login suspicious teaches people
+ * that silence means safe — and the judgement is the part most likely to be
+ * wrong. One every time is boring, which is the point: the one that matters
+ * stands out because the reader knows they did not cause it.
+ *
+ * Every field is approximate and labelled so. An IP that resolves to the wrong
+ * city is a support ticket; an IP presented as fact is a wrong accusation.
+ */
+export function signInAlertEmail(
+  input: { device: string; location: string; ip: string; time: string },
+  copy?: TemplateCopy,
+) {
+  return {
+    subject: copy?.subject || "New sign-in to your BlooDoc account",
+    html: renderEmail({
+      preheader: `${input.device} · ${input.time}`,
+      blocks: [
+        heading(copy?.heading || "Somebody signed in"),
+        paragraph(
+          copy?.lead ||
+            "Your BlooDoc account was just signed into. If that was you, nothing needs doing — this note is only so an unexpected one is never silent.",
+        ),
+        infoCard([
+          { label: "When", value: input.time, strong: true },
+          { label: "Device", value: input.device },
+          { label: "Near", value: input.location },
+          { label: "IP address", value: input.ip },
+        ]),
+        notice(
+          "Location and device are approximate — they are worked out from the connection and can be wrong by a city or more. If this was not you, nobody can sign in again without a fresh code from this inbox, so change nothing and write to us.",
+        ),
+      ],
+      footerNote: "You are receiving this because somebody signed into bloodoc.life with this address.",
+    }),
+  };
+}

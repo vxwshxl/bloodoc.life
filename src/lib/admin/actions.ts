@@ -413,6 +413,7 @@ export async function saveTemplateCopy(
         "registration_confirmed",
         "camp_reminder",
         "profile_change",
+        "signin_alert",
       ]),
       subject: z.string().trim().max(200),
       heading: z.string().trim().max(200),

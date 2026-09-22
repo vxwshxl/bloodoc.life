@@ -16,7 +16,8 @@ export type TemplateKey =
   | "signin_code"
   | "registration_confirmed"
   | "camp_reminder"
-  | "profile_change";
+  | "profile_change"
+  | "signin_alert";
 
 export type TemplateCopy = { subject?: string; heading?: string; lead?: string };
 
@@ -58,6 +59,16 @@ export const TEMPLATE_META: Record<
     tokens: [
       { token: "{{code}}", means: "The six-digit code" },
       { token: "{{minutes}}", means: "How long it stays valid" },
+    ],
+  },
+  signin_alert: {
+    label: "New sign-in alert",
+    description:
+      "Sent after every successful sign-in. The device and location card is fixed — only the wording around it can change.",
+    tokens: [
+      { token: "{{device}}", means: "Browser and operating system" },
+      { token: "{{location}}", means: "Approximate city" },
+      { token: "{{time}}", means: "When they signed in" },
     ],
   },
   camp_reminder: {

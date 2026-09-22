@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { SearchBox } from "@/components/shell/search-box";
+import { FilterMenu } from "@/components/shell/filter-menu";
+import {
+  Pagination,
+  DEFAULT_PAGE_SIZE,
+  pageFromParams,
+} from "@/components/shell/pagination";
 import { CertificateActions } from "@/components/partner/certificate-actions";
 import { requirePartner } from "@/lib/auth/dal";
 import { getPartnerCertificates } from "@/lib/partners/queries";
@@ -26,16 +33,22 @@ const TONE: Record<CertificateStatus, string> = {
 export default async function PartnerCertificates({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string; q?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, page: pageParam, q } = await searchParams;
+  const page = pageFromParams(pageParam);
   const filter = FILTERS.some((f) => f.value === status)
     ? (status as CertificateStatus | "all")
     : "all";
 
-  const [{ memberships }, rows] = await Promise.all([
+  const [{ memberships }, { rows, total }] = await Promise.all([
     requirePartner(),
-    getPartnerCertificates(filter === "all" ? undefined : filter),
+    getPartnerCertificates(
+      filter === "all" ? undefined : filter,
+      page,
+      DEFAULT_PAGE_SIZE,
+      q,
+    ),
   ]);
 
   const canApprove = memberships.some((m) => m.partner.kind === "blood_bank");
@@ -47,29 +60,30 @@ export default async function PartnerCertificates({
         title="Certificates"
         subtitle={
           canApprove
-            ? `${rows.length} issued · ${pending} waiting on your sign-off`
-            : `${rows.length} issued across your camps`
+            ? `${total} issued · ${pending} waiting on your sign-off (this page)`
+            : `${total} issued across your camps`
         }
       />
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <Link
-            key={f.value}
-            href={f.value === "all" ? "/partner/certificates" : `/partner/certificates?status=${f.value}`}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              filter === f.value
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-app-line text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {f.label}
-          </Link>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <SearchBox
+          placeholder="Certificate code"
+          defaultValue={q}
+          keep={{ status: filter === "all" ? undefined : filter }}
+          clearHref="/partner/certificates"
+        />
+        <FilterMenu
+          label="State"
+          paramName="status"
+          active={filter === "all" ? undefined : filter}
+          options={FILTERS.filter((f) => f.value !== "all").map((f) => ({
+            value: f.value,
+            label: f.label,
+          }))}
+        />
       </div>
 
-      {rows.length === 0 ? (
+      {total === 0 ? (
         <Panel>
           <EmptyState
             title="Nothing here yet"
@@ -153,6 +167,13 @@ export default async function PartnerCertificates({
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            total={total}
+            basePath="/partner/certificates"
+            params={{ status: filter === "all" ? undefined : filter, q }}
+            unit="certificate"
+          />
         </Panel>
       )}
     </>

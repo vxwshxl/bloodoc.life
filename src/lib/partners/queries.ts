@@ -88,6 +88,48 @@ export async function getPartnerRoster(campId?: string): Promise<RosterRow[]> {
   return (data as unknown as RosterRow[] | null) ?? [];
 }
 
+/**
+ * A page of the roster, with the total.
+ *
+ * The unpaginated `getPartnerRoster` above stays, because the overview's charts
+ * need every row to count them — but a table must never render all of them.
+ */
+export async function getPartnerRosterPage(
+  campId?: string,
+  page = 1,
+  pageSize = 25,
+  search?: string,
+): Promise<{ rows: RosterRow[]; total: number }> {
+  const supabase = await createClient();
+  const from = (page - 1) * pageSize;
+  const term = search?.trim();
+
+  let q = supabase
+    .from("registrations")
+    .select(
+      // `!inner` only while searching. An inner join would otherwise drop a
+      // registration whose donor row is missing, which is exactly the orphan
+      // worth seeing on an unfiltered roster.
+      term
+        ? "*, donor:donors!inner(*), camp:camps(id, slug, title, starts_at), certificate:certificates(id, code, status)"
+        : "*, donor:donors(*), camp:camps(id, slug, title, starts_at), certificate:certificates(id, code, status)",
+      { count: "exact" },
+    )
+    .order("created_at", { ascending: false })
+    .range(from, from + pageSize - 1);
+
+  if (campId) q = q.eq("camp_id", campId);
+  if (term) {
+    const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    q = q.or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`, {
+      referencedTable: "donors",
+    });
+  }
+
+  const { data, count } = await q;
+  return { rows: (data as unknown as RosterRow[] | null) ?? [], total: count ?? 0 };
+}
+
 export type CertificateRow = Certificate & {
   registration:
     | (Pick<Registration, "id" | "status"> & {
@@ -100,17 +142,27 @@ export type CertificateRow = Certificate & {
 /** Certificates for the camps this member partners. */
 export async function getPartnerCertificates(
   status?: Certificate["status"],
-): Promise<CertificateRow[]> {
+  page = 1,
+  pageSize = 25,
+  search?: string,
+): Promise<{ rows: CertificateRow[]; total: number }> {
   const supabase = await createClient();
+  const from = (page - 1) * pageSize;
   let q = supabase
     .from("certificates")
     .select(
       "*, registration:registrations(id, status, donor:donors(id, full_name, blood_group), camp:camps(id, title, slug, starts_at))",
+      { count: "exact" },
     )
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, from + pageSize - 1);
   if (status) q = q.eq("status", status);
-  const { data } = await q;
-  return (data as unknown as CertificateRow[] | null) ?? [];
+  const term = search?.trim();
+  // The code is the searchable field: it is what is printed on the paper
+  // somebody is holding when they ring up.
+  if (term) q = q.ilike("code", `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+  const { data, count } = await q;
+  return { rows: (data as unknown as CertificateRow[] | null) ?? [], total: count ?? 0 };
 }
 
 /** Colleagues on the same partner, for the panel's team list. */
