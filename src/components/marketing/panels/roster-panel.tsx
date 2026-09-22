@@ -1,4 +1,5 @@
 import { ConsoleMock, GroupChip } from "./shell";
+import { TONE_CLASS, statusMeta } from "@/components/ui/status-pill";
 
 const ROWS = [
   { name: "Anjali Deka", kind: "Student · Physics", group: "O+", donations: 3, bp: "118/76", status: "Screened" },
@@ -9,13 +10,6 @@ const ROWS = [
   { name: "Nikita Das", kind: "Student · Botany", group: "O-", donations: 2, bp: "104/62", status: "Deferred" },
   { name: "Bikash Nath", kind: "Faculty · Maths", group: "O+", donations: 8, bp: "124/79", status: "Screened" },
 ];
-
-const TONE: Record<string, string> = {
-  Donated: "bg-primary/12 text-primary",
-  Screened: "bg-muted text-foreground",
-  Registered: "bg-muted text-muted-foreground",
-  Deferred: "bg-destructive/12 text-destructive",
-};
 
 export function RosterPanel() {
   return (
@@ -73,7 +67,7 @@ export function RosterPanel() {
                   {r.bp}
                 </td>
                 <td className="px-5 py-3">
-                  <span className={`rounded-md px-2 py-1 text-xs font-medium ${TONE[r.status]}`}>
+                  <span className={`rounded-md px-2 py-1 text-xs font-medium ${TONE_CLASS[statusMeta(r.status).tone]}`}>
                     {r.status}
                   </span>
                 </td>

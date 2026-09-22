@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, Droplet } from "lucide-react";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { statusChartColor } from "@/components/ui/status-pill";
 import { BreakdownBars, StatTile, TrendChart } from "@/components/admin/charts";
 import { getEffectiveProfile } from "@/lib/auth/impersonation";
 import {
@@ -12,20 +13,6 @@ import {
 import { formatCampDateShort } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Overview" };
-
-/**
- * Reserved status colours, and only where the status genuinely carries a
- * state: a donation is the good outcome, a deferral is the one somebody has to
- * act on. The neutral middle stays neutral rather than being given a hue it
- * does not mean. Every bar is labelled, so none of this is colour alone.
- */
-const STATUS_TONE: Record<string, string> = {
-  Donated: "var(--primary)",
-  Deferred: "var(--destructive)",
-  Cancelled: "color-mix(in oklch, var(--muted-foreground) 40%, transparent)",
-  Screened: "color-mix(in oklch, var(--primary) 55%, transparent)",
-  Registered: "color-mix(in oklch, var(--primary) 30%, transparent)",
-};
 
 export default async function PartnerOverview() {
   const [effective, camps, summary, dash] = await Promise.all([
@@ -128,7 +115,7 @@ export default async function PartnerOverview() {
           <BreakdownBars
             data={dash.byStatus.map((d) => ({
               ...d,
-              color: STATUS_TONE[d.label] ?? "var(--primary)",
+              color: statusChartColor(d.label),
             }))}
           />
           <p className="mt-4 border-t border-app-line-soft pt-3 text-xs text-muted-foreground">

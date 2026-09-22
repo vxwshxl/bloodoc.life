@@ -4,17 +4,9 @@ import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { getEffectiveRecord } from "@/lib/auth/impersonation";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 import type { RegistrationRow } from "@/lib/admin/queries";
-import { cn } from "@/lib/utils";
+import { StatusPill } from "@/components/ui/status-pill";
 
 export const metadata: Metadata = { title: "Applications" };
-
-const TONE: Record<string, string> = {
-  donated: "bg-primary/12 text-primary",
-  screened: "bg-muted text-foreground",
-  registered: "bg-muted text-muted-foreground",
-  deferred: "bg-destructive/12 text-destructive",
-  cancelled: "bg-muted text-muted-foreground",
-};
 
 /** What each outcome actually means, in the donor's own terms. */
 const MEANS: Record<string, string> = {
@@ -61,14 +53,7 @@ export default async function ApplicationsPage() {
                     {r.camp.city ? `, ${r.camp.city}` : ""}
                   </p>
                 </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-md px-2 py-1 text-xs font-medium capitalize",
-                    TONE[r.status],
-                  )}
-                >
-                  {r.status}
-                </span>
+                <StatusPill status={r.status} className="shrink-0" />
               </div>
 
               <p className="mt-3 border-t border-app-line-soft pt-3 text-sm text-muted-foreground">

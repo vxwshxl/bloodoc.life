@@ -9,6 +9,7 @@ import {
   type ActionState,
 } from "@/lib/partners/actions";
 import { ViewAsButton } from "@/components/admin/view-as-button";
+import { Dropdown } from "@/components/ui/dropdown";
 import type { PartnerMember } from "@/lib/db/types";
 
 const field =
@@ -42,10 +43,14 @@ export function NewPartnerForm() {
     <form action={action} className="grid w-full gap-3 sm:grid-cols-2">
       <input name="name" required placeholder="Full name of the body" className={field} />
       <input name="shortName" placeholder="Short name (tables, certificates)" className={field} />
-      <select name="kind" required defaultValue="organisation" className={field}>
-        <option value="organisation">Organisation</option>
-        <option value="blood_bank">Blood bank</option>
-      </select>
+      <Dropdown
+        name="kind"
+        defaultValue="organisation"
+        options={[
+          { value: "organisation", label: "Organisation" },
+          { value: "blood_bank", label: "Blood bank" },
+        ]}
+      />
       <input name="parentInstitution" placeholder="Parent institution (optional)" className={field} />
       <input name="city" placeholder="City" className={field} />
       <input name="contactEmail" type="email" placeholder="Contact email" className={field} />
@@ -160,10 +165,14 @@ export function MemberList({
           <input name="email" type="email" required placeholder="name@example.org" className={field} />
           <input name="fullName" placeholder="Name (optional)" className={field} />
           <input name="title" placeholder="Role at the body (optional)" className={field} />
-          <select name="role" defaultValue="member" className={field}>
-            <option value="member">Member</option>
-            <option value="owner">Owner — can manage colleagues</option>
-          </select>
+          <Dropdown
+            name="role"
+            defaultValue="member"
+            options={[
+              { value: "member", label: "Member" },
+              { value: "owner", label: "Owner — can manage colleagues" },
+            ]}
+          />
           <div className="flex items-center gap-2 sm:col-span-2">
             <button
               type="submit"

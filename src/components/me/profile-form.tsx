@@ -9,6 +9,7 @@ import {
   type ProfileState,
 } from "@/lib/donors/profile-actions";
 import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
+import { Dropdown } from "@/components/ui/dropdown";
 import type { Donor } from "@/lib/db/types";
 
 const field =
@@ -79,13 +80,7 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
             <input name="fullName" required defaultValue={donor?.full_name ?? ""} className={field} />
           </Field>
           <Field label="Sex" error={e.sex}>
-            <select name="sex" defaultValue={donor?.sex ?? "male"} className={field}>
-              {SEXES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            <Dropdown name="sex" defaultValue={donor?.sex ?? "male"} options={SEXES} />
           </Field>
           <Field label="Date of birth" error={e.dateOfBirth}>
             <input
@@ -139,18 +134,7 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
         <h2 className="text-sm font-semibold">What you do</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <Field label="You are a" error={e.kind}>
-            <select
-              name="kind"
-              value={kind}
-              onChange={(ev) => setKind(ev.target.value)}
-              className={field}
-            >
-              {DONOR_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
+            <Dropdown name="kind" value={kind} onValueChange={setKind} options={DONOR_KINDS} />
           </Field>
           {kind === "other" ? (
             <Field label="Occupation" error={e.occupation}>
@@ -168,13 +152,14 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
         <h2 className="text-sm font-semibold">As a donor</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <Field label="Blood group" error={e.bloodGroup}>
-            <select name="bloodGroup" defaultValue={donor?.blood_group ?? "unknown"} className={field}>
-              {BLOOD_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {g === "unknown" ? "I do not know" : g}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              name="bloodGroup"
+              defaultValue={donor?.blood_group ?? "unknown"}
+              options={BLOOD_GROUPS.map((g) => ({
+                value: g,
+                label: g === "unknown" ? "I do not know" : g,
+              }))}
+            />
           </Field>
           <Field
             label="Donations before BlooDoc"

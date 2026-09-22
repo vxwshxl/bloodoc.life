@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { setUserRole, type ActionState } from "@/lib/admin/actions";
@@ -14,12 +14,15 @@ import {
 } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/format";
 import { ROLES } from "@/lib/roles";
+import { Dropdown } from "@/components/ui/dropdown";
+import { StatusPill, TONE_CLASS, statusMeta } from "@/components/ui/status-pill";
 import type { ConsoleUser } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils";
 
 export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(setUserRole, {});
   const [open, setOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -82,27 +85,21 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
         </td>
 
         <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-          <form action={action} className="flex items-center gap-2">
+          <form ref={formRef} action={action} className="flex items-center gap-2">
             <input type="hidden" name="profileId" value={user.id} />
             {pending && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
-            <select
+            <Dropdown
               name="role"
               defaultValue={user.role}
-              onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              aria-label={`Role for ${user.email}`}
-              className={cn(
-                "h-8 rounded-md border-0 px-2 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                user.role === "admin"
-                  ? "bg-primary/12 text-primary"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+              // Submitted from the value change rather than a Save button:
+              // this is a one-field form and a second click to confirm a
+              // choice already made is a click that gets skipped.
+              onValueChange={() => formRef.current?.requestSubmit()}
+              options={ROLES.map((r) => ({ value: r.value, label: r.label }))}
+              // Tinted by its own value, using the same tone the pill would
+              // wear, so the control and the badge never disagree.
+              className={cn("h-8 w-auto gap-1.5 border-0 text-xs", TONE_CLASS[statusMeta(user.role).tone])}
+            />
           </form>
         </td>
 
@@ -114,12 +111,12 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-base">
+            <DialogTitle className="flex items-center gap-2 text-base">
               {user.full_name ?? donor?.full_name ?? user.email}
+              <StatusPill status={user.role} />
             </DialogTitle>
             <DialogDescription className="text-xs">
-              {user.email} · {user.role === "admin" ? "Administrator" : "Donor"} · joined{" "}
-              {formatDateTime(user.created_at)}
+              {user.email} · joined {formatDateTime(user.created_at)}
             </DialogDescription>
           </DialogHeader>
 

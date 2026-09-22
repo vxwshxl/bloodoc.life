@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { RegistrationStatus } from "@/lib/db/types";
+import { TONE_CLASS, statusMeta } from "@/components/ui/status-pill";
 import { cn } from "@/lib/utils";
 
 const STATUSES: RegistrationStatus[] = [
@@ -20,14 +21,6 @@ const STATUSES: RegistrationStatus[] = [
   "deferred",
   "cancelled",
 ];
-
-const TONE: Record<RegistrationStatus, string> = {
-  donated: "bg-primary/12 text-primary",
-  screened: "bg-muted text-foreground",
-  registered: "bg-muted text-muted-foreground",
-  deferred: "bg-destructive/12 text-destructive",
-  cancelled: "bg-muted text-muted-foreground",
-};
 
 /**
  * The desk control on a partner roster row.
@@ -63,7 +56,7 @@ export function OutcomeControl({
       <span
         className={cn(
           "inline-flex h-7 items-center rounded-md px-2 text-xs font-medium capitalize",
-          TONE[status],
+          TONE_CLASS[statusMeta(status).tone],
         )}
       >
         {status}
@@ -97,7 +90,7 @@ export function OutcomeControl({
             size="sm"
             className={cn(
               "border-0 text-xs font-medium capitalize shadow-none focus-visible:ring-2",
-              TONE[value],
+              TONE_CLASS[statusMeta(value).tone],
             )}
           >
             <SelectValue />

@@ -5,23 +5,9 @@ import { getOverview, getDashboardExtras } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { BreakdownBars, StatTile, TrendChart } from "@/components/admin/charts";
 import { formatCampDate, formatDateTime, formatTimeRange } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { StatusPill, statusChartColor } from "@/components/ui/status-pill";
 
 export const metadata: Metadata = { title: "Overview" };
-
-/**
- * Reserved status colours, and only for the statuses that genuinely carry a
- * state: a donation is the good outcome, a deferral is the one somebody has to
- * act on. The neutral middle stays neutral rather than being given a hue it
- * does not mean. Every bar is labelled, so none of this is colour alone.
- */
-const STATUS_TONE: Record<string, string> = {
-  Donated: "var(--primary)",
-  Deferred: "var(--destructive)",
-  Cancelled: "color-mix(in oklch, var(--muted-foreground) 40%, transparent)",
-  Screened: "color-mix(in oklch, var(--primary) 55%, transparent)",
-  Registered: "color-mix(in oklch, var(--primary) 30%, transparent)",
-};
 
 export default async function OverviewPage() {
   const [o, x] = await Promise.all([getOverview(), getDashboardExtras()]);
@@ -100,7 +86,7 @@ export default async function OverviewPage() {
           <BreakdownBars
             data={x.byStatus.map((d) => ({
               ...d,
-              color: STATUS_TONE[d.label] ?? "var(--primary)",
+              color: statusChartColor(d.label),
             }))}
           />
           <p className="mt-4 border-t border-app-line-soft pt-3 text-xs text-muted-foreground">
@@ -213,18 +199,7 @@ export default async function OverviewPage() {
                     {r.camp.title} · {formatDateTime(r.created_at)}
                   </span>
                 </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-md px-2 py-1 text-xs font-medium capitalize",
-                    r.status === "donated"
-                      ? "bg-primary/12 text-primary"
-                      : r.status === "deferred"
-                        ? "bg-destructive/12 text-destructive"
-                        : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {r.status}
-                </span>
+                <StatusPill status={r.status} className="shrink-0" />
               </li>
             ))}
           </ul>

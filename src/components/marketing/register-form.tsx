@@ -8,13 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dropdown } from "@/components/ui/dropdown";
 import { cn } from "@/lib/utils";
 import type { Camp } from "@/lib/db/types";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
@@ -122,41 +116,6 @@ function Section({
  * reaches the server action through ordinary FormData and the form keeps
  * working exactly as it did.
  */
-function Dropdown({
-  name,
-  defaultValue,
-  placeholder,
-  options,
-  invalid,
-  onChange,
-}: {
-  name: string;
-  defaultValue?: string;
-  placeholder?: string;
-  options: readonly { value: string; label: string }[];
-  invalid?: boolean;
-  onChange?: (value: string) => void;
-}) {
-  return (
-    <Select name={name} defaultValue={defaultValue} onValueChange={onChange}>
-      <SelectTrigger
-        id={name}
-        aria-invalid={invalid || undefined}
-        className={cn(FIELD, "w-full text-base md:text-sm")}
-      >
-        <SelectValue placeholder={placeholder ?? "Select"} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
 /**
  * Yes / No, as a pair of radios drawn as a segmented control.
  *
@@ -404,7 +363,7 @@ export function RegisterForm({
               defaultValue="student"
               options={DONOR_KINDS}
               invalid={!!e.kind}
-              onChange={setKind}
+              onValueChange={setKind}
             />
           </Field>
 

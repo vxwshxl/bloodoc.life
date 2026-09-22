@@ -12,7 +12,7 @@ import {
 import { CertificateActions } from "@/components/partner/certificate-actions";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 import type { CertificateStatus } from "@/lib/db/types";
-import { cn } from "@/lib/utils";
+import { StatusPill } from "@/components/ui/status-pill";
 
 export const metadata: Metadata = { title: "Certificates" };
 
@@ -22,12 +22,6 @@ const FILTERS: { value: CertificateStatus | "all"; label: string }[] = [
   { value: "approved", label: "Approved" },
   { value: "revoked", label: "Withdrawn" },
 ];
-
-const TONE: Record<CertificateStatus, string> = {
-  approved: "bg-primary/12 text-primary",
-  pending: "bg-muted text-muted-foreground",
-  revoked: "bg-destructive/12 text-destructive",
-};
 
 type Row = {
   id: string;
@@ -154,14 +148,7 @@ export default async function AdminCertificates({
                       </Link>
                     </td>
                     <td className="px-5 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex h-6 items-center rounded-md px-2 text-xs font-medium capitalize",
-                          TONE[c.status],
-                        )}
-                      >
-                        {c.status}
-                      </span>
+                      <StatusPill status={c.status} />
                       {c.status === "approved" && c.issued_at && (
                         <span className="mt-0.5 block text-[0.625rem] text-muted-foreground">
                           {formatDateTime(c.issued_at)}
