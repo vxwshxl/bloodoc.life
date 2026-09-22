@@ -27,7 +27,7 @@ export default async function CampsPage() {
           />
         </Panel>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="grid gap-4 xl:grid-cols-2">
           {camps.map((camp) => (
             <CampRow
               key={camp.id}

@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { listDonors } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import {
+  Pagination,
+  DEFAULT_PAGE_SIZE,
+  pageFromParams,
+} from "@/components/shell/pagination";
 import { formatCampDateShort } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Donors" };
@@ -9,16 +14,17 @@ export const metadata: Metadata = { title: "Donors" };
 export default async function DonorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
-  const donors = await listDonors(q);
+  const { q, page: pageParam } = await searchParams;
+  const page = pageFromParams(pageParam);
+  const { rows: donors, total } = await listDonors(q, page, DEFAULT_PAGE_SIZE);
 
   return (
     <>
       <PageHeader
         title="Donors"
-        subtitle={q ? `${donors.length} matching “${q}”` : `${donors.length} people on file`}
+        subtitle={q ? `${total} matching “${q}”` : `${total} people on file`}
       />
 
       {/* A GET form, not a client-side filter. The result is a URL the desk can
@@ -44,7 +50,7 @@ export default async function DonorsPage({
         </button>
       </form>
 
-      {donors.length === 0 ? (
+      {total === 0 ? (
         <Panel>
           <EmptyState
             title={q ? "Nobody matches that" : "No donors yet"}
@@ -108,6 +114,13 @@ export default async function DonorsPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            total={total}
+            basePath="/admin/donors"
+            params={{ q }}
+            unit="donor"
+          />
         </Panel>
       )}
     </>

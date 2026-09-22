@@ -20,30 +20,55 @@ export async function listCamps(): Promise<Camp[]> {
   return data ?? [];
 }
 
-export async function listDonors(search?: string): Promise<Donor[]> {
+/**
+ * A page of donors, with the total the pager needs.
+ *
+ * The count comes back in the same round trip as the rows (`count: "exact"`)
+ * rather than from a second query: the two would be read at different moments
+ * against a table being written to during a camp, and a pager whose last page
+ * is empty is worse than no pager.
+ */
+export async function listDonors(
+  search?: string,
+  page = 1,
+  pageSize = 25,
+): Promise<{ rows: Donor[]; total: number }> {
   const supabase = await createClient();
-  let q = supabase.from("donors").select("*").order("created_at", { ascending: false }).limit(500);
+  const from = (page - 1) * pageSize;
+  let q = supabase
+    .from("donors")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, from + pageSize - 1);
   if (search?.trim()) {
-    const term = `%${search.trim()}%`;
+    // `%` and `_` are wildcards in `ilike`, and a search box is the one place a
+    // user can type them. Escaped so "100%" looks for a literal percent sign
+    // rather than matching every donor in the table.
+    const term = `%${search.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     // `or` across the three columns anybody actually searches by. Phone is in
     // there because the question at the desk is almost always "she called from
     // this number, is she on the list".
     q = q.or(`full_name.ilike.${term},email.ilike.${term},phone.ilike.${term}`);
   }
-  const { data } = await q;
-  return data ?? [];
+  const { data, count } = await q;
+  return { rows: data ?? [], total: count ?? 0 };
 }
 
-export async function listRegistrations(campId?: string): Promise<RegistrationRow[]> {
+export async function listRegistrations(
+  campId?: string,
+  page = 1,
+  pageSize = 25,
+): Promise<{ rows: RegistrationRow[]; total: number }> {
   const supabase = await createClient();
+  const from = (page - 1) * pageSize;
   let q = supabase
     .from("registrations")
-    .select("*, donor:donors(*), camp:camps(*)")
+    .select("*, donor:donors(*), camp:camps(*)", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(1000);
+    .range(from, from + pageSize - 1);
   if (campId) q = q.eq("camp_id", campId);
-  const { data } = await q;
-  return (data ?? []) as unknown as RegistrationRow[];
+  const { data, count } = await q;
+  return { rows: (data ?? []) as unknown as RegistrationRow[], total: count ?? 0 };
 }
 
 export type Overview = {

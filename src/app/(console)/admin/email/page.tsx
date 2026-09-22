@@ -1,20 +1,38 @@
 import type { Metadata } from "next";
-import { CheckCircle2, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
-import { formatDateTime } from "@/lib/format";
+import {
+  Pagination,
+  DEFAULT_PAGE_SIZE,
+  pageFromParams,
+  rangeFor,
+} from "@/components/shell/pagination";
+import { ClearEmailLog, EmailRow } from "@/components/admin/email-row";
 import type { EmailLog } from "@/lib/db/types";
 
 export const metadata: Metadata = { title: "Email" };
 
-export default async function EmailPage() {
+export default async function EmailPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = pageFromParams(pageParam);
+
   const supabase = await createClient();
-  const { data } = await supabase
+  // `count: "exact"` in the same round trip as the rows — the pager needs the
+  // total and a second query would be a second chance for the two to disagree
+  // while email is being sent underneath them.
+  const [from, to] = rangeFor(page);
+  const { data, count } = await supabase
     .from("email_log")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range(from, to);
+
   const rows = (data ?? []) as EmailLog[];
+  const total = count ?? 0;
   const failed = rows.filter((r) => !r.ok).length;
 
   return (
@@ -22,13 +40,14 @@ export default async function EmailPage() {
       <PageHeader
         title="Email"
         subtitle={
-          rows.length
-            ? `Last ${rows.length} messages · ${failed} failed`
+          total
+            ? `${total} message${total === 1 ? "" : "s"} · ${failed} failed on this page`
             : "Nothing has been sent yet."
         }
+        action={<ClearEmailLog total={total} />}
       />
 
-      {rows.length === 0 ? (
+      {total === 0 ? (
         <Panel>
           <EmptyState
             title="No email yet"
@@ -39,28 +58,16 @@ export default async function EmailPage() {
         <Panel className="overflow-hidden">
           <ul>
             {rows.map((r) => (
-              <li
-                key={r.id}
-                className="flex items-start gap-3 border-b border-app-line-soft px-5 py-3 last:border-b-0"
-              >
-                {r.ok ? (
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" strokeWidth={2} />
-                ) : (
-                  <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" strokeWidth={2} />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{r.subject}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {r.to_email}
-                    {r.template ? ` · ${r.template}` : ""} · {formatDateTime(r.created_at)}
-                  </p>
-                  {r.error && (
-                    <p className="mt-1 text-xs font-medium break-words text-destructive">{r.error}</p>
-                  )}
-                </div>
-              </li>
+              <EmailRow key={r.id} row={r} />
             ))}
           </ul>
+          <Pagination
+            page={page}
+            total={total}
+            pageSize={DEFAULT_PAGE_SIZE}
+            basePath="/admin/email"
+            unit="message"
+          />
         </Panel>
       )}
     </>

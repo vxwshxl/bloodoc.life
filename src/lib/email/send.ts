@@ -89,6 +89,9 @@ async function log(input: SendEmailInput, result: SendEmailResult) {
       ok: result.ok,
       provider_id: result.ok ? result.providerId : null,
       error: result.ok ? null : result.error,
+      // The body as sent, so the console can show the donor exactly what they
+      // received rather than what the template would render today.
+      html: input.html,
     });
   } catch {
     /* ignore */

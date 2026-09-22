@@ -291,3 +291,37 @@ export async function sendCampReminders(
         : `Sent ${sent} of ${recipients.length}. The rest are in the email log with their errors.`,
   };
 }
+
+/**
+ * Delete one logged email, or every logged email.
+ *
+ * Runs on the session client so `email_log_admin_write` (0010) is what actually
+ * decides — `requireAdmin` here only saves the round trip and gives a better
+ * landing than a silent no-op.
+ *
+ * Deleting the log does not unsend anything, and the audit trail is a separate
+ * table with no delete policy at all, so this cannot be used to cover tracks.
+ */
+export async function deleteEmailLog(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const all = formData.get("all") === "true";
+
+  const supabase = await createClient();
+  if (all) {
+    // Postgres has no "delete everything" without a predicate through PostgREST,
+    // and a tautology is the documented way to say it deliberately.
+    const { error } = await supabase.from("email_log").delete().not("id", "is", null);
+    if (error) return { error: "Could not clear the log." };
+  } else {
+    if (!id) return { error: "Unknown message." };
+    const { error } = await supabase.from("email_log").delete().eq("id", id);
+    if (error) return { error: "Could not delete that message." };
+  }
+
+  revalidatePath("/admin/email");
+  return { ok: true };
+}

@@ -116,6 +116,30 @@ export type EmailLog = {
   ok: boolean;
   provider_id: string | null;
   error: string | null;
+  /** The rendered body as sent. Null for rows logged before 0010. */
+  html: string | null;
+  created_at: string;
+};
+
+export type AuditAction = "insert" | "update" | "delete";
+
+/**
+ * One recorded change, written by the `record_audit` trigger — never by the
+ * application, and never editable through the API.
+ */
+export type AuditLog = {
+  id: number;
+  actor_id: string | null;
+  /** Kept alongside the id so the row still names someone after account deletion. */
+  actor_email: string | null;
+  action: AuditAction;
+  table_name: string;
+  record_id: string | null;
+  /**
+   * An update records only the columns that changed, as
+   * `{ col: { from, to } }`. An insert or delete records the whole row.
+   */
+  changes: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -217,6 +241,7 @@ export type Database = {
         created_at: string;
       }>;
       email_log: Table<EmailLog>;
+      audit_log: Table<AuditLog>;
       partners: Table<Partner>;
       partner_members: Table<PartnerMember>;
       camp_partners: Table<CampPartner>;
@@ -234,6 +259,7 @@ export type Database = {
       partner_kind: PartnerKind;
       partner_member_role: PartnerMemberRole;
       certificate_status: CertificateStatus;
+      audit_action: AuditAction;
     };
     CompositeTypes: Record<string, never>;
   };

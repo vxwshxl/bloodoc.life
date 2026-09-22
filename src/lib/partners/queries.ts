@@ -8,6 +8,7 @@ import type {
   Certificate,
   Donor,
   Partner,
+  PartnerKind,
   PartnerMember,
   Registration,
 } from "@/lib/db/types";
@@ -250,4 +251,66 @@ export async function listPartners(): Promise<PartnerWithMembers[]> {
     .order("kind", { ascending: true })
     .order("name", { ascending: true });
   return (data as unknown as PartnerWithMembers[] | null) ?? [];
+}
+
+export type PartnerDetail = PartnerWithMembers & {
+  camps: (Camp & { role: PartnerKind; is_host: boolean })[];
+  /** Counts across every camp this body is attached to. */
+  stats: { camps: number; registrations: number; donated: number; certificates: number };
+};
+
+/**
+ * One partner, everything about it: who has access, which camps it ran, and
+ * what came of them.
+ *
+ * The counts are computed from a single registrations read rather than three
+ * `count` queries, for the same reason the panel's summary is: numbers shown
+ * side by side have to agree with each other, and independent counts against a
+ * table being written to during a camp do not.
+ */
+export async function getPartnerDetail(slug: string): Promise<PartnerDetail | null> {
+  const supabase = await createClient();
+
+  const { data: partner } = await supabase
+    .from("partners")
+    .select("*, members:partner_members(*)")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!partner) return null;
+
+  const row = partner as unknown as PartnerWithMembers;
+
+  const { data: links } = await supabase
+    .from("camp_partners")
+    .select("role, is_host, camp:camps(*)")
+    .eq("partner_id", row.id);
+
+  const camps = ((links as unknown as
+    | { role: PartnerKind; is_host: boolean; camp: Camp | null }[]
+    | null) ?? [])
+    .filter((l): l is { role: PartnerKind; is_host: boolean; camp: Camp } => l.camp !== null)
+    .map((l) => ({ ...l.camp, role: l.role, is_host: l.is_host }))
+    .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
+
+  const campIds = camps.map((c) => c.id);
+  let registrations = 0;
+  let donated = 0;
+  let certificates = 0;
+
+  if (campIds.length > 0) {
+    const { data: regs } = await supabase
+      .from("registrations")
+      .select("status, certificate:certificates(id)")
+      .in("camp_id", campIds);
+    const list = (regs as unknown as { status: string; certificate: unknown }[] | null) ?? [];
+    registrations = list.length;
+    donated = list.filter((r) => r.status === "donated").length;
+    certificates = list.filter((r) => r.certificate).length;
+  }
+
+  return {
+    ...row,
+    camps,
+    stats: { camps: camps.length, registrations, donated, certificates },
+  };
 }

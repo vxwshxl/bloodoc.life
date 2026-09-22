@@ -9,9 +9,11 @@ import {
   CalendarDays,
   Droplet,
   LayoutDashboard,
+  ChevronDown,
   LogOut,
   Mail,
   Menu,
+  ScrollText,
   Sparkles,
   Users,
   X,
@@ -45,14 +47,25 @@ const NAV_ICONS = {
   email: Mail,
   assistant: Sparkles,
   certificates: BadgeCheck,
+  audit: ScrollText,
 } as const;
 
 export type NavIcon = keyof typeof NAV_ICONS;
+
+export type NavChild = { href: string; label: string };
 
 export type NavItem = {
   href: string;
   label: string;
   icon: NavIcon;
+  /**
+   * A sub-list, revealed while the section is open.
+   *
+   * Open is derived from the URL, not held in state: a sidebar that collapses
+   * the section you are currently inside — which is what a `useState` default
+   * does on every navigation — loses your place on every click.
+   */
+  children?: NavChild[];
   /** Only highlight on an exact match — for an index route that prefixes others. */
   exact?: boolean;
 };
@@ -149,27 +162,67 @@ export function ConsoleShell({
         <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
           {nav.map((item) => {
             const active = isActive(item);
+            const Icon = NAV_ICONS[item.icon];
+            // A section stands open whenever the current page is inside it, so
+            // the child you navigated to is still visible when the page lands.
+            const sectionOpen =
+              !!item.children &&
+              (active || item.children.some((c) => pathname.startsWith(c.href)));
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  // A row-shaped control presses with a colour tint rather than
-                  // `.press`: scaling a full-width row shears it against its
-                  // neighbours.
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    // A row-shaped control presses with a colour tint rather
+                    // than `.press`: scaling a full-width row shears it against
+                    // its neighbours.
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  )}
+                >
+                  <Icon className="size-4.5" strokeWidth={1.9} />
+                  {item.label}
+                  {item.children && (
+                    <ChevronDown
+                      aria-hidden
+                      className={cn(
+                        "ml-auto size-3.5 transition-transform duration-200",
+                        sectionOpen ? "rotate-180" : "rotate-0",
+                      )}
+                      strokeWidth={2}
+                    />
+                  )}
+                </Link>
+
+                {item.children && sectionOpen && (
+                  <ul className="mt-0.5 mb-1 flex flex-col gap-0.5 border-l border-app-line-soft pl-3 ml-5">
+                    {item.children.map((child) => {
+                      const childActive =
+                        pathname === child.href || pathname.startsWith(`${child.href}/`);
+                      return (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            aria-current={childActive ? "page" : undefined}
+                            className={cn(
+                              "block rounded-lg px-3 py-2 text-[0.8125rem] font-medium transition-colors",
+                              childActive
+                                ? "bg-sidebar-accent text-sidebar-foreground"
+                                : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                            )}
+                          >
+                            {child.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
-              >
-                {(() => {
-                  const Icon = NAV_ICONS[item.icon];
-                  return <Icon className="size-4.5" strokeWidth={1.9} />;
-                })()}
-                {item.label}
-              </Link>
+              </div>
             );
           })}
         </nav>

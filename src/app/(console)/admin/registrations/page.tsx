@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import {
+  Pagination,
+  DEFAULT_PAGE_SIZE,
+  pageFromParams,
+} from "@/components/shell/pagination";
 import { StatusControl } from "@/components/admin/registration-row";
 import { VitalsCell } from "@/components/admin/vitals-cell";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
@@ -12,12 +17,19 @@ export const metadata: Metadata = { title: "Registrations" };
 export default async function RegistrationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ camp?: string }>;
+  searchParams: Promise<{ camp?: string; page?: string }>;
 }) {
-  const { camp: campId } = await searchParams;
-  const [camps, rows] = await Promise.all([listCamps(), listRegistrations(campId)]);
+  const { camp: campId, page: pageParam } = await searchParams;
+  const page = pageFromParams(pageParam);
+  const [camps, { rows, total }] = await Promise.all([
+    listCamps(),
+    listRegistrations(campId, page, DEFAULT_PAGE_SIZE),
+  ]);
   const active = camps.find((c) => c.id === campId) ?? null;
 
+  // Scoped to the page, and labelled as such below. These used to be totals
+  // because the query returned everything; now that it returns 25 rows,
+  // presenting them as totals would quietly understate every camp.
   const firstTimers = rows.filter((r) => r.first_time).length;
   const donated = rows.filter((r) => r.status === "donated").length;
 
@@ -27,8 +39,8 @@ export default async function RegistrationsPage({
         title="Registrations"
         subtitle={
           active
-            ? `${rows.length} on the roster · ${donated} donated · ${firstTimers} first-timers`
-            : `${rows.length} across every camp`
+            ? `${total} on the roster · ${donated} donated, ${firstTimers} first-timers on this page`
+            : `${total} across every camp`
         }
       />
 
@@ -127,6 +139,13 @@ export default async function RegistrationsPage({
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            total={total}
+            basePath="/admin/registrations"
+            params={{ camp: campId }}
+            unit="registration"
+          />
         </Panel>
       )}
     </>
