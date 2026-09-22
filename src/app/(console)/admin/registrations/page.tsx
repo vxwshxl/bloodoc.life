@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { SearchBox } from "@/components/shell/search-box";
 import {
   Pagination,
   DEFAULT_PAGE_SIZE,
@@ -17,13 +18,13 @@ export const metadata: Metadata = { title: "Registrations" };
 export default async function RegistrationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ camp?: string; page?: string }>;
+  searchParams: Promise<{ camp?: string; page?: string; q?: string }>;
 }) {
-  const { camp: campId, page: pageParam } = await searchParams;
+  const { camp: campId, page: pageParam, q } = await searchParams;
   const page = pageFromParams(pageParam);
   const [camps, { rows, total }] = await Promise.all([
     listCamps(),
-    listRegistrations(campId, page, DEFAULT_PAGE_SIZE),
+    listRegistrations(campId, page, DEFAULT_PAGE_SIZE, q),
   ]);
   const active = camps.find((c) => c.id === campId) ?? null;
 
@@ -43,6 +44,15 @@ export default async function RegistrationsPage({
             : `${total} across every camp`
         }
       />
+
+      <div className="mb-4">
+        <SearchBox
+          placeholder="Donor name, email or phone"
+          defaultValue={q}
+          keep={{ camp: campId }}
+          clearHref="/admin/registrations"
+        />
+      </div>
 
       {/* Camp filter. Links rather than a select, so a roster can be bookmarked
           and reopened at the desk on the day without re-picking anything. */}
@@ -143,7 +153,7 @@ export default async function RegistrationsPage({
             page={page}
             total={total}
             basePath="/admin/registrations"
-            params={{ camp: campId }}
+            params={{ camp: campId, q }}
             unit="registration"
           />
         </Panel>

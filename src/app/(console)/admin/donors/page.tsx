@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Search } from "lucide-react";
 import { listDonors } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { SearchBox } from "@/components/shell/search-box";
 import {
   Pagination,
   DEFAULT_PAGE_SIZE,
@@ -27,28 +27,13 @@ export default async function DonorsPage({
         subtitle={q ? `${total} matching “${q}”` : `${total} people on file`}
       />
 
-      {/* A GET form, not a client-side filter. The result is a URL the desk can
-          keep open, reload and share — and it works before any JS has run. */}
-      <form className="mb-5 flex max-w-md items-center gap-2">
-        <div className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            strokeWidth={1.9}
-          />
-          <input
-            name="q"
-            defaultValue={q ?? ""}
-            placeholder="Name, email or phone"
-            className="h-10 w-full rounded-lg border border-app-line bg-card pr-3 pl-9 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          />
-        </div>
-        <button
-          type="submit"
-          className="press h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
-        >
-          Search
-        </button>
-      </form>
+      <div className="mb-5">
+        <SearchBox
+          placeholder="Name, email or phone"
+          defaultValue={q}
+          clearHref="/admin/donors"
+        />
+      </div>
 
       {total === 0 ? (
         <Panel>

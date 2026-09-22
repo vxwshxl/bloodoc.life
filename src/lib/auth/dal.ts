@@ -108,3 +108,22 @@ export async function getDashboardHref(): Promise<string | null> {
   const memberships = await getMyMemberships();
   return memberships.length > 0 ? "/partner" : "/me";
 }
+
+/**
+ * Gate for work that either an administrator or a partner member may do —
+ * recording an outcome at the desk, approving a certificate.
+ *
+ * `requirePartner` alone was wrong for these: an admin who is not a member of
+ * any partner has no membership row, so it redirected them out of a control
+ * the database would happily have let them use. The policies in 0008 all read
+ * `is_admin() or is_camp_bloodbank(...)`; this makes the redirect agree with
+ * them instead of being stricter for no reason.
+ */
+export async function requireConsoleUser(): Promise<Profile> {
+  const profile = await getProfile();
+  if (!profile) redirect("/signin");
+  if (profile.role === "admin") return profile;
+  const memberships = await getMyMemberships();
+  if (memberships.length === 0) redirect("/me");
+  return profile;
+}

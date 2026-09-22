@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin, requirePartner } from "@/lib/auth/dal";
+import { requireAdmin, requireConsoleUser } from "@/lib/auth/dal";
 
 /**
  * Writes from the partner panel.
@@ -12,7 +12,7 @@ import { requireAdmin, requirePartner } from "@/lib/auth/dal";
  * whole design: "may this person mark this donor as donated" is answered once,
  * in `registrations_update_bloodbank`, and an action that bypassed RLS would be
  * a second copy of that rule written in TypeScript, free to drift from the
- * first. The `requirePartner()` call at the top of each is a redirect for a
+ * first. The `requireConsoleUser()` call at the top of each is a redirect for a
  * better landing, not the security check — if it were removed the database
  * would still refuse.
  *
@@ -56,7 +56,7 @@ export async function recordOutcome(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requirePartner();
+  await requireConsoleUser();
 
   const parsed = outcomeSchema.safeParse({
     registrationId: formData.get("registrationId"),
@@ -121,7 +121,7 @@ export async function approveCertificate(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { profile } = await requirePartner();
+  const profile = await requireConsoleUser();
   const id = z.uuid().safeParse(formData.get("certificateId"));
   if (!id.success) return { error: "Unknown certificate." };
 
@@ -159,7 +159,7 @@ export async function revokeCertificate(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requirePartner();
+  await requireConsoleUser();
   const parsed = z
     .object({ certificateId: z.uuid(), reason: z.string().trim().min(3).max(300) })
     .safeParse({

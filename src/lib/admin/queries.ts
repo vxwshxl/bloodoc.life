@@ -14,9 +14,14 @@ import type { Camp, Donor, Registration } from "@/lib/db/types";
 
 export type RegistrationRow = Registration & { donor: Donor; camp: Camp };
 
-export async function listCamps(): Promise<Camp[]> {
+export async function listCamps(search?: string): Promise<Camp[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("camps").select("*").order("starts_at", { ascending: false });
+  let q = supabase.from("camps").select("*").order("starts_at", { ascending: false });
+  if (search?.trim()) {
+    const term = `%${search.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    q = q.or(`title.ilike.${term},venue.ilike.${term},city.ilike.${term}`);
+  }
+  const { data } = await q;
   return data ?? [];
 }
 
@@ -58,15 +63,32 @@ export async function listRegistrations(
   campId?: string,
   page = 1,
   pageSize = 25,
+  search?: string,
 ): Promise<{ rows: RegistrationRow[]; total: number }> {
   const supabase = await createClient();
   const from = (page - 1) * pageSize;
+  const term = search?.trim();
+  const searching = !!term;
   let q = supabase
     .from("registrations")
-    .select("*, donor:donors(*), camp:camps(*)", { count: "exact" })
+    .select(
+      // `!inner` only while searching. An inner join would otherwise drop any
+      // registration whose donor row has been deleted, which is exactly the
+      // orphan an admin most needs to see on an unfiltered roster.
+      searching
+        ? "*, donor:donors!inner(*), camp:camps(*)"
+        : "*, donor:donors(*), camp:camps(*)",
+      { count: "exact" },
+    )
     .order("created_at", { ascending: false })
     .range(from, from + pageSize - 1);
   if (campId) q = q.eq("camp_id", campId);
+  if (term) {
+    const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    q = q.or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`, {
+      referencedTable: "donors",
+    });
+  }
   const { data, count } = await q;
   return { rows: (data ?? []) as unknown as RegistrationRow[], total: count ?? 0 };
 }
@@ -155,4 +177,77 @@ export async function getMyRecord() {
     .order("created_at", { ascending: false });
 
   return { donor, registrations: (data ?? []) as unknown as RegistrationRow[] };
+}
+
+export type DashboardExtras = {
+  /** Registrations per day for the last 30 days, oldest first. */
+  trend: { label: string; value: number }[];
+  /** How the whole register splits by outcome. */
+  byStatus: { label: string; value: number }[];
+  certificates: { pending: number; approved: number };
+  partners: { organisations: number; bloodBanks: number };
+};
+
+/**
+ * The figures behind the overview's charts.
+ *
+ * Bucketed in JS for the same reason the blood-group split is: PostgREST has
+ * no group-by, and thirty days of registrations is a trivial amount of data to
+ * count in memory. If this table ever reaches six figures it becomes a
+ * materialised view, not a bigger select.
+ */
+export async function getDashboardExtras(days = 30): Promise<DashboardExtras> {
+  const supabase = await createClient();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  since.setHours(0, 0, 0, 0);
+
+  const [regs, certs, partners] = await Promise.all([
+    supabase.from("registrations").select("status, created_at"),
+    supabase.from("certificates").select("status"),
+    supabase.from("partners").select("kind").eq("active", true),
+  ]);
+
+  const rows = (regs.data ?? []) as { status: string; created_at: string }[];
+
+  // Every day in the window, including the empty ones. A line that skips days
+  // with no registrations compresses a quiet fortnight into a short gap and
+  // makes the camp-day spike look like the normal rate.
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(d.getDate() + i);
+    buckets.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const r of rows) {
+    const key = r.created_at.slice(0, 10);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+
+  const fmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
+  const trend = [...buckets.entries()].map(([iso, value]) => ({
+    label: fmt.format(new Date(`${iso}T00:00:00`)),
+    value,
+  }));
+
+  const STATUSES = ["registered", "screened", "donated", "deferred", "cancelled"] as const;
+  const byStatus = STATUSES.map((s) => ({
+    label: s[0].toUpperCase() + s.slice(1),
+    value: rows.filter((r) => r.status === s).length,
+  }));
+
+  const certRows = (certs.data ?? []) as { status: string }[];
+  const partnerRows = (partners.data ?? []) as { kind: string }[];
+
+  return {
+    trend,
+    byStatus,
+    certificates: {
+      pending: certRows.filter((c) => c.status === "pending").length,
+      approved: certRows.filter((c) => c.status === "approved").length,
+    },
+    partners: {
+      organisations: partnerRows.filter((p) => p.kind === "organisation").length,
+      bloodBanks: partnerRows.filter((p) => p.kind === "blood_bank").length,
+    },
+  };
 }

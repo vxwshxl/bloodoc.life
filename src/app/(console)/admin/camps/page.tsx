@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listCamps } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { SearchBox } from "@/components/shell/search-box";
 import { NewCampPanel } from "@/components/admin/camp-form";
 import { CampRow } from "@/components/admin/camp-row";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Camps" };
 
-export default async function CampsPage() {
-  const camps = await listCamps();
+export default async function CampsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const camps = await listCamps(q);
 
   return (
     <>
@@ -18,6 +24,14 @@ export default async function CampsPage() {
         subtitle="A camp is visible on the site only while it is published."
         action={<NewCampPanel />}
       />
+
+      <div className="mb-5">
+        <SearchBox
+          placeholder="Camp title, venue or city"
+          defaultValue={q}
+          clearHref="/admin/camps"
+        />
+      </div>
 
       {camps.length === 0 ? (
         <Panel>

@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
-import { ConsoleShell, type NavItem } from "@/components/shell/console-shell";
+import { cookies } from "next/headers";
+import {
+  ConsoleShell,
+  RAIL_COOKIE,
+  type NavItem,
+} from "@/components/shell/console-shell";
+import type { NavIndexItem } from "@/components/shell/nav-index";
 import { requirePartner } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
 
@@ -15,6 +21,12 @@ const NAV: NavItem[] = [
   { href: "/partner/camps", label: "Camps", icon: "camps" },
 ];
 
+const NAV_INDEX: NavIndexItem[] = NAV.map((item) => ({
+  href: item.href,
+  label: item.label,
+  exact: item.exact,
+}));
+
 /**
  * The partner panel.
  *
@@ -26,7 +38,8 @@ const NAV: NavItem[] = [
  * they are looking at, and the numbers on the overview differ between them.
  */
 export default async function PartnerLayout({ children }: { children: React.ReactNode }) {
-  const { memberships } = await requirePartner();
+  const { profile, memberships } = await requirePartner();
+  const collapsed = (await cookies()).get(RAIL_COOKIE)?.value === "1";
 
   const title =
     memberships.length === 1
@@ -34,7 +47,22 @@ export default async function PartnerLayout({ children }: { children: React.Reac
       : "Partner panel";
 
   return (
-    <ConsoleShell nav={NAV} title={title} signOutAction={signOut}>
+    <ConsoleShell
+      nav={NAV}
+      navIndex={NAV_INDEX}
+      title={title}
+      signOutAction={signOut}
+      accountName={profile.full_name}
+      accountEmail={profile.email}
+      accountRole={
+        memberships.length === 1
+          ? memberships[0].partner.kind === "blood_bank"
+            ? "Blood bank"
+            : "Organisation"
+          : "Partner"
+      }
+      defaultCollapsed={collapsed}
+    >
       {children}
     </ConsoleShell>
   );

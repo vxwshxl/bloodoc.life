@@ -7,20 +7,37 @@ import {
   BadgeCheck,
   Building2,
   CalendarDays,
+  ChevronDown,
   Droplet,
   LayoutDashboard,
-  ChevronDown,
   LogOut,
   Mail,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   ScrollText,
   Sparkles,
   Users,
   X,
 } from "lucide-react";
 import { Wordmark } from "@/components/brand";
+import { Breadcrumbs } from "./breadcrumbs";
+import { Clock } from "./clock";
+import { CommandPalette } from "./command-palette";
 import { useMediaQuery } from "./use-media-query";
+import type { NavIndexItem } from "./nav-index";
 import { cn } from "@/lib/utils";
+
+/**
+ * The console shell: a sidebar that collapses to an icon rail, and a topbar
+ * carrying where-you-are, the time, search and the account.
+ *
+ * The rail preference is a cookie rather than component state so the first
+ * paint is already the right width — held in React it would render expanded,
+ * hydrate, and then snap narrow on every single navigation.
+ */
+
+export const RAIL_COOKIE = "bloodoc-rail";
 
 /**
  * The nav's icons, resolved here rather than passed in.
@@ -36,7 +53,7 @@ import { cn } from "@/lib/utils";
  *     {$$typeof: ..., render: function LayoutDashboard}
  *
  * Passing a string key instead means the boundary only ever carries data, which
- * is true regardless of how the icon library decides to package itself next.
+ * stays true regardless of how the icon library packages itself next.
  */
 const NAV_ICONS = {
   overview: LayoutDashboard,
@@ -58,6 +75,8 @@ export type NavItem = {
   href: string;
   label: string;
   icon: NavIcon;
+  /** Only highlight on an exact match — for an index route that prefixes others. */
+  exact?: boolean;
   /**
    * A sub-list, revealed while the section is open.
    *
@@ -66,40 +85,57 @@ export type NavItem = {
    * does on every navigation — loses your place on every click.
    */
   children?: NavChild[];
-  /** Only highlight on an exact match — for an index route that prefixes others. */
-  exact?: boolean;
 };
 
-/**
- * The signed-in shell: a sidebar that is a floating panel on a laptop and a
- * drawer on a phone.
- *
- * The desktop rail is `sticky` inside a grid rather than `fixed`, so the main
- * column is laid out beside it by the grid and never has to be padded by hand
- * to a width the sidebar happens to be.
- */
 export function ConsoleShell({
   nav,
+  navIndex,
   title,
+  /**
+   * The assistant, when the console has one. It sits with the mark rather than
+   * in the nav on purpose: it is not another section of the console, it is a
+   * way to work the whole of it.
+   */
+  assistantHref,
   signOutAction,
+  accountName,
+  accountEmail,
+  accountRole,
+  defaultCollapsed = false,
   children,
 }: {
   nav: NavItem[];
-  /** Console name — the drawer's accessible name and the mobile bar's label. */
+  /** Flat, icon-free list for the breadcrumbs and the palette. */
+  navIndex: NavIndexItem[];
   title: string;
+  assistantHref?: string;
   signOutAction: () => Promise<void>;
+  accountName?: string | null;
+  accountEmail?: string | null;
+  accountRole?: string | null;
+  defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   // `true` on the server: the console is a desktop tool first, and guessing
   // "phone" would render every first paint as a drawer and then reflow.
   const isDesktop = useMediaQuery("(min-width: 64rem)", true);
+  const drawerOpen = open && !isDesktop;
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    // A year, because the preference is about how this person likes to work,
+    // not about this session.
+    document.cookie = `${RAIL_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
+  }
 
   // Two things only the open drawer needs: the page behind it must not scroll
   // under the reader's thumb, and Escape must shut it.
   useEffect(() => {
-    if (!open) return;
+    if (!drawerOpen) return;
     const { body } = document;
     const prev = body.style.overflow;
     body.style.overflow = "hidden";
@@ -111,13 +147,27 @@ export function ConsoleShell({
       body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [drawerOpen]);
 
   const isActive = (item: NavItem) =>
-    item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    item.exact
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+  const rootHref = nav[0]?.href ?? "/admin";
+  const initials =
+    (accountName ?? accountEmail ?? "?")
+      .split(/[\s@.]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "?";
 
   return (
-    <div className="app-shell relative grid min-h-dvh flex-1 gap-0 lg:p-3">
+    <div
+      className="app-shell relative grid min-h-dvh flex-1 gap-0 lg:p-3"
+      data-rail={collapsed ? "collapsed" : "expanded"}
+    >
       {/* The ambient ground. Fixed rather than absolute so the blooms cover the
           viewport and not the document — they should not stretch to the length
           of a 900-row donor roster — and inert so they never take a click. */}
@@ -138,17 +188,31 @@ export function ConsoleShell({
         )}
         // One handler for every link in the nav rather than an effect on
         // `pathname`: a click that landed on a link has navigated, so the
-        // drawer's work is done. Closing it from an effect instead means
-        // setting state in response to a render, which is a cascading render
-        // for something the click already told us.
+        // drawer's work is done.
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("a[href]")) setOpen(false);
         }}
       >
-        <div className="flex items-center gap-2 border-b border-app-line-soft px-1 pb-4">
+        <div
+          data-rail-compact
+          className="flex items-center gap-2 border-b border-app-line-soft px-1 pb-4"
+        >
           <Link href="/" aria-label="BlooDoc home" className="flex min-w-0 items-center rounded-md">
             <Wordmark subtle />
           </Link>
+
+          {assistantHref && (
+            <Link
+              href={assistantHref}
+              title="Assistant"
+              aria-label="Assistant"
+              data-rail-hide
+              className="press ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 transition-colors hover:bg-violet-500/25 dark:text-violet-300"
+            >
+              <Sparkles className="size-4.5" strokeWidth={1.9} />
+            </Link>
+          )}
+
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -159,7 +223,7 @@ export function ConsoleShell({
           </button>
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+        <nav className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1">
           {nav.map((item) => {
             const active = isActive(item);
             const Icon = NAV_ICONS[item.icon];
@@ -173,6 +237,8 @@ export function ConsoleShell({
               <div key={item.href}>
                 <Link
                   href={item.href}
+                  data-rail-compact
+                  title={item.label}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     // A row-shaped control presses with a colour tint rather
@@ -184,13 +250,16 @@ export function ConsoleShell({
                       : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
                   )}
                 >
-                  <Icon className="size-4.5" strokeWidth={1.9} />
-                  {item.label}
+                  <Icon className="size-4.5 shrink-0" strokeWidth={1.9} />
+                  <span data-rail-hide className="min-w-0 flex-1 truncate">
+                    {item.label}
+                  </span>
                   {item.children && (
                     <ChevronDown
                       aria-hidden
+                      data-rail-hide
                       className={cn(
-                        "ml-auto size-3.5 transition-transform duration-200",
+                        "size-3.5 shrink-0 transition-transform duration-200",
                         sectionOpen ? "rotate-180" : "rotate-0",
                       )}
                       strokeWidth={2}
@@ -199,7 +268,10 @@ export function ConsoleShell({
                 </Link>
 
                 {item.children && sectionOpen && (
-                  <ul className="mt-0.5 mb-1 flex flex-col gap-0.5 border-l border-app-line-soft pl-3 ml-5">
+                  <ul
+                    data-rail-hide
+                    className="mt-0.5 mb-1 ml-5 flex flex-col gap-0.5 border-l border-app-line-soft pl-3"
+                  >
                     {item.children.map((child) => {
                       const childActive =
                         pathname === child.href || pathname.startsWith(`${child.href}/`);
@@ -230,39 +302,98 @@ export function ConsoleShell({
         <form action={signOutAction} className="border-t border-app-line-soft pt-3">
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            data-rail-compact
+            title="Sign out"
+            className="press flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
-            <LogOut className="size-4.5" strokeWidth={1.9} />
-            Sign out
+            <LogOut className="size-4.5 shrink-0" strokeWidth={1.9} />
+            <span data-rail-hide>Sign out</span>
           </button>
         </form>
       </aside>
 
-      {open && (
+      {/* Backdrop. A real button so Escape is not the only way out for someone
+          who opened the drawer by accident. */}
+      {drawerOpen && (
         <button
           type="button"
           aria-label="Close navigation"
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-40 bg-[var(--scrim)] lg:hidden"
+          className="fixed inset-0 z-40 bg-(--scrim) backdrop-blur-[2px] lg:hidden"
         />
       )}
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-app-line-soft bg-background/80 px-4 py-3 backdrop-blur-xl lg:hidden">
+        <header className="z-30 flex min-h-14 items-center gap-3 px-4 py-2 max-lg:sticky max-lg:top-0 max-lg:border-b max-lg:border-app-line-soft max-lg:bg-background/85 max-lg:backdrop-blur lg:px-2 print:hidden">
           <button
             type="button"
             onClick={() => setOpen(true)}
             aria-label="Open navigation"
             aria-controls="console-nav"
             aria-expanded={open}
-            className="press flex size-9 items-center justify-center rounded-lg border border-app-line text-muted-foreground"
+            className="press flex size-9 shrink-0 items-center justify-center rounded-lg border border-app-line bg-card text-foreground shadow-xs lg:hidden"
           >
             <Menu className="size-4.5" strokeWidth={1.9} />
           </button>
-          <span className="font-display text-sm font-semibold tracking-tight">{title}</span>
+
+          {/* The desktop counterpart to the hamburger. It lives in the topbar
+              rather than on the sidebar so it stays in one place whether the
+              sidebar is a full column or a narrow rail — a control that moves
+              when you use it is one you have to hunt for twice. */}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            className="press hidden size-9 shrink-0 items-center justify-center rounded-lg border border-app-line bg-card text-muted-foreground shadow-xs transition-colors hover:text-foreground lg:flex"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-4.5" strokeWidth={1.9} />
+            ) : (
+              <PanelLeftClose className="size-4.5" strokeWidth={1.9} />
+            )}
+          </button>
+
+          {/* Desktop-only. On a phone the reader arrived here by tapping one
+              item in a drawer they just closed, and the trail tells them
+              nothing the H1 underneath does not. */}
+          <Breadcrumbs
+            brand={title}
+            rootHref={rootHref}
+            index={navIndex}
+            className="hidden min-w-0 shrink lg:flex"
+          />
+
+          {/* `mr-auto` rather than `flex-1`: the clock takes the slack the
+              breadcrumbs leave below lg without becoming the thing that gives
+              way when the topbar runs out of room. */}
+          <Clock className="mr-auto shrink-0 lg:mr-0" />
+
+          <CommandPalette index={navIndex} />
+
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              title={accountEmail ?? undefined}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary"
+            >
+              {initials}
+            </span>
+            <span className="hidden min-w-0 flex-col leading-tight sm:flex">
+              <span className="truncate text-xs font-semibold">
+                {accountName ?? accountEmail ?? "Signed in"}
+              </span>
+              {accountRole && (
+                <span className="truncate text-[0.6875rem] text-muted-foreground capitalize">
+                  {accountRole}
+                </span>
+              )}
+            </span>
+          </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 pt-4 pb-10 lg:px-2 lg:pt-3">
+          <div className="mx-auto w-full max-w-6xl">{children}</div>
+        </main>
       </div>
     </div>
   );

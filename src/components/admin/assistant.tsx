@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowUp, Loader2, Sparkles } from "lucide-react";
+import { ArrowUp, Loader2, SquarePen } from "lucide-react";
+import { DropMark } from "@/components/brand";
 import { askAssistant } from "@/lib/ai/actions";
 import type { ChatMessage } from "@/lib/ai/chat";
 import { cn } from "@/lib/utils";
@@ -47,8 +48,8 @@ export function Assistant({ configured }: { configured: boolean }) {
   if (!configured) {
     return (
       <div className="rounded-2xl border border-app-line-soft bg-card p-8 text-center shadow-card">
-        <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-          <Sparkles className="size-5.5" strokeWidth={1.9} />
+        <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted opacity-50">
+          <DropMark className="size-6" />
         </span>
         <p className="mt-5 font-display text-lg font-semibold tracking-tight">
           The assistant is not switched on.
@@ -65,11 +66,40 @@ export function Assistant({ configured }: { configured: boolean }) {
 
   return (
     <div className="flex min-h-[60vh] flex-col rounded-2xl border border-app-line-soft bg-card shadow-card">
+      {/* The mark rather than a generic sparkle: this assistant answers from
+          *these* records, and the brand is what says so. "New chat" sits with
+          it because starting over is the only control that applies to the
+          whole transcript rather than to one message in it. */}
+      <div className="flex items-center gap-2.5 border-b border-app-line-soft px-5 py-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/12">
+          <DropMark className="size-4.5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold leading-tight">BlooDoc Assistant</span>
+          <span className="block text-xs text-muted-foreground">
+            Reads your donors, camps and rosters.
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setMessages([]);
+            setError(null);
+            setValue("");
+          }}
+          disabled={messages.length === 0 && !error}
+          className="press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-app-line px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+        >
+          <SquarePen className="size-3.5" strokeWidth={1.9} aria-hidden />
+          New chat
+        </button>
+      </div>
+
       <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-              <Sparkles className="size-5.5" strokeWidth={1.9} />
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12">
+              <DropMark className="size-6" />
             </span>
             <p className="mt-5 font-display text-lg font-semibold tracking-tight">
               Ask about your own records.

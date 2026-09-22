@@ -9,6 +9,7 @@ import {
   pageFromParams,
   rangeFor,
 } from "@/components/shell/pagination";
+import { SearchBox } from "@/components/shell/search-box";
 import { formatDateTime } from "@/lib/format";
 import type { AuditLog } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
@@ -43,21 +44,26 @@ function show(v: unknown): string {
 export default async function AuditPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; table?: string }>;
+  searchParams: Promise<{ page?: string; table?: string; q?: string }>;
 }) {
-  const { page: pageParam, table } = await searchParams;
+  const { page: pageParam, table, q } = await searchParams;
   const page = pageFromParams(pageParam);
   const active = TABLES.includes(table as (typeof TABLES)[number]) ? table : undefined;
 
   const supabase = await createClient();
   const [from, to] = rangeFor(page);
-  let q = supabase
+  let query = supabase
     .from("audit_log")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
-  if (active) q = q.eq("table_name", active);
-  const { data, count } = await q;
+  if (active) query = query.eq("table_name", active);
+  if (q?.trim()) {
+    const term = `%${q.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    query = query.or(`actor_email.ilike.${term},record_id.ilike.${term}`);
+  }
+  const { data, count } = await query;
+
 
   const rows = (data ?? []) as AuditLog[];
   const total = count ?? 0;
@@ -68,6 +74,15 @@ export default async function AuditPage({
         title="Audit"
         subtitle="Every change to a donor, camp, registration, partner or certificate — written by the database, not by the app."
       />
+
+      <div className="mb-4">
+        <SearchBox
+          placeholder="Who changed it, or a record id"
+          defaultValue={q}
+          keep={{ table: active }}
+          clearHref="/admin/audit"
+        />
+      </div>
 
       <div className="mb-5 flex flex-wrap gap-2">
         <Link
@@ -176,7 +191,7 @@ export default async function AuditPage({
             total={total}
             pageSize={DEFAULT_PAGE_SIZE}
             basePath="/admin/audit"
-            params={{ table: active }}
+            params={{ table: active, q }}
             unit="change"
           />
         </Panel>
