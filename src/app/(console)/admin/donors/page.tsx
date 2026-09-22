@@ -3,6 +3,8 @@ import { listDonors } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
 import { ViewAsButton } from "@/components/admin/view-as-button";
+import { DeleteRow } from "@/components/shell/delete-row";
+import { isAdmin } from "@/lib/records/queries";
 import {
   Pagination,
   DEFAULT_PAGE_SIZE,
@@ -19,7 +21,12 @@ export default async function DonorsPage({
 }) {
   const { q, page: pageParam } = await searchParams;
   const page = pageFromParams(pageParam);
-  const { rows: donors, total } = await listDonors(q, page, DEFAULT_PAGE_SIZE);
+  // Deleting a donor is never delegated — the setting on the Roles page only
+  // reaches registrations. This is a person's whole record.
+  const [{ rows: donors, total }, canDelete] = await Promise.all([
+    listDonors(q, page, DEFAULT_PAGE_SIZE),
+    isAdmin(),
+  ]);
 
   return (
     <>
@@ -95,13 +102,34 @@ export default async function DonorsPage({
                     <td className="px-5 py-3 text-xs text-muted-foreground">
                       {formatCampDateShort(d.created_at)}
                     </td>
-                    <td className="px-5 py-3 text-right">
-                      {/* Only for a donor who actually has an account. One
-                          entered from a paper slip has no profile to view as,
-                          and a disabled button on most rows would be noise. */}
-                      {d.profile_id && (
-                        <ViewAsButton profileId={d.profile_id} label={d.full_name} />
-                      )}
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Only for a donor who actually has an account. One
+                            entered from a paper slip has no profile to view as,
+                            and a disabled button on most rows would be noise. */}
+                        {d.profile_id && (
+                          <ViewAsButton profileId={d.profile_id} label={d.full_name} />
+                        )}
+                        {canDelete && (
+                          <DeleteRow
+                            table="donors"
+                            id={d.id}
+                            name={d.full_name}
+                            kind="donor"
+                            consequences={[
+                              "every camp registration in their name, and the screening readings with them",
+                              "any certificate they have been issued, and its code at /verify",
+                            ]}
+                            instead={
+                              <>
+                                Their account, if they have one, is not removed by this
+                                — it stays on the Users page with no donor record
+                                attached.
+                              </>
+                            }
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -9,6 +9,8 @@ import {
   pageFromParams,
 } from "@/components/shell/pagination";
 import { OutcomeControl } from "@/components/partner/outcome-control";
+import { DeleteRow } from "@/components/shell/delete-row";
+import { canDeleteRegistrations } from "@/lib/records/queries";
 import { requirePartner } from "@/lib/auth/dal";
 import { getPartnerCamps, getPartnerRosterPage } from "@/lib/partners/queries";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
@@ -23,10 +25,15 @@ export default async function PartnerRoster({
 }) {
   const { camp: campId, page: pageParam, q } = await searchParams;
   const page = pageFromParams(pageParam);
-  const [{ memberships }, camps, { rows, total }] = await Promise.all([
+  const [{ memberships }, camps, { rows, total }, canDelete] = await Promise.all([
     requirePartner(),
     getPartnerCamps(),
     getPartnerRosterPage(campId, page, DEFAULT_PAGE_SIZE, q),
+    // Off unless an administrator has delegated it, and even then only a blood
+    // bank member gets it — an organisation brings the donors, it does not
+    // remove them. The policy in 0017 is what enforces that; this only decides
+    // whether to draw the button.
+    canDeleteRegistrations(),
   ]);
 
   // Recording is the blood bank's right, and it is per camp. With a camp in
@@ -94,9 +101,9 @@ export default async function PartnerRoster({
             <table className="w-full min-w-[46rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-app-line-soft">
-                  {["Donor", "Group", "History", "Camp", "Certificate", "Status"].map((h) => (
+                  {["Donor", "Group", "History", "Camp", "Certificate", "Status", ""].map((h, i) => (
                     <th
-                      key={h}
+                      key={h || i}
                       className="px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
                     >
                       {h}
@@ -162,6 +169,19 @@ export default async function PartnerRoster({
                         reason={r.deferral_reason}
                         canRecord={canRecord}
                       />
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {canDelete && (
+                        <DeleteRow
+                          table="registrations"
+                          id={r.id}
+                          // Nullable: an orphaned registration whose donor row
+                          // is gone is exactly the one worth being able to remove.
+                          name={r.donor?.full_name ?? "this registration"}
+                          kind="registration"
+                          consequences={["the screening readings taken on the day"]}
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -56,7 +56,7 @@ export function DeleteCamp({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/12 text-destructive">

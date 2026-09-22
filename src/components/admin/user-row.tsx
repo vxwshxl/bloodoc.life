@@ -152,7 +152,7 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
       </tr>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               {user.full_name ?? donor?.full_name ?? user.email}

@@ -10,6 +10,8 @@ import {
   UserRound,
 } from "lucide-react";
 import { getRoleCounts } from "@/lib/admin/queries";
+import { getDeleteScope } from "@/lib/records/queries";
+import { DeleteScopeControl } from "@/components/admin/delete-scope";
 import { PageHeader, Panel } from "@/components/shell/page-header";
 
 export const metadata: Metadata = { title: "Roles" };
@@ -77,7 +79,7 @@ function Yes({ on }: { on: boolean }) {
 }
 
 export default async function RolesPage() {
-  const c = await getRoleCounts();
+  const [c, deleteScope] = await Promise.all([getRoleCounts(), getDeleteScope()]);
 
   return (
     <>
@@ -229,10 +231,25 @@ export default async function RolesPage() {
           )}
         </Panel>
 
+        {/* The one control on the page, and it earns being one: unlike every
+            rule above, this is a stored value the policies read rather than a
+            policy itself. Placed beside the explanation of why nothing else is
+            adjustable, so the exception is stated where the rule is. */}
         <Panel className="p-5">
-          <h2 className="text-sm font-semibold">Why this page is read-only</h2>
+          <h2 className="text-sm font-semibold">Who may delete records</h2>
+          <p className="mt-2 mb-4 text-sm leading-relaxed text-muted-foreground">
+            Deleting is the one thing on this page that can be moved, because it
+            is the one thing stored as a setting. Every delete is recorded in
+            the audit log with the name of whoever did it, whichever option is
+            chosen here.
+          </p>
+          <DeleteScopeControl scope={deleteScope} />
+        </Panel>
+
+        <Panel className="p-5">
+          <h2 className="text-sm font-semibold">Why the rest is read-only</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            None of the rules above are settings. Each one is a row-level
+            None of the rules in the table above are settings. Each one is a row-level
             security policy compiled into the database, so it holds whatever the
             application believes — a partner session physically cannot read a
             donor from a camp they are not attached to, even through a

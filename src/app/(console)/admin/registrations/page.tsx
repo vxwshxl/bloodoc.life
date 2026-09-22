@@ -10,6 +10,8 @@ import {
 } from "@/components/shell/pagination";
 import { StatusControl } from "@/components/admin/registration-row";
 import { VitalsCell } from "@/components/admin/vitals-cell";
+import { DeleteRow } from "@/components/shell/delete-row";
+import { canDeleteRegistrations } from "@/lib/records/queries";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Registrations" };
@@ -21,9 +23,10 @@ export default async function RegistrationsPage({
 }) {
   const { camp: campId, page: pageParam, q } = await searchParams;
   const page = pageFromParams(pageParam);
-  const [camps, { rows, total }] = await Promise.all([
+  const [camps, { rows, total }, canDelete] = await Promise.all([
     listCamps(),
     listRegistrations(campId, page, DEFAULT_PAGE_SIZE, q),
+    canDeleteRegistrations(),
   ]);
   const active = camps.find((c) => c.id === campId) ?? null;
 
@@ -88,9 +91,9 @@ export default async function RegistrationsPage({
             <table className="w-full min-w-[46rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-app-line-soft">
-                  {["Donor", "Group", "History", "Screening", "Camp", "Status"].map((h) => (
+                  {["Donor", "Group", "History", "Screening", "Camp", "Status", ""].map((h, i) => (
                     <th
-                      key={h}
+                      key={h || i}
                       className="px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
                     >
                       {h}
@@ -133,6 +136,29 @@ export default async function RegistrationsPage({
                     </td>
                     <td className="px-5 py-3">
                       <StatusControl id={r.id} status={r.status} reason={r.deferral_reason} />
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {canDelete && (
+                        <DeleteRow
+                          table="registrations"
+                          id={r.id}
+                          name={`${r.donor.full_name} at ${r.camp.title}`}
+                          kind="registration"
+                          consequences={[
+                            "the screening readings taken on the day",
+                            ...(r.status === "donated"
+                              ? ["the certificate for this donation, and its code at /verify"]
+                              : []),
+                          ]}
+                          instead={
+                            <>
+                              If they simply did not come, set the status to{" "}
+                              <span className="font-medium text-foreground">cancelled</span>{" "}
+                              instead — that keeps the record and the count.
+                            </>
+                          }
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}

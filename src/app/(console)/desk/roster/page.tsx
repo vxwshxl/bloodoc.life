@@ -11,6 +11,8 @@ import {
 } from "@/components/shell/pagination";
 import { StatusControl } from "@/components/admin/registration-row";
 import { VitalsCell } from "@/components/admin/vitals-cell";
+import { DeleteRow } from "@/components/shell/delete-row";
+import { canDeleteRegistrations } from "@/lib/records/queries";
 import { formatCampDateShort } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Roster" };
@@ -23,10 +25,13 @@ export default async function DeskRoster({
   const { camp: campId, page: pageParam, q } = await searchParams;
   const page = pageFromParams(pageParam);
 
-  const [, camps, { rows, total }] = await Promise.all([
+  const [, camps, { rows, total }, canDelete] = await Promise.all([
     requireVerifier(),
     listCamps(),
     listRegistrations(campId, page, DEFAULT_PAGE_SIZE, q),
+    // Whether the desk may remove a row at all. `admin_only` is the default,
+    // so this is false until an administrator delegates it on the Roles page.
+    canDeleteRegistrations(),
   ]);
 
   const active = camps.find((c) => c.id === campId) ?? null;
@@ -75,9 +80,9 @@ export default async function DeskRoster({
             <table className="w-full min-w-[42rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-app-line-soft">
-                  {["Donor", "Group", "History", "Screening", "Status"].map((h) => (
+                  {["Donor", "Group", "History", "Screening", "Status", ""].map((h, i) => (
                     <th
-                      key={h}
+                      key={h || i}
                       className="px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
                     >
                       {h}
@@ -109,6 +114,24 @@ export default async function DeskRoster({
                     </td>
                     <td className="px-5 py-3">
                       <StatusControl id={r.id} status={r.status} reason={r.deferral_reason} />
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {canDelete && (
+                        <DeleteRow
+                          table="registrations"
+                          id={r.id}
+                          name={r.donor.full_name}
+                          kind="registration"
+                          consequences={["the screening readings taken today"]}
+                          instead={
+                            <>
+                              Somebody who did not turn up should be{" "}
+                              <span className="font-medium text-foreground">cancelled</span>,
+                              not deleted — the roster is the record of who was expected.
+                            </>
+                          }
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}

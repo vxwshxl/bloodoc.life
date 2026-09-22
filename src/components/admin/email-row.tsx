@@ -113,7 +113,12 @@ export function EmailRow({ row }: { row: EmailLog }) {
       </li>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl">
+        {/* `sm:` prefixed, and wide. A transactional email body is laid out on a
+            600px table, so anything narrower than that plus the dialog's own
+            padding scrolls sideways — which is exactly what a 384px dialog was
+            doing. `w-[56rem]` alongside the max so it actually takes the room
+            rather than shrinking to its content. */}
+        <DialogContent className="w-[56rem] sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="text-base">{row.subject}</DialogTitle>
             <DialogDescription className="text-xs">
@@ -125,7 +130,7 @@ export function EmailRow({ row }: { row: EmailLog }) {
             title={`Preview of "${row.subject}"`}
             srcDoc={row.html ?? ""}
             sandbox=""
-            className="h-[60vh] w-full rounded-lg border border-app-line-soft bg-white"
+            className="h-[70vh] w-full rounded-lg border border-app-line-soft bg-white"
           />
         </DialogContent>
       </Dialog>

@@ -153,6 +153,20 @@ export type EmailTemplate = {
   updated_by: string | null;
 };
 
+/**
+ * A console-wide switch an administrator can change.
+ *
+ * Key/value because a column per setting needs a migration for each new one.
+ * The valid keys and their allowed values are a check constraint in 0017, so
+ * an unknown key cannot be written even by a service-role client.
+ */
+export type AppSetting = {
+  key: string;
+  value: string;
+  updated_at: string;
+  updated_by: string | null;
+};
+
 export type AuditAction = "insert" | "update" | "delete";
 
 /**
@@ -275,6 +289,7 @@ export type Database = {
       email_log: Table<EmailLog>;
       audit_log: Table<AuditLog>;
       email_templates: Table<EmailTemplate>;
+      app_settings: Table<AppSetting>;
       partners: Table<Partner>;
       partner_members: Table<PartnerMember>;
       camp_partners: Table<CampPartner>;

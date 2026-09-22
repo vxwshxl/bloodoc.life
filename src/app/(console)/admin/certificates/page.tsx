@@ -13,6 +13,8 @@ import { CertificateActions } from "@/components/partner/certificate-actions";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 import type { CertificateStatus } from "@/lib/db/types";
 import { StatusPill } from "@/components/ui/status-pill";
+import { DeleteRow } from "@/components/shell/delete-row";
+import { isAdmin } from "@/lib/records/queries";
 
 export const metadata: Metadata = { title: "Certificates" };
 
@@ -66,6 +68,8 @@ export default async function AdminCertificates({
   const { data, count } = await query;
   const rows = (data as unknown as Row[] | null) ?? [];
   const total = count ?? 0;
+  // Never delegated: the setting on the Roles page reaches registrations only.
+  const canDelete = await isAdmin();
 
   return (
     <>
@@ -161,9 +165,28 @@ export default async function AdminCertificates({
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      {/* An admin can approve anywhere; the policy in 0008 lets
-                          `is_admin()` through every certificate branch. */}
-                      <CertificateActions certificateId={c.id} status={c.status} canApprove />
+                      <div className="flex items-center justify-end gap-1">
+                        {/* An admin can approve anywhere; the policy in 0008 lets
+                            `is_admin()` through every certificate branch. */}
+                        <CertificateActions certificateId={c.id} status={c.status} canApprove />
+                        {canDelete && (
+                          <DeleteRow
+                            table="certificates"
+                            id={c.id}
+                            name={c.code}
+                            kind="certificate"
+                            instead={
+                              <>
+                                A certificate issued in error should be{" "}
+                                <span className="font-medium text-foreground">revoked</span>,
+                                not deleted — a revoked code still resolves at /verify and
+                                says so, while a deleted one just stops existing for
+                                whoever is holding the printout.
+                              </>
+                            }
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

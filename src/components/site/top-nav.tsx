@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, LogIn } from "lucide-react";
 import { SliderNav, type SliderNavItem } from "@/components/ui/slider-nav";
 import { Wordmark } from "@/components/brand";
 import { cn } from "@/lib/utils";
@@ -172,11 +172,17 @@ export function TopNav({
                 <span className="max-md:sr-only">Dashboard</span>
               </Link>
             ) : (
+              // Was `max-md:hidden`, which meant a phone had no way in at all —
+              // the only route to /signin was typing it. It now collapses to an
+              // icon exactly as Dashboard does, and sits in the same top row as
+              // the wordmark rather than in the nav row below it.
               <Link
                 href="/signin"
-                className="press inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-md:hidden"
+                aria-label="Sign in"
+                className="press inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-md:w-9 max-md:justify-center max-md:px-0"
               >
-                Sign in
+                <LogIn className="size-4 md:hidden" aria-hidden />
+                <span className="max-md:sr-only">Sign in</span>
               </Link>
             )}
           </div>

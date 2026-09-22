@@ -186,7 +186,7 @@ export function TemplateEditor({
       </form>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-base">{previewSubject}</DialogTitle>
             <DialogDescription className="text-xs">
