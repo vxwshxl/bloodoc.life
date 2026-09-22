@@ -1,5 +1,16 @@
 import "server-only";
 
+import type { TemplateCopy } from "@/lib/email/copy";
+
+/**
+ * Every template takes an optional `copy` override for its subject, heading and
+ * lead paragraph. Blank or absent falls back to the wording written here, so a
+ * half-filled row in `email_templates` still sends a complete email.
+ *
+ * The functions stay pure — no database, no network — which is what lets the
+ * console preview one without sending it.
+ */
+
 import {
   renderEmail,
   heading,
@@ -14,17 +25,20 @@ import { SITE_URL } from "@/lib/site-url";
 const site = () => SITE_URL;
 
 /** The six-digit sign-in code. */
-export function signInCodeEmail(code: string, minutes: number) {
+export function signInCodeEmail(code: string, minutes: number, copy?: TemplateCopy) {
   return {
-    subject: `${code} is your BlooDoc sign-in code`,
+    subject: copy?.subject || `${code} is your BlooDoc sign-in code`,
     html: renderEmail({
       // The code goes in the preheader as well as the body: on a phone the
       // notification often shows enough of it to be read without opening
       // anything, which is the fastest this flow can possibly be.
       preheader: `Your sign-in code is ${code}. It expires in ${minutes} minutes.`,
       blocks: [
-        heading("Your sign-in code"),
-        paragraph("Enter this code on the BlooDoc sign-in page to continue. It expires in " + minutes + " minutes."),
+        heading(copy?.heading || "Your sign-in code"),
+        paragraph(
+          copy?.lead ||
+            `Enter this code on the BlooDoc sign-in page to continue. It expires in ${minutes} minutes.`,
+        ),
         codeBlock(code),
         notice(
           "If you did not ask to sign in, you can ignore this email. The code is useless without your inbox, and nobody can sign in with it on your behalf.",
@@ -44,15 +58,16 @@ export function registrationConfirmedEmail(input: {
   bloodGroup: string;
   collaboration?: string | null;
   partner?: string | null;
-}) {
+}, copy?: TemplateCopy) {
   return {
-    subject: `You're registered for ${input.campTitle}`,
+    subject: copy?.subject || `You're registered for ${input.campTitle}`,
     html: renderEmail({
       preheader: `${input.when} · ${input.venue}`,
       blocks: [
-        heading(`Thank you, ${input.donorName}.`),
+        heading(copy?.heading || `Thank you, ${input.donorName}.`),
         paragraph(
-          "You are on the donor roster. Bring a photo ID on the day. It is the only thing you need to carry.",
+          copy?.lead ||
+            "You are on the donor roster. Bring a photo ID on the day. It is the only thing you need to carry.",
         ),
         infoCard([
           { label: "Camp", value: input.campTitle, strong: true },
@@ -84,14 +99,14 @@ export function campReminderEmail(input: {
   campTitle: string;
   when: string;
   venue: string;
-}) {
+}, copy?: TemplateCopy) {
   return {
-    subject: `Tomorrow: ${input.campTitle}`,
+    subject: copy?.subject || `Tomorrow: ${input.campTitle}`,
     html: renderEmail({
       preheader: `${input.when} · ${input.venue}`,
       blocks: [
-        heading(`See you tomorrow, ${input.donorName}.`),
-        paragraph("A short reminder about the camp you registered for."),
+        heading(copy?.heading || `See you tomorrow, ${input.donorName}.`),
+        paragraph(copy?.lead || "A short reminder about the camp you registered for."),
         infoCard([
           { label: "When", value: input.when, strong: true },
           { label: "Where", value: input.venue },
@@ -101,6 +116,35 @@ export function campReminderEmail(input: {
           { muted: true },
         ),
       ],
+    }),
+  };
+}
+
+/**
+ * Confirming a change to somebody's own donor record.
+ *
+ * A separate code from the sign-in one, with its own purpose, so a code
+ * obtained for one cannot be replayed against the other — someone reading a
+ * sign-in code over a shoulder must not be able to use it to rewrite the blood
+ * group the desk will screen against.
+ */
+export function profileChangeCodeEmail(code: string, minutes: number, copy?: TemplateCopy) {
+  return {
+    subject: copy?.subject || `${code} confirms your BlooDoc profile change`,
+    html: renderEmail({
+      preheader: `Your confirmation code is ${code}. It expires in ${minutes} minutes.`,
+      blocks: [
+        heading(copy?.heading || "Confirm your changes"),
+        paragraph(
+          copy?.lead ||
+            `Somebody — we hope you — is updating the donor record on this address. Enter this code to save the changes. It expires in ${minutes} minutes.`,
+        ),
+        codeBlock(code),
+        notice(
+          "If this was not you, ignore this email and nothing changes. Your record is only rewritten once this code is entered.",
+        ),
+      ],
+      footerNote: "This code was requested from your profile page at bloodoc.life.",
     }),
   };
 }

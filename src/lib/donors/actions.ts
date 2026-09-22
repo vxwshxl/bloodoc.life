@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { donorRegistrationSchema } from "@/lib/validations/donor";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { registrationConfirmedEmail } from "@/lib/email/templates";
+import { copyFor } from "@/lib/email/copy";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 
 export type RegisterState = {
@@ -156,15 +157,24 @@ export async function registerDonor(
   if (regError) return { error: "Could not complete your registration. Try again in a moment." };
 
   if (emailConfigured()) {
+    const when = `${formatCampDate(camp.starts_at)}, ${formatTimeRange(camp.starts_at, camp.ends_at)}`;
+    const venue = [camp.venue, camp.city].filter(Boolean).join(", ");
+    const copy = await copyFor("registration_confirmed", {
+      name: v.fullName.split(" ")[0],
+      camp: camp.title,
+      when,
+      venue,
+      group: v.bloodGroup === "unknown" ? "To be tested" : v.bloodGroup,
+    });
     const { subject, html } = registrationConfirmedEmail({
       donorName: v.fullName.split(" ")[0],
       campTitle: camp.title,
-      when: `${formatCampDate(camp.starts_at)}, ${formatTimeRange(camp.starts_at, camp.ends_at)}`,
-      venue: [camp.venue, camp.city].filter(Boolean).join(", "),
+      when,
+      venue,
       bloodGroup: v.bloodGroup === "unknown" ? "To be tested" : v.bloodGroup,
       collaboration: camp.collaboration,
       partner: [camp.partner_name, camp.partner_note].filter(Boolean).join(", ") || null,
-    });
+    }, copy);
     // Best-effort: the registration is already recorded, and a mail outage is
     // not a reason to tell someone their slot did not go through.
     await sendEmailNow({ to: v.email, toName: v.fullName, subject, html, template: "registration-confirmed" });

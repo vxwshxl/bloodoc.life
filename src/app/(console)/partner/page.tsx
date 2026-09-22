@@ -2,36 +2,45 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, Droplet } from "lucide-react";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
-import { requirePartner } from "@/lib/auth/dal";
-import { getPartnerCamps, getPartnerSummary } from "@/lib/partners/queries";
+import { BreakdownBars, StatTile, TrendChart } from "@/components/admin/charts";
+import { getEffectiveProfile } from "@/lib/auth/impersonation";
+import {
+  getPartnerCamps,
+  getPartnerDashboard,
+  getPartnerSummary,
+} from "@/lib/partners/queries";
 import { formatCampDateShort } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Overview" };
 
-/** One number and what it counts. Deliberately not a shared component yet. */
-function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
-  return (
-    <div className="px-5 py-4">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
-      <p
-        className="font-display mt-1 text-3xl font-bold tracking-tight"
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        {value}
-      </p>
-      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
+/**
+ * Reserved status colours, and only where the status genuinely carries a
+ * state: a donation is the good outcome, a deferral is the one somebody has to
+ * act on. The neutral middle stays neutral rather than being given a hue it
+ * does not mean. Every bar is labelled, so none of this is colour alone.
+ */
+const STATUS_TONE: Record<string, string> = {
+  Donated: "var(--primary)",
+  Deferred: "var(--destructive)",
+  Cancelled: "color-mix(in oklch, var(--muted-foreground) 40%, transparent)",
+  Screened: "color-mix(in oklch, var(--primary) 55%, transparent)",
+  Registered: "color-mix(in oklch, var(--primary) 30%, transparent)",
+};
 
 export default async function PartnerOverview() {
-  const { memberships } = await requirePartner();
-  const [camps, summary] = await Promise.all([getPartnerCamps(), getPartnerSummary()]);
+  const [effective, camps, summary, dash] = await Promise.all([
+    getEffectiveProfile(),
+    getPartnerCamps(),
+    getPartnerSummary(),
+    getPartnerDashboard(),
+  ]);
+  const memberships = effective?.memberships ?? [];
 
   // The capacity this account acts in. A body that is the blood bank at any of
-  // its camps gets the clinical language and the desk controls; one that never
-  // is gets the mobilisation view. Per-camp truth still lives in RLS.
+  // its camps gets the clinical language; one that never is gets the
+  // mobilisation view. Per-camp truth still lives in RLS.
   const isBloodBank = memberships.some((m) => m.partner.kind === "blood_bank");
+  const inWindow = dash.trend.reduce((n, t) => n + t.value, 0);
 
   return (
     <>
@@ -66,17 +75,22 @@ export default async function PartnerOverview() {
       </div>
 
       <Panel className="mb-5 overflow-hidden">
-        <div className="grid grid-cols-2 divide-x divide-y divide-app-line-soft sm:grid-cols-3 lg:grid-cols-5">
-          <Stat label="On roster" value={summary.total} />
-          <Stat label="Registered" value={summary.registered} hint="not yet screened" />
-          <Stat label="Screened" value={summary.screened} />
-          <Stat label="Donated" value={summary.donated} hint="units collected" />
-          <Stat label="Deferred" value={summary.deferred} hint="turned away" />
+        <div className="grid grid-cols-2 divide-x divide-y divide-app-line-soft lg:grid-cols-4">
+          <StatTile label="On roster" value={summary.total} hint="across your camps" />
+          <StatTile label="Units collected" value={summary.donated} accent hint="all time" />
+          <StatTile label="First-timers" value={dash.firstTimers} hint="never given before" />
+          <StatTile
+            label="Certificates"
+            value={summary.certificatesApproved}
+            hint={
+              summary.certificatesPending > 0
+                ? `${summary.certificatesPending} awaiting approval`
+                : "all signed off"
+            }
+          />
         </div>
       </Panel>
 
-      {/* The one thing that needs doing, and only when it does. A zero here is
-          not worth a card telling somebody there is nothing to approve. */}
       {isBloodBank && summary.certificatesPending > 0 && (
         <Panel className="mb-5">
           <Link
@@ -100,38 +114,74 @@ export default async function PartnerOverview() {
         </Panel>
       )}
 
-      <h2 className="mb-3 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-        Camps
-      </h2>
-
-      {camps.length === 0 ? (
-        <Panel>
-          <EmptyState
-            title="No camps yet"
-            body="When an administrator attaches your organisation to a camp, it appears here with its roster."
-          />
+      <div className="mb-5 grid gap-5 lg:grid-cols-3">
+        <Panel className="p-5 lg:col-span-2">
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h2 className="text-sm font-semibold">Registrations, last 30 days</h2>
+            <span className="text-xs text-muted-foreground">{inWindow} in the window</span>
+          </div>
+          <TrendChart data={dash.trend} label="registrations" />
         </Panel>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {camps.map((c) => (
-            <Panel key={c.id}>
-              <Link href={`/partner/registrations?camp=${c.id}`} className="block px-5 py-4">
-                <span className="flex items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{c.title}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {formatCampDateShort(c.starts_at)} · {c.venue}
+
+        <Panel className="p-5">
+          <h2 className="mb-4 text-sm font-semibold">Where they got to</h2>
+          <BreakdownBars
+            data={dash.byStatus.map((d) => ({
+              ...d,
+              color: STATUS_TONE[d.label] ?? "var(--primary)",
+            }))}
+          />
+          <p className="mt-4 border-t border-app-line-soft pt-3 text-xs text-muted-foreground">
+            {isBloodBank
+              ? "You record these at the desk on the day."
+              : "Recorded by the blood bank running the camp."}
+          </p>
+        </Panel>
+      </div>
+
+      <div className="mb-5 grid gap-5 lg:grid-cols-2">
+        <Panel className="p-5">
+          <h2 className="mb-4 text-sm font-semibold">Blood groups on your rosters</h2>
+          {dash.byGroup.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No groups recorded yet.
+            </p>
+          ) : (
+            <BreakdownBars data={dash.byGroup} />
+          )}
+        </Panel>
+
+        <Panel className="p-5">
+          <h2 className="mb-4 text-sm font-semibold">Camps</h2>
+          {camps.length === 0 ? (
+            <EmptyState
+              title="No camps yet"
+              body="When an administrator attaches your organisation to a camp, it appears here with its roster."
+            />
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {camps.slice(0, 6).map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/partner/registrations?camp=${c.id}`}
+                    className="flex items-center gap-3 rounded-xl border border-app-line-soft px-4 py-3 transition-colors hover:bg-muted"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{c.title}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {formatCampDateShort(c.starts_at)} · {c.venue}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide uppercase">
-                    {c.role === "blood_bank" ? "Blood bank" : "Organiser"}
-                  </span>
-                </span>
-              </Link>
-            </Panel>
-          ))}
-        </div>
-      )}
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[0.625rem] font-semibold uppercase">
+                      {c.role === "blood_bank" ? "Blood bank" : "Organiser"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
     </>
   );
 }

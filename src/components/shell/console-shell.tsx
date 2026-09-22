@@ -97,6 +97,7 @@ export function ConsoleShell({
    * way to work the whole of it.
    */
   assistantHref,
+  assistant,
   signOutAction,
   accountName,
   accountEmail,
@@ -109,6 +110,12 @@ export function ConsoleShell({
   navIndex: NavIndexItem[];
   title: string;
   assistantHref?: string;
+  /**
+   * The assistant, already rendered by the layout. Passed as a node rather
+   * than imported here because it needs server-side configuration state, and
+   * this file is a Client Component.
+   */
+  assistant?: React.ReactNode;
   signOutAction: () => Promise<void>;
   accountName?: string | null;
   accountEmail?: string | null;
@@ -119,6 +126,7 @@ export function ConsoleShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   // `true` on the server: the console is a desktop tool first, and guessing
   // "phone" would render every first paint as a drawer and then reflow.
   const isDesktop = useMediaQuery("(min-width: 64rem)", true);
@@ -201,16 +209,35 @@ export function ConsoleShell({
             <Wordmark subtle />
           </Link>
 
-          {assistantHref && (
-            <Link
-              href={assistantHref}
+          {/* A panel, not a page. The assistant is a way to work the console,
+              not another section of it — sending someone to a full-screen route
+              means leaving the roster they were reading in order to ask a
+              question about it. It falls back to the route when no panel was
+              passed, so the page still works on its own. */}
+          {assistant ? (
+            <button
+              type="button"
+              onClick={() => setAssistantOpen(true)}
               title="Assistant"
-              aria-label="Assistant"
+              aria-label="Open the assistant"
+              aria-expanded={assistantOpen}
               data-rail-hide
-              className="press ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 transition-colors hover:bg-violet-500/25 dark:text-violet-300"
+              className="press ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 transition-colors hover:bg-violet-500/25"
             >
               <Sparkles className="size-4.5" strokeWidth={1.9} />
-            </Link>
+            </button>
+          ) : (
+            assistantHref && (
+              <Link
+                href={assistantHref}
+                title="Assistant"
+                aria-label="Assistant"
+                data-rail-hide
+                className="press ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 transition-colors hover:bg-violet-500/25"
+              >
+                <Sparkles className="size-4.5" strokeWidth={1.9} />
+              </Link>
+            )
           )}
 
           <button
@@ -395,6 +422,55 @@ export function ConsoleShell({
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
       </div>
+
+      {/*
+        The assistant drawer.
+
+        A side panel on a laptop, where there is room to read a roster and ask
+        about it at the same time; full screen below that, because a 26rem
+        column on a 390px phone is the whole screen anyway and pretending
+        otherwise just adds a backdrop nobody can tap.
+
+        Always mounted, hidden with `translate-x-full`, so the transcript
+        survives closing the panel — unmounting it would throw away the
+        conversation every time somebody looked something up.
+      */}
+      {assistant && (
+        <>
+          {assistantOpen && (
+            <button
+              type="button"
+              aria-label="Close the assistant"
+              onClick={() => setAssistantOpen(false)}
+              className="fixed inset-0 z-50 hidden bg-(--scrim) backdrop-blur-[2px] lg:block"
+            />
+          )}
+          <aside
+            aria-label="Assistant"
+            inert={!assistantOpen}
+            className={cn(
+              "fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-app-line-soft bg-background shadow-card transition-transform duration-200 ease-drawer motion-reduce:transition-none lg:max-w-[28rem]",
+              assistantOpen ? "translate-x-0" : "translate-x-full",
+            )}
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-app-line-soft px-4 py-3">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Sparkles className="size-4 text-violet-600" strokeWidth={2} aria-hidden />
+                Assistant
+              </span>
+              <button
+                type="button"
+                onClick={() => setAssistantOpen(false)}
+                aria-label="Close the assistant"
+                className="press flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-4" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">{assistant}</div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }

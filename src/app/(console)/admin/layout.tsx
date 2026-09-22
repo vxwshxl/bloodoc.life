@@ -9,6 +9,8 @@ import type { NavIndexItem } from "@/components/shell/nav-index";
 import { requireAdmin } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
 import { ViewAsBanner } from "@/components/shell/view-as-banner";
+import { Assistant } from "@/components/admin/assistant";
+import { isAssistantConfigured } from "@/lib/ai/chat";
 
 export const metadata: Metadata = {
   title: { default: "Console", template: "%s · BlooDoc Console" },
@@ -34,7 +36,15 @@ const NAV: NavItem[] = [
     ],
   },
   { href: "/admin/certificates", label: "Certificates", icon: "certificates" },
-  { href: "/admin/email", label: "Email", icon: "email" },
+  {
+    href: "/admin/email",
+    label: "Email",
+    icon: "email",
+    children: [
+      { href: "/admin/email", label: "Sent log" },
+      { href: "/admin/templates", label: "Templates" },
+    ],
+  },
   { href: "/admin/audit", label: "Audit", icon: "audit" },
 ];
 
@@ -73,6 +83,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
       navIndex={NAV_INDEX}
       title="BlooDoc Console"
       assistantHref="/admin/assistant"
+      assistant={<Assistant configured={isAssistantConfigured()} />}
       signOutAction={signOut}
       accountName={profile.full_name}
       accountEmail={profile.email}

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/dal";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { campReminderEmail } from "@/lib/email/templates";
+import { copyFor } from "@/lib/email/copy";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string };
@@ -281,12 +282,22 @@ export async function sendCampReminders(
 
   let sent = 0;
   for (const d of recipients) {
-    const { subject, html } = campReminderEmail({
-      donorName: d.full_name.split(" ")[0],
-      campTitle: camp.title,
+    const name = d.full_name.split(" ")[0];
+    // Per recipient, because {{name}} differs for each of them. `getTemplateCopy`
+    // is cached for the render pass, so this is one read however long the
+    // roster is.
+    const copy = await copyFor("camp_reminder", {
+      name,
+      camp: camp.title,
       when,
       venue,
     });
+    const { subject, html } = campReminderEmail({
+      donorName: name,
+      campTitle: camp.title,
+      when,
+      venue,
+    }, copy);
     const res = await sendEmailNow({
       to: d.email,
       toName: d.full_name,
@@ -381,4 +392,74 @@ export async function deleteCamp(
   revalidatePath("/admin");
   revalidatePath("/");
   return { ok: true, message: `“${data.title}” deleted.` };
+}
+
+/**
+ * Save the copy overrides for one email template.
+ *
+ * An upsert on the key, and a blank field is stored as null rather than an
+ * empty string — `copyFor` treats null as "use the built-in wording", and a
+ * stored "" would otherwise send an email with no heading at all.
+ */
+export async function saveTemplateCopy(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+  const parsed = z
+    .object({
+      key: z.enum([
+        "signin_code",
+        "registration_confirmed",
+        "camp_reminder",
+        "profile_change",
+      ]),
+      subject: z.string().trim().max(200),
+      heading: z.string().trim().max(200),
+      lead: z.string().trim().max(1000),
+    })
+    .safeParse({
+      key: formData.get("key"),
+      subject: formData.get("subject") ?? "",
+      heading: formData.get("heading") ?? "",
+      lead: formData.get("lead") ?? "",
+    });
+  if (!parsed.success) return { error: "That copy is too long, or the template is unknown." };
+  const v = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("email_templates").upsert(
+    {
+      key: v.key,
+      subject: v.subject || null,
+      heading: v.heading || null,
+      lead: v.lead || null,
+      updated_at: new Date().toISOString(),
+      updated_by: admin.id,
+    },
+    { onConflict: "key" },
+  );
+  if (error) return { error: "Could not save that template." };
+
+  revalidatePath("/admin/templates");
+  return { ok: true, message: "Template saved." };
+}
+
+/** Restore a template to the wording written in the code. */
+export async function resetTemplateCopy(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const key = String(formData.get("key") ?? "");
+  if (!key) return { error: "Unknown template." };
+
+  const supabase = await createClient();
+  // Deleting the row *is* the reset: `copyFor` falls back to the built-in
+  // wording whenever there is nothing stored.
+  const { error } = await supabase.from("email_templates").delete().eq("key", key);
+  if (error) return { error: "Could not reset that template." };
+
+  revalidatePath("/admin/templates");
+  return { ok: true, message: "Reset to the built-in wording." };
 }

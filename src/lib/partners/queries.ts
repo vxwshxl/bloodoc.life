@@ -314,3 +314,67 @@ export async function getPartnerDetail(slug: string): Promise<PartnerDetail | nu
     stats: { camps: camps.length, registrations, donated, certificates },
   };
 }
+
+export type PartnerDashboard = {
+  trend: { label: string; value: number }[];
+  byStatus: { label: string; value: number }[];
+  byGroup: { label: string; value: number }[];
+  firstTimers: number;
+};
+
+/**
+ * The figures behind the partner overview's charts.
+ *
+ * Built from `getPartnerRoster()` rather than its own queries, so every number
+ * on the page is derived from exactly the rows the reader could click through
+ * to — and RLS has already decided which those are. A separate set of counting
+ * queries would be a second scoping rule to keep in step with the first.
+ */
+export async function getPartnerDashboard(days = 30): Promise<PartnerDashboard> {
+  const roster = await getPartnerRoster();
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  since.setHours(0, 0, 0, 0);
+
+  // Every day in the window, empty ones included: a line that skips quiet days
+  // compresses a slow fortnight and makes the camp-day spike look routine.
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(d.getDate() + i);
+    buckets.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const r of roster) {
+    const key = r.created_at.slice(0, 10);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+
+  const fmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
+  const trend = [...buckets.entries()].map(([iso, value]) => ({
+    label: fmt.format(new Date(`${iso}T00:00:00`)),
+    value,
+  }));
+
+  const STATUSES = ["registered", "screened", "donated", "deferred", "cancelled"] as const;
+  const byStatus = STATUSES.map((s) => ({
+    label: s[0].toUpperCase() + s.slice(1),
+    value: roster.filter((r) => r.status === s).length,
+  }));
+
+  const groups = new Map<string, number>();
+  for (const r of roster) {
+    const g = r.donor?.blood_group;
+    if (!g || g === "unknown") continue;
+    groups.set(g, (groups.get(g) ?? 0) + 1);
+  }
+  const byGroup = [...groups.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+
+  return {
+    trend,
+    byStatus,
+    byGroup,
+    firstTimers: roster.filter((r) => r.first_time).length,
+  };
+}

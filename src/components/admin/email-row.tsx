@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/format";
 import type { EmailLog } from "@/lib/db/types";
+import { cn } from "@/lib/utils";
 
 /**
  * One row in the email log, with a preview and a delete.
@@ -36,7 +37,33 @@ export function EmailRow({ row }: { row: EmailLog }) {
 
   return (
     <>
-      <li className="flex items-start gap-3 border-b border-app-line-soft px-5 py-3 last:border-b-0">
+      {/* The whole row opens the preview, not just the eye. A log is scanned,
+          and asking someone to hit a 28px target on the row they have already
+          found is a second act of aim for no reason. The delete stays its own
+          button and stops the click from bubbling, so the destructive control
+          is never the one you hit by accident.
+
+          A div with a click handler rather than a <button> wrapping the row:
+          the row contains its own delete button, and a button inside a button
+          is invalid markup that browsers resolve by dropping one of them. The
+          keyboard path is restored explicitly below. */}
+      <li
+        onClick={() => row.html && setOpen(true)}
+        onKeyDown={(e) => {
+          if (row.html && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        role={row.html ? "button" : undefined}
+        tabIndex={row.html ? 0 : undefined}
+        aria-label={row.html ? `Preview "${row.subject}"` : undefined}
+        className={cn(
+          "flex items-start gap-3 border-b border-app-line-soft px-5 py-3 last:border-b-0 outline-none",
+          row.html &&
+            "cursor-pointer transition-colors hover:bg-muted/60 focus-visible:bg-muted/60",
+        )}
+      >
         {row.ok ? (
           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" strokeWidth={2} aria-hidden />
         ) : (
@@ -68,7 +95,7 @@ export function EmailRow({ row }: { row: EmailLog }) {
               <Eye className="size-4" strokeWidth={1.9} aria-hidden />
             </button>
           )}
-          <form action={action}>
+          <form action={action} onClick={(e) => e.stopPropagation()}>
             <input type="hidden" name="id" value={row.id} />
             <button
               type="submit"

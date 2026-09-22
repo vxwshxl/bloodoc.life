@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { consumeOtp, issueOtp, normaliseEmail, OTP_TTL_MINUTES } from "@/lib/auth/otp";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { signInCodeEmail } from "@/lib/email/templates";
+import { copyFor } from "@/lib/email/copy";
 
 export type AuthState = {
   error?: string;
@@ -120,7 +121,11 @@ export async function requestSignInCode(
     return { error: "Could not send a code right now. Try again in a moment." };
   }
   if (issued.status === "issued") {
-    const { subject, html } = signInCodeEmail(issued.code, OTP_TTL_MINUTES);
+    const copy = await copyFor("signin_code", {
+      code: issued.code,
+      minutes: String(OTP_TTL_MINUTES),
+    });
+    const { subject, html } = signInCodeEmail(issued.code, OTP_TTL_MINUTES, copy);
     const sent = await sendEmailNow({ to: email, subject, html, template: "signin-code" });
     if (!sent.ok) return { error: "Could not send the email. Try again in a moment." };
   }

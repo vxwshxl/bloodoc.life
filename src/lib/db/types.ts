@@ -129,6 +129,22 @@ export type EmailLog = {
   created_at: string;
 };
 
+/**
+ * Admin-editable copy for one transactional email.
+ *
+ * Every field is nullable and blank means "use the wording in
+ * lib/email/templates.ts", so a half-filled row still sends a complete email.
+ * The layout is never editable — see 0012 for why.
+ */
+export type EmailTemplate = {
+  key: string;
+  subject: string | null;
+  heading: string | null;
+  lead: string | null;
+  updated_at: string;
+  updated_by: string | null;
+};
+
 export type AuditAction = "insert" | "update" | "delete";
 
 /**
@@ -250,6 +266,7 @@ export type Database = {
       }>;
       email_log: Table<EmailLog>;
       audit_log: Table<AuditLog>;
+      email_templates: Table<EmailTemplate>;
       partners: Table<Partner>;
       partner_members: Table<PartnerMember>;
       camp_partners: Table<CampPartner>;
