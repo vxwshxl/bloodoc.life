@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarDays,
   ChevronDown,
+  ClipboardList,
   Droplet,
   LayoutDashboard,
   LogOut,
@@ -76,6 +77,8 @@ const NAV_ICONS = {
   certificates: BadgeCheck,
   audit: ScrollText,
   users: UserRound,
+  applications: ClipboardList,
+  profile: IdCard,
 } as const;
 
 export type NavIcon = keyof typeof NAV_ICONS;

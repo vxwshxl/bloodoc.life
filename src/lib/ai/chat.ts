@@ -95,14 +95,23 @@ export type ChatResult =
  * tool result is a model that has misunderstood the question, and the honest
  * outcome is a short apology rather than a request that runs until it times out.
  */
-export async function chat(history: ChatMessage[], question: string): Promise<ChatResult> {
+export async function chat(
+  history: ChatMessage[],
+  question: string,
+  /**
+   * Appended to the system prompt when the asker is not an administrator.
+   * It sets tone and expectations only — what can actually be read is decided
+   * by RLS against the caller's session, not by anything written here.
+   */
+  brief?: string,
+): Promise<ChatResult> {
   const c = config();
   if (!c.configured) {
     return { ok: false, error: "The assistant is not configured (SARVAM_API_KEY)." };
   }
 
   const messages: WireMessage[] = [
-    { role: "system", content: SYSTEM },
+    { role: "system", content: brief ? `${SYSTEM}\n\n${brief}` : SYSTEM },
     // Only the last few turns. The whole point of this assistant is short
     // factual exchanges, and an unbounded history is how a cheap request
     // becomes an expensive one without anybody noticing.

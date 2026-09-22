@@ -13,13 +13,17 @@ import type { UserRole } from "@/lib/db/types";
  * Only components survive that crossing, as references. Plain data has to come
  * from a module that is neither, which is what this file is.
  *
- * Worth being straight about the limit: these are the two values the
- * `user_role` enum allows, and every RLS policy in the schema asks
- * `role = 'admin'`. Custom roles with their own permission sets would mean a
- * permissions table and a rewrite of every policy — a far larger change than
- * adding an entry here.
+ * Worth being straight about the limit: these are the values the `user_role`
+ * enum allows. A new role is a migration (the value) plus a second migration
+ * (its policies) plus an entry here — never just an entry here, because the
+ * database is what actually enforces any of it.
  */
 export const ROLES: { value: UserRole; label: string; hint: string }[] = [
   { value: "admin", label: "Administrator", hint: "Sees and changes everything" },
+  {
+    value: "verifier",
+    label: "Verifier",
+    hint: "Checks donors in and records outcomes at the desk",
+  },
   { value: "donor", label: "Donor", hint: "Sees only their own record" },
 ];

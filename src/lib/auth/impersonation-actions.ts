@@ -40,8 +40,10 @@ export async function startViewingAs(formData: FormData): Promise<void> {
     maxAge: 60 * 60,
   });
 
-  // Admins land in the console; everybody else in the panel that fits them.
-  redirect(target.role === "admin" ? "/admin" : "/me");
+  // Each role has its own console now, so the landing follows the target's.
+  redirect(
+    target.role === "admin" ? "/admin" : target.role === "verifier" ? "/desk" : "/dashboard",
+  );
 }
 
 export async function stopViewingAs(): Promise<void> {

@@ -8,7 +8,15 @@
  * that a migration and this file change in the same commit.
  */
 
-export type UserRole = "admin" | "donor";
+/**
+ * Account roles.
+ *
+ * `verifier` is the desk volunteer — reads the roster, records screening and
+ * donation outcomes, and nothing else. Scoped by capability rather than by
+ * camp (see 0014), unlike a partner, because they are the organisation's own
+ * staff rostered wherever they are needed on the day.
+ */
+export type UserRole = "admin" | "verifier" | "donor";
 export type DonorKind = "student" | "faculty" | "staff" | "other";
 export type Sex = "male" | "female" | "other";
 export type BloodGroup =

@@ -518,5 +518,10 @@ export async function setUserRole(
   if (!data) return { error: "That account could not be updated." };
 
   revalidatePath("/admin/users");
-  return { ok: true, message: `${data.email} is now ${v.role === "admin" ? "an administrator" : "a donor"}.` };
+  const labels: Record<string, string> = {
+    admin: "an administrator",
+    verifier: "a verifier",
+    donor: "a donor",
+  };
+  return { ok: true, message: `${data.email} is now ${labels[v.role]}.` };
 }

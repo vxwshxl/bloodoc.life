@@ -4,8 +4,15 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { ArrowUp, ChevronRight, Loader2, SquarePen } from "lucide-react";
 import { DropMark } from "@/components/brand";
 import { Markdown } from "@/components/ai/markdown";
-import { askAssistant } from "@/lib/ai/actions";
+import { askAssistant, askDonorAssistant } from "@/lib/ai/actions";
 import type { ChatMessage } from "@/lib/ai/chat";
+
+const DONOR_SUGGESTIONS = [
+  "When is the next camp and where?",
+  "Have I donated with BlooDoc before?",
+  "Do I have a certificate I can download?",
+  "How soon can I donate again?",
+];
 
 const SUGGESTIONS = [
   "How many donors do we have in each blood group?",
@@ -14,7 +21,19 @@ const SUGGESTIONS = [
   "Which departments have the fewest registered donors?",
 ];
 
-export function Assistant({ configured }: { configured: boolean }) {
+export function Assistant({
+  configured,
+  /**
+   * Which assistant this is. The donor one runs through a different action
+   * with a narrower brief — and, more importantly, a different session, so RLS
+   * is what actually limits it.
+   */
+  audience = "admin",
+}: {
+  configured: boolean;
+  audience?: "admin" | "donor";
+}) {
+  const ask = audience === "donor" ? askDonorAssistant : askAssistant;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +58,7 @@ export function Assistant({ configured }: { configured: boolean }) {
     setMessages((m) => [...m, { role: "user", content: q }]);
 
     startTransition(async () => {
-      const res = await askAssistant(history, q);
+      const res = await ask(history, q);
       if (res.ok)
         setMessages((m) => [
           ...m,
@@ -106,14 +125,14 @@ export function Assistant({ configured }: { configured: boolean }) {
               <DropMark className="size-6" />
             </span>
             <p className="mt-5 font-display text-lg font-semibold tracking-tight">
-              Ask about your own records.
+              {audience === "donor" ? "Ask about your record." : "Ask about your own records."}
             </p>
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
               It reads the donors and camps you can already see, and nothing else.
               It does not give medical advice.
             </p>
             <div className="mt-7 flex max-w-lg flex-wrap justify-center gap-2">
-              {SUGGESTIONS.map((s) => (
+              {(audience === "donor" ? DONOR_SUGGESTIONS : SUGGESTIONS).map((s) => (
                 <button
                   key={s}
                   type="button"

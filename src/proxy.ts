@@ -11,7 +11,7 @@ import { updateSession } from "@/lib/supabase/proxy";
  * tried to enforce roles would be a second, weaker copy of the rules, and the
  * two would drift.
  */
-const PROTECTED_PREFIXES = ["/admin", "/me", "/partner"];
+const PROTECTED_PREFIXES = ["/admin", "/me", "/partner", "/dashboard", "/desk"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
   // of "Sign in" to someone who is already in.
   if (user && pathname === "/signin") {
     const url = request.nextUrl.clone();
-    url.pathname = "/me";
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 

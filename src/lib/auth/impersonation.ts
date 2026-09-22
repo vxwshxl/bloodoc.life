@@ -101,7 +101,8 @@ export const getEffectiveProfile = cache(async (): Promise<EffectiveProfile | nu
 /** Where "view as" should land for this target, mirroring getDashboardHref. */
 export function landingFor(e: EffectiveProfile): string {
   if (e.profile.role === "admin") return "/admin";
-  return e.memberships.length > 0 ? "/partner" : "/me";
+  if (e.profile.role === "verifier") return "/desk";
+  return e.memberships.length > 0 ? "/partner" : "/dashboard";
 }
 
 /**

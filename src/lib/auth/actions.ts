@@ -219,7 +219,13 @@ export async function verifySignInCode(
     .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
     .maybeSingle();
 
-  redirect(profile?.role === "admin" ? "/admin" : "/me");
+  redirect(
+    profile?.role === "admin"
+      ? "/admin"
+      : profile?.role === "verifier"
+        ? "/desk"
+        : "/dashboard",
+  );
 }
 
 export async function signOut() {

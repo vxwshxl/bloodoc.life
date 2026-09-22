@@ -105,8 +105,25 @@ export async function getDashboardHref(): Promise<string | null> {
   const profile = await getProfile();
   if (!profile) return null;
   if (profile.role === "admin") return "/admin";
+  if (profile.role === "verifier") return "/desk";
   const memberships = await getMyMemberships();
-  return memberships.length > 0 ? "/partner" : "/me";
+  return memberships.length > 0 ? "/partner" : "/dashboard";
+}
+
+/**
+ * Gate for the desk console.
+ *
+ * Administrators are let through as well: the person who set the camp up is
+ * often the one covering the desk at 9am, and making them switch accounts to
+ * check somebody in would guarantee a shared login instead.
+ */
+export async function requireVerifier(): Promise<Profile> {
+  const profile = await getProfile();
+  if (!profile) redirect("/signin");
+  if (profile.role !== "verifier" && profile.role !== "admin") {
+    redirect("/dashboard");
+  }
+  return profile;
 }
 
 /**
