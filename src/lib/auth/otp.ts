@@ -10,7 +10,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // and write here runs on the service-role client because the table has RLS
 // enabled with no policies at all — it is unreachable from a browser session.
 
-export const OTP_TTL_MINUTES = 10;
+/**
+ * How long a code stays usable.
+ *
+ * Expiry is enforced on read, in `consumeOtp` below — the row is stamped with
+ * `expires_at` when it is issued and refused the moment that timestamp is past,
+ * so a code goes dead on its own with nothing scheduled and nothing to run.
+ *
+ * This constant is also what the email says ("expires in N minutes"), because
+ * `requestSignInCode` passes it straight into the template. Changing it here
+ * changes the promise and the enforcement together, which is the point.
+ */
+export const OTP_TTL_MINUTES = 5;
 const MAX_VERIFY_ATTEMPTS = 5;
 /** Matches the "Resend code" countdown on the sign-in page. */
 export const RESEND_COOLDOWN_SECONDS = 45;

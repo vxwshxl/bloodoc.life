@@ -156,13 +156,22 @@ create index certificates_status_idx on certificates (status);
 -- characters (16.7M) so it cannot be guessed or walked. The unique index is
 -- the real guarantee — this only has to avoid collisions often enough that
 -- the retry loop below terminates.
+--
+-- The randomness comes from `gen_random_uuid()`, which is core Postgres since
+-- 13, rather than pgcrypto's `gen_random_bytes()`. 0001 does install pgcrypto,
+-- but Supabase puts extensions in the `extensions` schema, and a `language sql`
+-- body is parsed and resolved when the function is CREATED — at which point
+-- `extensions` is not on the search path and the create fails outright with
+-- "function gen_random_bytes(integer) does not exist". Taking six hex digits
+-- off a v4 UUID needs no extension, is seeded by the same strong RNG, and
+-- cannot break again if the extension schema moves.
 create or replace function mint_certificate_code()
 returns text
 language sql
 volatile
 as $$
   select 'BD-' || to_char(now(), 'YYYY') || '-' ||
-         upper(encode(gen_random_bytes(3), 'hex'));
+         upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
 $$;
 
 -- A donation recorded is a certificate owed. Doing it here rather than in the
