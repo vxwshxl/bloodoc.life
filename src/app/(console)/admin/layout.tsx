@@ -8,6 +8,7 @@ import {
 import type { NavIndexItem } from "@/components/shell/nav-index";
 import { requireAdmin } from "@/lib/auth/dal";
 import { signOut } from "@/lib/auth/actions";
+import { ViewAsBanner } from "@/components/shell/view-as-banner";
 
 export const metadata: Metadata = {
   title: { default: "Console", template: "%s · BlooDoc Console" },
@@ -78,6 +79,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
       accountRole={profile.role}
       defaultCollapsed={collapsed}
     >
+      <ViewAsBanner />
       {children}
     </ConsoleShell>
   );

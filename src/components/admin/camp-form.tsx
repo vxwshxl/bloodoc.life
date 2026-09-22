@@ -245,6 +245,32 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
         </span>
       </label>
 
+      {/*
+        The third question, and the only one that is exclusive.
+
+        `featured` is not `listed`: a camp can be advertised in the list without
+        being the one the home page animates around. Only one camp may hold the
+        slot — the index in 0011 refuses a second — and ticking this stands the
+        previous holder down rather than failing.
+      */}
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-app-line bg-muted/40 p-4">
+        <input
+          type="checkbox"
+          name="featured"
+          defaultChecked={camp?.featured ?? false}
+          className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
+        />
+        <span className="text-xs leading-relaxed">
+          <span className="block font-semibold">Lead the home page</span>
+          <span className="mt-0.5 block text-muted-foreground">
+            This camp gets the animated hero at the top of the site. Only one
+            camp can hold it — ticking this takes it from whichever camp has it
+            now. With none selected the home page opens on the headline instead
+            and the animation is skipped entirely.
+          </span>
+        </span>
+      </label>
+
       {state.error && (
         <p role="alert" className="text-sm font-medium text-destructive">{state.error}</p>
       )}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { listDonors } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
+import { ViewAsButton } from "@/components/admin/view-as-button";
 import {
   Pagination,
   DEFAULT_PAGE_SIZE,
@@ -52,9 +53,9 @@ export default async function DonorsPage({
             <table className="w-full min-w-[44rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-app-line-soft">
-                  {["Donor", "Group", "Who", "Contact", "Donations", "Since"].map((h) => (
+                  {["Donor", "Group", "Who", "Contact", "Donations", "Since", ""].map((h, i) => (
                     <th
-                      key={h}
+                      key={h || i}
                       className="px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
                     >
                       {h}
@@ -93,6 +94,14 @@ export default async function DonorsPage({
                     </td>
                     <td className="px-5 py-3 text-xs text-muted-foreground">
                       {formatCampDateShort(d.created_at)}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {/* Only for a donor who actually has an account. One
+                          entered from a paper slip has no profile to view as,
+                          and a disabled button on most rows would be noise. */}
+                      {d.profile_id && (
+                        <ViewAsButton profileId={d.profile_id} label={d.full_name} />
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -86,6 +86,14 @@ export type Camp = {
    * as `status`, which is whether the page may be opened at all.
    */
   listed: boolean;
+  /**
+   * Leads the home page hero. At most one camp may be true, enforced by the
+   * `camps_one_featured` index in 0011 rather than by the application.
+   *
+   * Distinct from `listed`: a camp can be advertised without being the one the
+   * hero animates around.
+   */
+  featured: boolean;
   created_at: string;
   updated_at: string;
 };

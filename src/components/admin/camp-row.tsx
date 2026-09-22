@@ -90,8 +90,21 @@ export function CampRow({
             {camp.capacity ? ` · ${camp.capacity} places` : ""}
           </p>
         </div>
+      </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+      {/*
+        The controls are their own row, under a rule, rather than a fourth item
+        in the flex line above.
+
+        They were inline with the title, which worked while each card was the
+        full width of the page. In the two-column grid there is no longer room
+        for both, and because the details column carries `flex-1` it is the one
+        that gives — so the buttons kept their width and the camp title was
+        squeezed to one word per line. Wrapping is the fix, and a row that is
+        always separate wraps predictably at every width instead of only past a
+        breakpoint.
+      */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-app-line-soft px-5 py-3">
           <Link
             href={`/admin/registrations?camp=${camp.id}`}
             className="press inline-flex h-9 items-center rounded-full border border-app-line px-3.5 text-sm font-medium transition-colors hover:bg-muted"
@@ -127,7 +140,6 @@ export function CampRow({
               className={cn("size-4 transition-transform duration-200 ease-out-strong", open && "rotate-180")}
             />
           </button>
-        </div>
       </div>
 
       {(state.error || state.message) && (

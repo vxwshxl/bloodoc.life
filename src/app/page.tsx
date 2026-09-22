@@ -1,4 +1,4 @@
-import { getNextCamp } from "@/lib/camps/queries";
+import { getFeaturedCamp, getUpcomingCamps } from "@/lib/camps/queries";
 import { getCampPartners } from "@/lib/partners/queries";
 import { getDashboardHref } from "@/lib/auth/dal";
 import { siteStructuredData } from "@/lib/seo/structured-data";
@@ -7,6 +7,8 @@ import { SiteFooter } from "@/components/site/footer";
 import { SmoothScroll } from "@/components/marketing/smooth-scroll";
 import { RevealFooter } from "@/components/marketing/reveal-footer";
 import { HeroScroll } from "@/components/marketing/hero-scroll";
+import { MoreCamps } from "@/components/marketing/more-camps";
+import { PlainHero } from "@/components/marketing/plain-hero";
 import { MarqueeBand } from "@/components/marketing/marquee-band";
 import { ImpactBand } from "@/components/marketing/impact-band";
 import { HowBand } from "@/components/marketing/how-band";
@@ -27,7 +29,15 @@ import { CtaBand } from "@/components/marketing/cta-band";
  * from a bus is on the worst connection this page will ever see.
  */
 export default async function HomePage() {
-  const [camp, dashboardHref] = await Promise.all([getNextCamp(), getDashboardHref()]);
+  // The camp that leads the page is chosen in the console, not inferred from
+  // dates. With none chosen the hero animation is skipped altogether.
+  const [camp, upcoming, dashboardHref] = await Promise.all([
+    getFeaturedCamp(),
+    getUpcomingCamps(),
+    getDashboardHref(),
+  ]);
+  // Everything listed except the one the hero already leads with.
+  const alsoComing = upcoming.filter((c) => c.id !== camp?.id);
   // Sequential on purpose: the partner rows are keyed on the camp's id, which
   // the call above is what produces.
   const partners = camp ? await getCampPartners(camp.id) : null;
@@ -54,7 +64,12 @@ export default async function HomePage() {
         <SmoothScroll />
         <TopNav overlay dashboardHref={dashboardHref} />
 
-        <HeroScroll camp={camp} partners={partners} />
+        {camp ? (
+          <HeroScroll camp={camp} partners={partners} />
+        ) : (
+          <PlainHero dashboardHref={dashboardHref} />
+        )}
+        <MoreCamps camps={alsoComing} />
         <MarqueeBand />
         <ImpactBand />
         <HowBand />

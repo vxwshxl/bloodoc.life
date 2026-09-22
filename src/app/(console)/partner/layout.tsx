@@ -6,7 +6,9 @@ import {
   type NavItem,
 } from "@/components/shell/console-shell";
 import type { NavIndexItem } from "@/components/shell/nav-index";
-import { requirePartner } from "@/lib/auth/dal";
+import { redirect } from "next/navigation";
+import { getEffectiveProfile } from "@/lib/auth/impersonation";
+import { ViewAsBanner } from "@/components/shell/view-as-banner";
 import { signOut } from "@/lib/auth/actions";
 
 export const metadata: Metadata = {
@@ -38,7 +40,13 @@ const NAV_INDEX: NavIndexItem[] = NAV.map((item) => ({
  * they are looking at, and the numbers on the overview differ between them.
  */
 export default async function PartnerLayout({ children }: { children: React.ReactNode }) {
-  const { profile, memberships } = await requirePartner();
+  // Resolved through the effective profile rather than `requirePartner`, so an
+  // administrator viewing as a coordinator lands in that body's panel and sees
+  // exactly their camps — which is the whole point of the feature.
+  const e = await getEffectiveProfile();
+  if (!e) redirect("/signin");
+  const { profile, memberships } = e;
+  if (memberships.length === 0) redirect(profile.role === "admin" ? "/admin" : "/me");
   const collapsed = (await cookies()).get(RAIL_COOKIE)?.value === "1";
 
   const title =
@@ -63,6 +71,7 @@ export default async function PartnerLayout({ children }: { children: React.Reac
       }
       defaultCollapsed={collapsed}
     >
+      <ViewAsBanner />
       {children}
     </ConsoleShell>
   );

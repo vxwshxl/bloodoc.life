@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Droplet, Mail, Phone } from "lucide-react";
-import { requireUser, getProfile, getDashboardHref } from "@/lib/auth/dal";
-import { getMyRecord } from "@/lib/admin/queries";
+import { requireUser, getDashboardHref } from "@/lib/auth/dal";
+import { getEffectiveProfile, getEffectiveRecord } from "@/lib/auth/impersonation";
+import { ViewAsBanner } from "@/components/shell/view-as-banner";
 import { getNextCamp } from "@/lib/camps/queries";
 import { TopNav } from "@/components/site/top-nav";
 import { SiteFooter } from "@/components/site/footer";
@@ -10,6 +11,7 @@ import { Panel } from "@/components/shell/page-header";
 import { signOut } from "@/lib/auth/actions";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 import { CONTACT_EMAIL, CONTACT_EMAIL_HREF, CONTACT_PHONE } from "@/lib/brand-contact";
+import type { RegistrationRow } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -27,12 +29,17 @@ const STATUS_TONE: Record<string, string> = {
 
 export default async function MePage() {
   await requireUser();
-  const [profile, { donor, registrations }, nextCamp, dashboardHref] = await Promise.all([
-    getProfile(),
-    getMyRecord(),
+  const [effective, record, nextCamp, dashboardHref] = await Promise.all([
+    getEffectiveProfile(),
+    getEffectiveRecord(),
     getNextCamp(),
     getDashboardHref(),
   ]);
+  const profile = effective?.profile ?? null;
+  const { donor, registrations } = record as {
+    donor: typeof record.donor;
+    registrations: RegistrationRow[];
+  };
 
   const donated = registrations.filter((r) => r.status === "donated").length;
   // The lifetime figure is what they told us plus what we have watched happen.
@@ -44,6 +51,7 @@ export default async function MePage() {
 
   return (
     <>
+      <ViewAsBanner />
       <main className="relative z-10 flex flex-1 flex-col bg-background">
         <TopNav activeIndex={null} dashboardHref={dashboardHref} />
 

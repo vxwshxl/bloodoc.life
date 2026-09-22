@@ -51,3 +51,25 @@ export async function getCampBySlug(slug: string): Promise<Camp | null> {
   const { data } = await supabase.from("camps").select("*").eq("slug", slug).maybeSingle();
   return data ?? null;
 }
+
+/**
+ * The camp the home page leads with, chosen in the console.
+ *
+ * Returns null when nobody has picked one — which the home page treats as
+ * "skip the hero animation entirely" rather than as an error. That is the
+ * point of the setting: a site between drives should not animate around an
+ * empty card or silently promote whatever is furthest away.
+ *
+ * Still filtered by `status`: a draft cannot lead the public page even if
+ * somebody ticked the box before publishing it.
+ */
+export async function getFeaturedCamp(): Promise<Camp | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("camps")
+    .select("*")
+    .eq("featured", true)
+    .eq("status", "published")
+    .maybeSingle();
+  return data ?? null;
+}

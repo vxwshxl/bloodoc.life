@@ -8,6 +8,7 @@ import {
   removePartnerMember,
   type ActionState,
 } from "@/lib/partners/actions";
+import { ViewAsButton } from "@/components/admin/view-as-button";
 import type { PartnerMember } from "@/lib/db/types";
 
 const field =
@@ -131,6 +132,12 @@ export function MemberList({
                   {m.title ? ` · ${m.title}` : ""}
                 </span>
               </span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                {/* Only once they have signed in — an unclaimed invite has no
+                    profile to view as yet. */}
+                {m.profile_id && (
+                  <ViewAsButton profileId={m.profile_id} label={m.full_name ?? m.email} />
+                )}
               <form action={remove}>
                 <input type="hidden" name="memberId" value={m.id} />
                 <button
@@ -141,6 +148,7 @@ export function MemberList({
                   <Trash2 className="size-4" strokeWidth={1.9} aria-hidden />
                 </button>
               </form>
+              </span>
             </li>
           ))}
         </ul>

@@ -69,6 +69,7 @@ const campSchema = z.object({
   // `z.coerce.boolean()` would be wrong here: it turns the string "false" into
   // true, which is exactly the shape a hidden input would send.
   listed: z.literal("on").optional().transform((v) => v === "on"),
+  featured: z.literal("on").optional().transform((v) => v === "on"),
   collaboration: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
   partnerName: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
   partnerNote: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
@@ -93,6 +94,19 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
   if (endsAt && endsAt <= startsAt) return { error: "The camp cannot end before it starts." };
 
   const supabase = await createClient();
+
+  // `camps_one_featured` (0011) rejects a second featured row outright, so the
+  // previous holder is stood down first. Done here rather than in a trigger
+  // because "the newest tick wins" is a product decision, not a data rule —
+  // the database's job is only to guarantee there is never more than one.
+  if (v.featured) {
+    await supabase
+      .from("camps")
+      .update({ featured: false })
+      .eq("featured", true)
+      .neq("id", v.id ?? "00000000-0000-0000-0000-000000000000");
+  }
+
   const row = {
     title: v.title,
     title_as: v.titleAs,
@@ -101,6 +115,7 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
     organiser: v.organiser,
     contact_phone: v.contactPhone,
     listed: v.listed,
+    featured: v.featured,
     venue: v.venue,
     city: v.city,
     starts_at: startsAt,
