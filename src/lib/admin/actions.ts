@@ -325,3 +325,45 @@ export async function deleteEmailLog(
   revalidatePath("/admin/email");
   return { ok: true };
 }
+
+/**
+ * Delete a camp, and everything that hangs off it.
+ *
+ * Runs on the session client, so `camps_write_admin` is what actually decides.
+ * The cascade reaches two tables deeper than the row being deleted —
+ * registrations by foreign key, certificates by cascade from those — which is
+ * why the confirm dialog quotes both counts instead of a generic warning.
+ *
+ * Not a soft delete, deliberately. `status = 'closed'` already exists and is
+ * the right answer for "this camp has finished"; a second, invisible kind of
+ * hidden camp would mean every query in the console needs to know about it.
+ * This is for a camp created by mistake.
+ *
+ * The audit trigger from 0010 records the delete with the whole row in
+ * `changes`, so what was removed is still answerable afterwards.
+ */
+export async function deleteCamp(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const id = z.uuid().safeParse(formData.get("campId"));
+  if (!id.success) return { error: "Unknown camp." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("camps")
+    .delete()
+    .eq("id", id.data)
+    .select("id, title")
+    .maybeSingle();
+
+  if (error) return { error: "Could not delete that camp." };
+  // Zero rows back is RLS refusing, not a missing row.
+  if (!data) return { error: "That camp could not be deleted." };
+
+  revalidatePath("/admin/camps");
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { ok: true, message: `“${data.title}” deleted.` };
+}

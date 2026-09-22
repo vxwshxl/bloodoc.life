@@ -14,6 +14,38 @@ import type { Camp, Donor, Registration } from "@/lib/db/types";
 
 export type RegistrationRow = Registration & { donor: Donor; camp: Camp };
 
+/**
+ * What a camp takes with it if it is deleted.
+ *
+ * `registrations` cascades from the camp, and `certificates` cascades from the
+ * registration — so a delete reaches two tables deeper than the row somebody is
+ * looking at. The confirm dialog states both numbers rather than saying "this
+ * cannot be undone" and leaving the reader to guess the blast radius.
+ */
+export type CampWithCounts = Camp & { registrationCount: number; certificateCount: number };
+
+export async function listCampsWithCounts(search?: string): Promise<CampWithCounts[]> {
+  const supabase = await createClient();
+  const camps = await listCamps(search);
+  if (camps.length === 0) return [];
+
+  const ids = camps.map((c) => c.id);
+  const { data } = await supabase
+    .from("registrations")
+    .select("camp_id, certificate:certificates(id)")
+    .in("camp_id", ids);
+
+  const rows = (data as unknown as { camp_id: string; certificate: unknown }[] | null) ?? [];
+  return camps.map((c) => {
+    const mine = rows.filter((r) => r.camp_id === c.id);
+    return {
+      ...c,
+      registrationCount: mine.length,
+      certificateCount: mine.filter((r) => r.certificate).length,
+    };
+  });
+}
+
 export async function listCamps(search?: string): Promise<Camp[]> {
   const supabase = await createClient();
   let q = supabase.from("camps").select("*").order("starts_at", { ascending: false });

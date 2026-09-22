@@ -37,7 +37,20 @@ export function isAssistantConfigured(): boolean {
   return config().configured;
 }
 
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  /**
+   * The model's own working-out, when it reports any.
+   *
+   * Kept apart from `content` rather than concatenated: it is not the answer,
+   * it is how the answer was reached, and it belongs behind a disclosure the
+   * reader opens only when they want to check the reasoning. Never sent back
+   * in the history either — the model does not need to re-read its own
+   * scratchpad, and it would double the cost of every subsequent turn.
+   */
+  reasoning?: string;
+};
 
 type WireMessage =
   | { role: "system" | "user"; content: string }
@@ -71,7 +84,9 @@ Rules:
 
 const MAX_TOOL_ROUNDS = 4;
 
-export type ChatResult = { ok: true; reply: string } | { ok: false; error: string };
+export type ChatResult =
+  | { ok: true; reply: string; reasoning?: string }
+  | { ok: false; error: string };
 
 /**
  * One turn, including any tool calls it needs.
@@ -98,6 +113,8 @@ export async function chat(history: ChatMessage[], question: string): Promise<Ch
     ),
     { role: "user", content: question },
   ];
+
+  const reasoning: string[] = [];
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     let res: Response;
@@ -130,17 +147,33 @@ export async function chat(history: ChatMessage[], question: string): Promise<Ch
     }
 
     const data = (await res.json().catch(() => null)) as {
-      choices?: { message?: { content?: string | null; tool_calls?: ToolCall[] } }[];
+      choices?: {
+        message?: {
+          content?: string | null;
+          tool_calls?: ToolCall[];
+          // Reasoning models return their scratchpad under one of two names
+          // depending on the provider; neither is in the OpenAI spec, so both
+          // are read and a model that sends neither simply has none.
+          reasoning_content?: string | null;
+          reasoning?: string | null;
+        };
+      }[];
     } | null;
 
     const message = data?.choices?.[0]?.message;
     if (!message) return { ok: false, error: "The assistant sent back nothing usable." };
 
+    // Accumulated across rounds: a tool-using turn reasons before each call,
+    // and showing only the last round's thinking would hide the step where it
+    // decided which records to look at.
+    const thought = message.reasoning_content ?? message.reasoning;
+    if (thought?.trim()) reasoning.push(thought.trim());
+
     const calls = message.tool_calls ?? [];
     if (!calls.length) {
       const reply = (message.content ?? "").trim();
       return reply
-        ? { ok: true, reply }
+        ? { ok: true, reply, reasoning: reasoning.join("\n\n") || undefined }
         : { ok: false, error: "The assistant sent back an empty answer." };
     }
 

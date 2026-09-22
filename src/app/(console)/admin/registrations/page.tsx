@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
+import { FilterMenu } from "@/components/shell/filter-menu";
 import {
   Pagination,
   DEFAULT_PAGE_SIZE,
@@ -11,7 +11,6 @@ import {
 import { StatusControl } from "@/components/admin/registration-row";
 import { VitalsCell } from "@/components/admin/vitals-cell";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Registrations" };
 
@@ -54,32 +53,23 @@ export default async function RegistrationsPage({
         />
       </div>
 
-      {/* Camp filter. Links rather than a select, so a roster can be bookmarked
-          and reopened at the desk on the day without re-picking anything. */}
-      <div className="mb-5 flex flex-wrap gap-2">
-        <Link
-          href="/admin/registrations"
-          className={cn(
-            "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-            !campId ? "border-transparent bg-primary text-primary-foreground" : "border-app-line text-muted-foreground hover:bg-muted",
-          )}
-        >
-          All camps
-        </Link>
-        {camps.map((c) => (
-          <Link
-            key={c.id}
-            href={`/admin/registrations?camp=${c.id}`}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              campId === c.id
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-app-line text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {c.title} · {formatCampDateShort(c.starts_at)}
-          </Link>
-        ))}
+      {/* A menu, not a pill per camp. The pill strip was fine at two camps and
+          unusable at twenty — it wrapped to four lines and pushed the table off
+          the screen, and the one you wanted was somewhere in the middle. The
+          cost of a pill strip grows with the data; a menu's does not. The
+          filter still lives in the URL, so a roster is still a link somebody
+          can send to the desk. */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <FilterMenu
+          label="Camp"
+          paramName="camp"
+          active={campId}
+          options={camps.map((c) => ({
+            value: c.id,
+            label: c.title,
+            hint: formatCampDateShort(c.starts_at),
+          }))}
+        />
       </div>
 
       {rows.length === 0 ? (

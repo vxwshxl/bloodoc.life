@@ -199,6 +199,9 @@
   --secondary: oklch(0.965 0 0);
   --secondary-foreground: oklch(0.17 0 0);
   --muted: oklch(0.965 0 0);
+  /* The console's table-header band. Light mode steps down from the card. */
+  --table-head: oklch(0.915 0.004 260);
+  --table-head-foreground: oklch(0.3 0.01 260);
   --muted-foreground: oklch(0.48 0 0);
   --accent: oklch(0.962 0.022 22);
   --accent-foreground: oklch(0.36 0.1 22);
@@ -645,6 +648,31 @@ button:disabled,
 [aria-disabled="true"],
 [data-disabled] {
   cursor: not-allowed;
+}
+
+/* Console table headers.
+ *
+ * A filled band rather than differently-weighted text. Every table in the
+ * console is a grid of small grey type, and a header that differs only by
+ * letter-spacing stops reading as a header the moment the first row scrolls
+ * under it — which on a 900-row donor list is immediately. The fill is what
+ * separates "what this column is" from "what is in it".
+ *
+ * Done here, once, scoped to the console shell, rather than on each table: the
+ * alternative is the same four utilities repeated in eight files, which is how
+ * one of them ends up different.
+ */
+.app-shell thead th {
+  background: var(--table-head);
+  color: var(--table-head-foreground);
+}
+.app-shell thead th:first-child {
+  border-top-left-radius: 0.35rem;
+  border-bottom-left-radius: 0.35rem;
+}
+.app-shell thead th:last-child {
+  border-top-right-radius: 0.35rem;
+  border-bottom-right-radius: 0.35rem;
 }
 
 /* Global thin, subtle scrollbars. The thumb uses currentColor at low opacity so

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Loader2, Send } from "lucide-react";
 import { CampForm } from "@/components/admin/camp-form";
+import { DeleteCamp } from "@/components/admin/delete-camp";
 import { sendCampReminders, type ActionState } from "@/lib/admin/actions";
 import { campDateParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,18 @@ import type { Camp } from "@/lib/db/types";
  * sentence they have to parse. The admin controls stay exactly where they
  * were; only the frame around them changed.
  */
-export function CampRow({ camp, when }: { camp: Camp; when: string }) {
+export function CampRow({
+  camp,
+  when,
+  registrationCount = 0,
+  certificateCount = 0,
+}: {
+  camp: Camp;
+  when: string;
+  /** What a delete would take with it — quoted in the confirm dialog. */
+  registrationCount?: number;
+  certificateCount?: number;
+}) {
   const [open, setOpen] = useState(false);
   const d = campDateParts(camp.starts_at);
   const [state, action, pending] = useActionState<ActionState, FormData>(sendCampReminders, {});
@@ -98,6 +110,12 @@ export function CampRow({ camp, when }: { camp: Camp; when: string }) {
               Remind
             </button>
           </form>
+          <DeleteCamp
+            campId={camp.id}
+            title={camp.title}
+            registrationCount={registrationCount}
+            certificateCount={certificateCount}
+          />
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}

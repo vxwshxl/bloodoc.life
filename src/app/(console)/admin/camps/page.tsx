@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listCamps } from "@/lib/admin/queries";
+import { listCampsWithCounts } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
 import { NewCampPanel } from "@/components/admin/camp-form";
@@ -15,7 +15,7 @@ export default async function CampsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const camps = await listCamps(q);
+  const camps = await listCampsWithCounts(q);
 
   return (
     <>
@@ -47,6 +47,8 @@ export default async function CampsPage({
               key={camp.id}
               camp={camp}
               when={`${formatCampDate(camp.starts_at)} · ${formatTimeRange(camp.starts_at, camp.ends_at)}`}
+              registrationCount={camp.registrationCount}
+              certificateCount={camp.certificateCount}
             />
           ))}
         </div>

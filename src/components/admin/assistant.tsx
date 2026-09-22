@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowUp, Loader2, SquarePen } from "lucide-react";
+import { ArrowUp, ChevronRight, Loader2, SquarePen } from "lucide-react";
 import { DropMark } from "@/components/brand";
+import { Markdown } from "@/components/ai/markdown";
 import { askAssistant } from "@/lib/ai/actions";
 import type { ChatMessage } from "@/lib/ai/chat";
-import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
   "How many donors do we have in each blood group?",
@@ -40,7 +40,11 @@ export function Assistant({ configured }: { configured: boolean }) {
 
     startTransition(async () => {
       const res = await askAssistant(history, q);
-      if (res.ok) setMessages((m) => [...m, { role: "assistant", content: res.reply }]);
+      if (res.ok)
+        setMessages((m) => [
+          ...m,
+          { role: "assistant", content: res.reply, reasoning: res.reasoning },
+        ]);
       else setError(res.error);
     });
   }
@@ -123,19 +127,49 @@ export function Assistant({ configured }: { configured: boolean }) {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
-                  m.role === "user"
-                    ? "ml-auto rounded-br-md bg-primary text-primary-foreground"
-                    : "rounded-bl-md bg-muted",
-                )}
-              >
-                {m.content}
-              </div>
-            ))}
+            {messages.map((m, i) =>
+              m.role === "user" ? (
+                <div
+                  key={i}
+                  className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-primary-foreground"
+                >
+                  {m.content}
+                </div>
+              ) : (
+                <div key={i} className="max-w-[85%]">
+                  {/* The model's working-out, behind a disclosure. Collapsed by
+                      default: it is how the answer was reached, not the answer,
+                      and nobody reading a roster count wants a paragraph of
+                      deliberation first. `<details>` rather than state, so it
+                      opens without JavaScript and is findable by Ctrl+F. */}
+                  {m.reasoning && (
+                    <details className="group/think mb-1.5 rounded-xl border border-app-line-soft bg-muted/40 px-3 py-2 text-xs">
+                      <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-muted-foreground outline-none marker:content-none [&::-webkit-details-marker]:hidden">
+                        <ChevronRight
+                          aria-hidden
+                          className="size-3.5 transition-transform group-open/think:rotate-90"
+                          strokeWidth={2.2}
+                        />
+                        Thought it through
+                      </summary>
+                      <div className="mt-2 border-t border-app-line-soft pt-2 leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                        {m.reasoning}
+                      </div>
+                    </details>
+                  )}
+                  {/* Markdown, not raw text. The model is asked for short
+                      markdown and answers with tables and lists; rendering
+                      those as literal pipes and asterisks was the reason the
+                      replies looked broken. The renderer builds React nodes
+                      and never touches dangerouslySetInnerHTML, which matters
+                      because these replies echo donor names out of the
+                      database. */}
+                  <div className="rounded-2xl rounded-bl-md bg-muted px-4 py-3">
+                    <Markdown source={m.content} />
+                  </div>
+                </div>
+              ),
+            )}
             {pending && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Reading the records…
