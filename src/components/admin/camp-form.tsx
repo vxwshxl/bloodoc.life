@@ -5,6 +5,7 @@ import { Loader2, Plus, X } from "lucide-react";
 import { saveCamp, type ActionState } from "@/lib/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -143,12 +144,13 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           <Label htmlFor="startsAt" className="text-xs font-medium text-muted-foreground">
             Starts (IST)
           </Label>
-          <Input
+          {/* Posts the same zoneless "YYYY-MM-DDTHH:mm" the native input did,
+              which `istToIso` reads as +05:30. */}
+          <DatePicker
             id="startsAt"
             name="startsAt"
-            type="datetime-local"
+            mode="datetime"
             defaultValue={toLocalInput(camp?.starts_at ?? null)}
-            className="h-10"
             required
           />
         </div>
@@ -156,12 +158,12 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           <Label htmlFor="endsAt" className="text-xs font-medium text-muted-foreground">
             Ends (IST)
           </Label>
-          <Input
+          <DatePicker
             id="endsAt"
             name="endsAt"
-            type="datetime-local"
+            mode="datetime"
             defaultValue={toLocalInput(camp?.ends_at ?? null)}
-            className="h-10"
+            placeholder="Optional"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -230,12 +232,12 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
         drive or a rescheduled camp needs.
       */}
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-app-line bg-muted/40 p-4">
-        <input
-          type="checkbox"
-          name="listed"
-          defaultChecked={camp?.listed ?? true}
-          className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
-        />
+        {/* `.tickbox` in globals.css: `appearance-none` strips the platform
+            control entirely and the box, the border and the tick are all
+            drawn by us. Still a real `<input type="checkbox">`, because the
+            wrapping `<label>` has to be able to toggle it — a Radix checkbox
+            renders a `<button>`, which a label cannot target. */}
+        <input type="checkbox" name="listed" defaultChecked={camp?.listed ?? true} className="tickbox mt-0.5 shrink-0" />
         <span className="text-xs leading-relaxed">
           <span className="block font-semibold">Show on the home page and the camps list</span>
           <span className="mt-0.5 block text-muted-foreground">
@@ -254,12 +256,7 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
         previous holder down rather than failing.
       */}
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-app-line bg-muted/40 p-4">
-        <input
-          type="checkbox"
-          name="featured"
-          defaultChecked={camp?.featured ?? false}
-          className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
-        />
+        <input type="checkbox" name="featured" defaultChecked={camp?.featured ?? false} className="tickbox mt-0.5 shrink-0" />
         <span className="text-xs leading-relaxed">
           <span className="block font-semibold">Lead the home page</span>
           <span className="mt-0.5 block text-muted-foreground">

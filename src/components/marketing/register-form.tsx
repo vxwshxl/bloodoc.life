@@ -6,6 +6,7 @@ import { lookupDonorByEmail, registerDonor, type RegisterState } from "@/lib/don
 import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dropdown } from "@/components/ui/dropdown";
@@ -42,6 +43,9 @@ import { formatCampDate, formatTimeRange } from "@/lib/format";
  * on a phone by somebody standing up, and 32px is below the comfortable touch
  * target on every platform guideline there is.
  */
+/** Read once at module load; the form is not open across a new year. */
+const THIS_YEAR = new Date().getFullYear();
+
 const FIELD = "h-10 data-[size=default]:h-10";
 
 function Field({
@@ -292,7 +296,16 @@ export function RegisterForm({
             error={e.dateOfBirth}
             className="sm:col-span-3"
           >
-            <Input id="dateOfBirth" name="dateOfBirth" type="date" className={FIELD} />
+            {/* Bounded to plausible donor birth years, and opened on one, so
+                the year list is short and the field does not start in 2026. */}
+            <DatePicker
+              id="dateOfBirth"
+              name="dateOfBirth"
+              fromYear={THIS_YEAR - 100}
+              toYear={THIS_YEAR - 15}
+              initialYear={THIS_YEAR - 25}
+              placeholder="Pick your date of birth"
+            />
           </Field>
           <Field
             label="Age"
@@ -527,11 +540,7 @@ export function RegisterForm({
       </Section>
 
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 p-4">
-        <input
-          type="checkbox"
-          name="consent"
-          className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
-        />
+        <input type="checkbox" name="consent" aria-invalid={!!e.consent || undefined} className="tickbox mt-0.5 shrink-0" />
         <span className="text-xs leading-relaxed text-muted-foreground">
           I understand that registering does not clear me to donate, that a
           medical officer will screen me at the camp, and that BlooDoc will hold

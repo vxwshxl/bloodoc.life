@@ -406,6 +406,52 @@
     scale: var(--press-scale);
   }
 
+  /* The app's checkbox.
+   *
+   * `accent-color` is the only thing a native checkbox lets you style, so a
+   * box styled that way still wears the platform's shape, size and tick right
+   * beside controls that wear none of them — square on Windows, rounded on
+   * macOS, something else on Android. `appearance: none` removes the control
+   * and everything below draws it.
+   *
+   * Still a real `<input type="checkbox">` rather than a Radix one, because
+   * every use is wrapped in a `<label>` whose text is the main click target,
+   * and a label can only toggle a labelable element. Radix renders a
+   * `<button>`, which is not one.
+   *
+   * The tick is a background image because `::before` is not rendered on an
+   * input in most engines. It is stroked in the foreground colour at draw
+   * time, so it needs no dark-mode variant.
+   */
+  .tickbox {
+    appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--input);
+    background-color: transparent;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 0.75rem;
+    transition:
+      background-color 120ms var(--ease-out-strong),
+      border-color 120ms var(--ease-out-strong);
+  }
+  .tickbox:checked {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M20 6 9 17l-5-5'/%3e%3c/svg%3e");
+  }
+  .tickbox:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+  }
+  .tickbox[aria-invalid="true"]:not(:checked) {
+    border-color: var(--destructive);
+  }
+
+
   /* Cascading entrance for a grid or list that has just rendered. Purely
    * decorative: every item is interactive from its first frame, so the cascade
    * never gates input. Driven by CSS rather than JS because this fires while

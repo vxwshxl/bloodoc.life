@@ -10,7 +10,10 @@ import {
 } from "@/lib/donors/profile-actions";
 import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
 import { Dropdown } from "@/components/ui/dropdown";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { Donor } from "@/lib/db/types";
+
+const PROFILE_YEAR = new Date().getFullYear();
 
 const field =
   "h-10 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -83,11 +86,13 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
             <Dropdown name="sex" defaultValue={donor?.sex ?? "male"} options={SEXES} />
           </Field>
           <Field label="Date of birth" error={e.dateOfBirth}>
-            <input
+            <DatePicker
               name="dateOfBirth"
-              type="date"
               defaultValue={donor?.date_of_birth ?? ""}
-              className={field}
+              fromYear={PROFILE_YEAR - 100}
+              toYear={PROFILE_YEAR - 15}
+              initialYear={PROFILE_YEAR - 25}
+              placeholder="Pick your date of birth"
             />
           </Field>
           <Field label="Age" hint="Either one is enough." error={e.age}>
