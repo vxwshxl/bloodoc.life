@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { recordOutcome, type ActionState } from "@/lib/partners/actions";
 import {
@@ -49,6 +49,7 @@ export function OutcomeControl({
   const [state, action, pending] = useActionState<ActionState, FormData>(recordOutcome, {});
   const [value, setValue] = useState<RegistrationStatus>(status);
   const [askReason, setAskReason] = useState(false);
+  const [dispatching, startDispatch] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
   if (!canRecord) {
@@ -68,7 +69,9 @@ export function OutcomeControl({
     <form ref={formRef} action={action} className="flex flex-col items-end gap-2">
       <input type="hidden" name="registrationId" value={registrationId} />
       <div className="flex items-center gap-2">
-        {pending && <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />}
+        {(pending || dispatching) && (
+          <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+        )}
         <Select
           name="status"
           value={value}
@@ -95,7 +98,10 @@ export function OutcomeControl({
             if (!form) return;
             const data = new FormData(form);
             data.set("status", s);
-            action(data);
+            // Wrapped, because a useActionState action dispatched from a plain
+            // event handler is one React cannot track — `pending` never flips,
+            // so the spinner never shows and the console warns about it.
+            startDispatch(() => action(data));
           }}
         >
           <SelectTrigger

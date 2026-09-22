@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { formatCampDate, formatTimeRange } from "@/lib/format";
+import { formatCampDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { BLOOD_GROUPS, DONOR_KINDS } from "@/lib/validations/donor";
 import type { BloodGroup, DonorKind } from "@/lib/db/types";
 
@@ -62,6 +62,36 @@ export const TOOL_DEFS = [
   {
     type: "function" as const,
     function: {
+      name: "recent_changes",
+      description:
+        "What was recently changed in the records, newest first, from the audit log. Use for 'what changed here', 'what did somebody edit today', 'who closed that camp'. Administrators only — it returns nothing for anybody else.",
+      parameters: {
+        type: "object",
+        properties: {
+          table: {
+            type: "string",
+            enum: [
+              "camps",
+              "donors",
+              "registrations",
+              "certificates",
+              "partners",
+              "partner_members",
+              "camp_partners",
+              "profiles",
+              "email_templates",
+            ],
+            description: "Narrow to one table. Leave out for everything.",
+          },
+          limit: { type: "integer", minimum: 1, maximum: 25 },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "camp_roster_summary",
       description:
         "Counts for one camp broken down by registration status and blood group. Pass the camp title or part of it.",
@@ -77,6 +107,19 @@ export const TOOL_DEFS = [
 type Args = Record<string, unknown>;
 
 const KINDS = DONOR_KINDS.map((k) => k.value);
+
+/** The tables the `record_audit` trigger is attached to, per migration 0010. */
+const AUDITED = [
+  "camps",
+  "donors",
+  "registrations",
+  "certificates",
+  "partners",
+  "partner_members",
+  "camp_partners",
+  "profiles",
+  "email_templates",
+];
 
 function isBloodGroup(v: unknown): v is BloodGroup {
   return typeof v === "string" && (BLOOD_GROUPS as readonly string[]).includes(v);
@@ -153,6 +196,51 @@ export async function runTool(name: string, args: Args): Promise<string> {
         }),
       );
       return JSON.stringify({ camps: withCounts });
+    }
+
+    case "recent_changes": {
+      // No role check here, and that is the point: `audit_log` has an
+      // admin-only read policy and no write policy at all, so a donor asking
+      // this gets an empty list from Postgres rather than from an `if` that
+      // somebody could later forget to write.
+      const limit = Math.min(
+        25,
+        Math.max(1, typeof args.limit === "number" ? Math.trunc(args.limit) : 10),
+      );
+      let q = supabase
+        .from("audit_log")
+        .select("actor_email, action, table_name, record_id, changes, created_at")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (typeof args.table === "string" && AUDITED.includes(args.table))
+        q = q.eq("table_name", args.table);
+      const { data, error } = await q;
+      if (error) return JSON.stringify({ error: "Could not read the audit log." });
+      return JSON.stringify({
+        count: data?.length ?? 0,
+        changes: (data ?? []).map((r) => {
+          const row = r as {
+            actor_email: string | null;
+            action: string;
+            table_name: string;
+            changes: Record<string, unknown> | null;
+            created_at: string;
+          };
+          return {
+            when: formatDateTime(row.created_at),
+            who: row.actor_email ?? "unknown",
+            action: row.action,
+            table: row.table_name,
+            // Column names only for an insert or a delete. The whole row would
+            // carry a donor's phone number into a question about who edited a
+            // camp, and the model repeats what it is given.
+            fields:
+              row.action === "update"
+                ? row.changes
+                : Object.keys(row.changes ?? {}),
+          };
+        }),
+      });
     }
 
     case "camp_roster_summary": {

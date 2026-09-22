@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { DropMark } from "@/components/brand";
+import { AssistantPanelContext } from "@/components/shell/assistant-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -175,6 +176,11 @@ export function ConsoleShell({
       railBeforeAssistant.current = null;
     }
   }
+
+  // Memoised so the assistant is not re-rendered — and its in-flight turn not
+  // interrupted — every time something unrelated moves in the shell. The
+  // identity is what context consumers compare on.
+  const assistantPanel = useMemo(() => ({ close: closeAssistant }), []);
   // `true` on the server: the console is a desktop tool first, and guessing
   // "phone" would render every first paint as a drawer and then reflow.
   const isDesktop = useMediaQuery("(min-width: 64rem)", true);
@@ -580,24 +586,22 @@ export function ConsoleShell({
               assistantOpen ? "max-lg:translate-x-0" : "max-lg:translate-x-full lg:hidden",
             )}
           >
-            <div className="flex items-center justify-between gap-2 border-b border-app-line-soft px-4 py-3">
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                <Sparkles className="size-4 text-violet-600" strokeWidth={2} aria-hidden />
-                Assistant
-              </span>
-              <button
-                type="button"
-                onClick={closeAssistant}
-                aria-label="Close the assistant"
-                className="press flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <X className="size-4" strokeWidth={2} />
-              </button>
-            </div>
-            {/* No `overflow-y-auto` here: the assistant scrolls its own
+            {/* No header and no padding of its own.
+
+                There used to be an "Assistant" bar here with the close button
+                in it, above the assistant's own "BlooDoc Assistant" header,
+                inside a card inside this card — four nested edges before a
+                single word of the conversation. The panel is now just the
+                frame: the assistant draws one header, and the close button is
+                handed to it through context so it can sit beside "New chat"
+                where the other panel-level control already is.
+
+                No `overflow-y-auto` either: the assistant scrolls its own
                 transcript and pins its composer to the bottom, so a second
                 scroll container around it would scroll the composer away. */}
-            <div className="min-h-0 flex-1 p-3">{assistant}</div>
+            <AssistantPanelContext.Provider value={assistantPanel}>
+              <div className="min-h-0 flex-1">{assistant}</div>
+            </AssistantPanelContext.Provider>
           </aside>
         </>
       )}

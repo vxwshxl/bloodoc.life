@@ -1,6 +1,7 @@
 import "server-only";
 
 import { TOOL_DEFS, runTool } from "@/lib/ai/tools";
+import { pageBrief } from "@/lib/ai/pages";
 
 /**
  * Assistant configuration.
@@ -30,6 +31,18 @@ function config() {
     temperature: Number(process.env.SARVAM_TEMPERATURE ?? 0.4),
     topP: Number(process.env.SARVAM_TOP_P ?? 1),
     maxTokens: Number(process.env.SARVAM_MAX_TOKENS ?? 2048),
+    /**
+     * Thinking mode, on by default.
+     *
+     * Sarvam's reasoning models answer far better on "how many O-negative
+     * donors have given before" when they are allowed to work it out, and the
+     * working-out is the thing the panel shows. `SARVAM_REASONING_EFFORT=off`
+     * turns it off; anything else is passed through as `reasoning_effort`.
+     *
+     * The variable was already in `.env.local` and was not being read at all,
+     * which is why the thinking disclosure almost never appeared.
+     */
+    reasoningEffort: (process.env.SARVAM_REASONING_EFFORT?.trim() || "high").toLowerCase(),
   };
 }
 
@@ -72,10 +85,11 @@ type ToolCall = {
  * Treat every line here as a preference the model may ignore under a determined
  * prompt, and never move a security property into it.
  */
-const SYSTEM = `You are the BlooDoc console assistant. You help the people running blood donation camps read their own records.
+const SYSTEM = `You are the BlooDoc console assistant. You help the people running blood donation camps read their own records, and you know your way around the console itself.
 
 Rules:
-- Answer only from the tools. If a tool returns nothing, say so. Never estimate a number.
+- Answer facts about the records only from the tools. If a tool returns nothing, say so. Never estimate a number.
+- Questions about the console — what a page is for, what a status means, what a control does — you answer from the page notes below, without calling a tool.
 - Be brief. A count is a sentence, not a paragraph.
 - Never give medical advice and never say whether a person is eligible to donate. That is the medical officer's decision at the camp, and you say so if asked.
 - Donor details are confidential. Give names and contacts when the organiser asks for them, and do not volunteer a phone number that was not asked for.
@@ -89,29 +103,55 @@ export type ChatResult =
   | { ok: false; error: string };
 
 /**
- * One turn, including any tool calls it needs.
+ * One piece of a turn, as it happens.
  *
- * The loop is bounded at four rounds. A model that keeps asking for one more
- * tool result is a model that has misunderstood the question, and the honest
- * outcome is a short apology rather than a request that runs until it times out.
+ * `reset` is the interesting one. A model may emit a sentence of preamble and
+ * *then* decide to call a tool; that sentence is not the answer, and leaving it
+ * on screen above the real reply reads like the assistant said something twice.
+ * When a round turns out to have been a tool round, the server says so and the
+ * client throws away the text it has drawn so far. Reasoning is never reset —
+ * deciding which records to look at is exactly the part worth keeping.
  */
-export async function chat(
-  history: ChatMessage[],
-  question: string,
+export type ChatEvent =
+  | { type: "reasoning"; delta: string }
+  | { type: "content"; delta: string }
+  | { type: "tool"; name: string }
+  | { type: "reset" }
+  | { type: "error"; message: string };
+
+export type ChatOptions = {
   /**
    * Appended to the system prompt when the asker is not an administrator.
    * It sets tone and expectations only — what can actually be read is decided
    * by RLS against the caller's session, not by anything written here.
    */
-  brief?: string,
-): Promise<ChatResult> {
-  const c = config();
-  if (!c.configured) {
-    return { ok: false, error: "The assistant is not configured (SARVAM_API_KEY)." };
-  }
+  brief?: string;
+  /** The console path the question was asked from, for the page notes. */
+  pathname?: string | null;
+};
 
-  const messages: WireMessage[] = [
-    { role: "system", content: brief ? `${SYSTEM}\n\n${brief}` : SYSTEM },
+/**
+ * Whether this provider accepted `reasoning_effort`.
+ *
+ * Module-level and deliberately not reset: if the endpoint rejects the
+ * parameter once it will reject it every time, and re-learning that on every
+ * question would cost a wasted round trip per turn. A restart re-tries it,
+ * which is the right cadence for a provider adding support.
+ */
+let reasoningSupported = true;
+
+function buildMessages(
+  history: ChatMessage[],
+  question: string,
+  opts: ChatOptions,
+): WireMessage[] {
+  const page = pageBrief(opts.pathname);
+  const system = [SYSTEM, opts.brief, page && `Page notes:\n${page}`]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return [
+    { role: "system", content: system },
     // Only the last few turns. The whole point of this assistant is short
     // factual exchanges, and an unbounded history is how a cheap request
     // becomes an expensive one without anybody noticing.
@@ -122,73 +162,137 @@ export async function chat(
     ),
     { role: "user", content: question },
   ];
+}
 
-  const reasoning: string[] = [];
+async function callProvider(
+  c: ReturnType<typeof config>,
+  messages: WireMessage[],
+  stream: boolean,
+): Promise<Response> {
+  const send = (withReasoning: boolean) =>
+    fetch(`${c.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${c.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: c.model,
+        messages,
+        tools: TOOL_DEFS,
+        // Low by default. This assistant reports counts and names out of a
+        // database; a creative one invents a donor.
+        temperature: c.temperature,
+        top_p: c.topP,
+        max_tokens: c.maxTokens,
+        ...(withReasoning ? { reasoning_effort: c.reasoningEffort } : {}),
+        ...(stream ? { stream: true } : {}),
+      }),
+    });
+
+  const wantsReasoning = reasoningSupported && c.reasoningEffort !== "off";
+  const res = await send(wantsReasoning);
+
+  // A provider that does not know the parameter answers 400. Retrying once
+  // without it is the difference between "thinking mode is unsupported here"
+  // and "the assistant is broken".
+  if (res.status === 400 && wantsReasoning) {
+    reasoningSupported = false;
+    return send(false);
+  }
+  return res;
+}
+
+/**
+ * One turn, streamed, including any tool calls it needs.
+ *
+ * The loop is bounded at four rounds. A model that keeps asking for one more
+ * tool result is a model that has misunderstood the question, and the honest
+ * outcome is a short apology rather than a request that runs until it times out.
+ */
+export async function* chatStream(
+  history: ChatMessage[],
+  question: string,
+  opts: ChatOptions = {},
+): AsyncGenerator<ChatEvent> {
+  const c = config();
+  if (!c.configured) {
+    yield { type: "error", message: "The assistant is not configured (SARVAM_API_KEY)." };
+    return;
+  }
+
+  const messages = buildMessages(history, question, opts);
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     let res: Response;
     try {
-      res = await fetch(`${c.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${c.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: c.model,
-          messages,
-          tools: TOOL_DEFS,
-          // Low by default. This assistant reports counts and names out of a
-          // database; a creative one invents a donor.
-          temperature: c.temperature,
-          top_p: c.topP,
-          max_tokens: c.maxTokens,
-        }),
-      });
+      res = await callProvider(c, messages, true);
     } catch {
-      return { ok: false, error: "Could not reach the assistant." };
+      yield { type: "error", message: "Could not reach the assistant." };
+      return;
     }
 
-    if (!res.ok) {
+    if (!res.ok || !res.body) {
       // The provider's body can carry the API key back in an echoed request;
       // it never reaches the browser. The status is enough to act on.
-      return { ok: false, error: `The assistant returned ${res.status}.` };
+      yield { type: "error", message: `The assistant returned ${res.status}.` };
+      return;
     }
 
-    const data = (await res.json().catch(() => null)) as {
-      choices?: {
-        message?: {
-          content?: string | null;
-          tool_calls?: ToolCall[];
-          // Reasoning models return their scratchpad under one of two names
-          // depending on the provider; neither is in the OpenAI spec, so both
-          // are read and a model that sends neither simply has none.
-          reasoning_content?: string | null;
-          reasoning?: string | null;
-        };
-      }[];
-    } | null;
+    let content = "";
+    const calls: ToolCall[] = [];
+    /** Whether anything has been drawn for this round that a tool call invalidates. */
+    let drew = false;
 
-    const message = data?.choices?.[0]?.message;
-    if (!message) return { ok: false, error: "The assistant sent back nothing usable." };
+    for await (const chunk of sseChunks(res.body)) {
+      const delta = chunk?.choices?.[0]?.delta;
+      if (!delta) continue;
 
-    // Accumulated across rounds: a tool-using turn reasons before each call,
-    // and showing only the last round's thinking would hide the step where it
-    // decided which records to look at.
-    const thought = message.reasoning_content ?? message.reasoning;
-    if (thought?.trim()) reasoning.push(thought.trim());
+      // Reasoning models return their scratchpad under one of two names
+      // depending on the provider; neither is in the OpenAI spec, so both are
+      // read and a model that sends neither simply has none.
+      const thought = delta.reasoning_content ?? delta.reasoning;
+      if (thought) yield { type: "reasoning", delta: thought };
 
-    const calls = message.tool_calls ?? [];
-    if (!calls.length) {
-      const reply = (message.content ?? "").trim();
-      return reply
-        ? { ok: true, reply, reasoning: reasoning.join("\n\n") || undefined }
-        : { ok: false, error: "The assistant sent back an empty answer." };
+      if (delta.content) {
+        content += delta.content;
+        // Leading whitespace only is not an answer. `sarvam-105b` emits a
+        // single space before a tool call, and drawing it would flash an empty
+        // bubble and then take it back with a reset.
+        if (content.trim()) {
+          drew = true;
+          yield { type: "content", delta: delta.content };
+        }
+      }
+
+      for (const tc of delta.tool_calls ?? []) {
+        const i = tc.index ?? 0;
+        const call = (calls[i] ??= {
+          id: "",
+          type: "function",
+          function: { name: "", arguments: "" },
+        });
+        if (tc.id) call.id = tc.id;
+        if (tc.function?.name) call.function.name += tc.function.name;
+        if (tc.function?.arguments) call.function.arguments += tc.function.arguments;
+      }
     }
 
-    messages.push({ role: "assistant", content: message.content ?? null, tool_calls: calls });
+    const wanted = calls.filter((c) => c?.function.name);
+    if (!wanted.length) {
+      if (!content.trim()) {
+        yield { type: "error", message: "The assistant sent back an empty answer." };
+      }
+      return;
+    }
 
-    for (const call of calls) {
+    // The text so far was preamble to a tool call, not an answer. Take it back.
+    if (drew) yield { type: "reset" };
+
+    messages.push({ role: "assistant", content: content || null, tool_calls: wanted });
+
+    for (const call of wanted) {
+      yield { type: "tool", name: call.function.name };
       let args: Record<string, unknown> = {};
       try {
         args = JSON.parse(call.function.arguments || "{}");
@@ -202,8 +306,88 @@ export async function chat(
     }
   }
 
-  return {
-    ok: false,
-    error: "That took too many steps. Try asking for one thing at a time.",
+  yield {
+    type: "error",
+    message: "That took too many steps. Try asking for one thing at a time.",
   };
+}
+
+type StreamChunk = {
+  choices?: {
+    delta?: {
+      content?: string | null;
+      reasoning_content?: string | null;
+      reasoning?: string | null;
+      tool_calls?: {
+        index?: number;
+        id?: string;
+        function?: { name?: string; arguments?: string };
+      }[];
+    };
+  }[];
+};
+
+/**
+ * Server-sent events, one parsed JSON object at a time.
+ *
+ * Written out rather than pulled from a library because the only thing needed
+ * is "split on blank lines, drop the `data: ` prefix, stop at `[DONE]`", and a
+ * dependency that decodes the whole OpenAI event taxonomy would be more code
+ * to audit than this is to read. The buffer matters: a chunk boundary lands in
+ * the middle of a JSON object often enough that parsing per-chunk drops
+ * roughly one token in fifty.
+ */
+async function* sseChunks(body: ReadableStream<Uint8Array>): AsyncGenerator<StreamChunk> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let nl: number;
+      while ((nl = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          yield JSON.parse(payload) as StreamChunk;
+        } catch {
+          // A malformed frame is one lost token, not a failed answer.
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * The same turn, collected rather than streamed.
+ *
+ * Kept for callers that have nowhere to put a partial answer — and it shares
+ * the streaming path rather than duplicating the tool loop, so there is one
+ * place where a round is decided.
+ */
+export async function chat(
+  history: ChatMessage[],
+  question: string,
+  opts: ChatOptions = {},
+): Promise<ChatResult> {
+  let reply = "";
+  const reasoning: string[] = [];
+  for await (const event of chatStream(history, question, opts)) {
+    if (event.type === "content") reply += event.delta;
+    else if (event.type === "reasoning") reasoning.push(event.delta);
+    else if (event.type === "reset") reply = "";
+    else if (event.type === "error") return { ok: false, error: event.message };
+  }
+  return reply.trim()
+    ? { ok: true, reply: reply.trim(), reasoning: reasoning.join("").trim() || undefined }
+    : { ok: false, error: "The assistant sent back an empty answer." };
 }

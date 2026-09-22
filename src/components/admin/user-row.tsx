@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useOptimistic, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { setUserRole, type ActionState } from "@/lib/admin/actions";
@@ -17,11 +17,21 @@ import { ROLES } from "@/lib/roles";
 import { Dropdown } from "@/components/ui/dropdown";
 import { StatusPill, TONE_CLASS, statusMeta } from "@/components/ui/status-pill";
 import type { ConsoleUser } from "@/lib/admin/queries";
+import type { UserRole } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
 
 export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(setUserRole, {});
   const [open, setOpen] = useState(false);
+  // Optimistic rather than held in ordinary state, and the difference is what
+  // happens when the change is refused. `useOptimistic` shows the new role for
+  // as long as the transition runs and then snaps back to whatever the server
+  // now says — which is the new role after the action revalidates, and the old
+  // one if it errored. Plain state would need an effect to undo itself, and
+  // leaving the control showing a role the database rejected is how somebody
+  // walks away believing they promoted a volunteer who is still a donor.
+  const [role, setRole] = useOptimistic<UserRole>(user.role);
+  const [dispatching, startDispatch] = useTransition();
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -90,9 +100,10 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
 
         <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2">
-            {pending && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
+            {(pending || dispatching) && (
+              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+            )}
             <Dropdown
-              defaultValue={user.role}
               /*
                * Dispatched with data built here, not by submitting a form.
                *
@@ -108,16 +119,29 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
                * form, and nothing to be stale. `name` is gone from the
                * Dropdown for the same reason.
                */
+              value={role}
               onValueChange={(next) => {
+                // Radix re-announces its own value on mount when it is left
+                // uncontrolled, which fired this callback once per row on every
+                // page load — a role write per account, for nothing. Controlled
+                // plus this guard means only a real change posts.
+                if (next === role) return;
                 const data = new FormData();
                 data.set("profileId", user.id);
                 data.set("role", next);
-                action(data);
+                // `startTransition`, because dispatching a useActionState
+                // action from a plain event handler leaves React unable to
+                // track it: `pending` never flips and the console says so. The
+                // optimistic write has to be inside it for the same reason.
+                startDispatch(() => {
+                  setRole(next as UserRole);
+                  action(data);
+                });
               }}
               options={ROLES.map((r) => ({ value: r.value, label: r.label }))}
               // Tinted by its own value, using the same tone the pill would
               // wear, so the control and the badge never disagree.
-              className={cn("h-8 w-auto gap-1.5 border-0 text-xs", TONE_CLASS[statusMeta(user.role).tone])}
+              className={cn("h-8 w-auto gap-1.5 border-0 text-xs", TONE_CLASS[statusMeta(role).tone])}
             />
           </div>
         </td>
