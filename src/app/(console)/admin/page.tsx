@@ -98,8 +98,10 @@ export default async function OverviewPage() {
         <Panel className="p-5">
           <h2 className="mb-4 text-sm font-semibold">Where they got to</h2>
           <BreakdownBars
-            data={x.byStatus}
-            tone={(d) => STATUS_TONE[d.label] ?? "var(--primary)"}
+            data={x.byStatus.map((d) => ({
+              ...d,
+              color: STATUS_TONE[d.label] ?? "var(--primary)",
+            }))}
           />
           <p className="mt-4 border-t border-app-line-soft pt-3 text-xs text-muted-foreground">
             Every registration ever taken, by its outcome.

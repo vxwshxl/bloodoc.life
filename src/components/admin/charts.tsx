@@ -18,7 +18,25 @@ import { cn } from "@/lib/utils";
  * identity is never colour alone.
  */
 
-export type SeriesPoint = { label: string; value: number };
+export type SeriesPoint = {
+  label: string;
+  value: number;
+  /**
+   * An explicit bar colour, as a CSS value.
+   *
+   * A value on the datum, not a `tone(point)` callback. The callback version
+   * read better and could not work: these charts are Client Components and the
+   * pages rendering them are Server Components, so a function prop is not
+   * serializable and React refuses the tree at runtime —
+   *
+   *   Functions cannot be passed directly to Client Components…
+   *     <... data={[...]} tone={function tone}>
+   *
+   * Neither `tsc` nor the production build catches it, because a function prop
+   * is perfectly valid TypeScript; only rendering the page does.
+   */
+  color?: string;
+};
 
 function ChartEmpty({ height, message }: { height: number; message: string }) {
   return (
@@ -196,12 +214,9 @@ export function TrendChart({
  */
 export function BreakdownBars({
   data,
-  tone,
   className,
 }: {
   data: SeriesPoint[];
-  /** Per-row colour, for the status breakdown. Defaults to a single hue. */
-  tone?: (point: SeriesPoint, index: number) => string;
   className?: string;
 }) {
   if (data.length === 0) {
@@ -211,7 +226,7 @@ export function BreakdownBars({
 
   return (
     <ul className={cn("flex flex-col gap-2.5", className)}>
-      {data.map((d, i) => {
+      {data.map((d) => {
         const pct = (d.value / max) * 100;
         return (
           <li key={d.label} className="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-3">
@@ -226,9 +241,9 @@ export function BreakdownBars({
                   // Single hue, stepped by rank: the darkest bar is the
                   // largest. Opacity rather than five hand-picked steps keeps
                   // it correct for any number of rows.
-                  background: tone
-                    ? tone(d, i)
-                    : `color-mix(in oklch, var(--primary) ${Math.round(45 + (pct / 100) * 55)}%, transparent)`,
+                  background:
+                    d.color ??
+                    `color-mix(in oklch, var(--primary) ${Math.round(45 + (pct / 100) * 55)}%, transparent)`,
                 }}
               />
             </span>
