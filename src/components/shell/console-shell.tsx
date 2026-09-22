@@ -594,7 +594,10 @@ export function ConsoleShell({
                 <X className="size-4" strokeWidth={2} />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">{assistant}</div>
+            {/* No `overflow-y-auto` here: the assistant scrolls its own
+                transcript and pins its composer to the bottom, so a second
+                scroll container around it would scroll the composer away. */}
+            <div className="min-h-0 flex-1 p-3">{assistant}</div>
           </aside>
         </>
       )}

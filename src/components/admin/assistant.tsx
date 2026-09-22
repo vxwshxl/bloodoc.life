@@ -87,8 +87,16 @@ export function Assistant({
     );
   }
 
+  // `h-full` alongside the minimum, so this works in both places it is used.
+  // In the side panel the parent is a flex column with a real height, so the
+  // card fills it and the composer sits on the bottom edge. On the standalone
+  // page the parent has no height, `h-full` resolves to auto, and the minimum
+  // governs as before.
+  //
+  // It was `min-h-[60vh]` alone, which inside a full-height panel left the
+  // composer floating in the middle with dead space under it.
   return (
-    <div className="flex min-h-[60vh] flex-col rounded-2xl border border-app-line-soft bg-card shadow-card">
+    <div className="flex h-full min-h-[60vh] flex-col rounded-2xl border border-app-line-soft bg-card shadow-card">
       {/* The mark rather than a generic sparkle: this assistant answers from
           *these* records, and the brand is what says so. "New chat" sits with
           it because starting over is the only control that applies to the
@@ -97,12 +105,10 @@ export function Assistant({
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/12">
           <DropMark className="size-4.5" />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold leading-tight">BlooDoc Assistant</span>
-          <span className="block text-xs text-muted-foreground">
-            Reads your donors, camps and rosters.
-          </span>
-        </span>
+        {/* Title only. The subtitle repeated what the empty state already says
+            two lines below it, and in a narrow panel it wrapped to two lines
+            and pushed "New chat" out of reach. */}
+        <span className="min-w-0 flex-1 text-sm font-semibold">BlooDoc Assistant</span>
         <button
           type="button"
           onClick={() => {
