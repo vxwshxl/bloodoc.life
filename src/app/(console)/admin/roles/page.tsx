@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, Check, Droplet, Minus, ShieldCheck, UserRound } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ClipboardCheck,
+  Droplet,
+  Minus,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { getRoleCounts } from "@/lib/admin/queries";
 import { PageHeader, Panel } from "@/components/shell/page-header";
 
@@ -26,25 +34,35 @@ export const metadata: Metadata = { title: "Roles" };
  * commit as the migration.
  */
 
-type Ability = { what: string; admin: boolean; bank: boolean; org: boolean; donor: boolean };
+type Ability = {
+  what: string;
+  admin: boolean;
+  verifier: boolean;
+  bank: boolean;
+  org: boolean;
+  donor: boolean;
+};
 
 const ABILITIES: Ability[] = [
-  { what: "See every donor on file", admin: true, bank: false, org: false, donor: false },
-  { what: "See donors at their own camps", admin: true, bank: true, org: true, donor: false },
-  { what: "See their own record only", admin: true, bank: true, org: true, donor: true },
-  { what: "Record screening and donation outcomes", admin: true, bank: true, org: false, donor: false },
-  { what: "Approve and withdraw certificates", admin: true, bank: true, org: false, donor: false },
-  { what: "Create, edit and delete camps", admin: true, bank: false, org: false, donor: false },
-  { what: "Attach partners to a camp", admin: true, bank: false, org: false, donor: false },
-  { what: "Invite colleagues to their own body", admin: true, bank: true, org: true, donor: false },
-  { what: "Change somebody's account role", admin: true, bank: false, org: false, donor: false },
-  { what: "Read the audit log", admin: true, bank: false, org: false, donor: false },
-  { what: "Edit email templates", admin: true, bank: false, org: false, donor: false },
-  { what: "View the site as another person", admin: true, bank: false, org: false, donor: false },
+  { what: "See every donor on file", admin: true, verifier: true, bank: false, org: false, donor: false },
+  { what: "See donors at their own camps", admin: true, verifier: true, bank: true, org: true, donor: false },
+  { what: "See their own record only", admin: true, verifier: true, bank: true, org: true, donor: true },
+  { what: "Check donors in and correct details at the desk", admin: true, verifier: true, bank: true, org: false, donor: false },
+  { what: "Record screening and donation outcomes", admin: true, verifier: true, bank: true, org: false, donor: false },
+  { what: "Add a walk-in donor", admin: true, verifier: true, bank: true, org: false, donor: false },
+  { what: "Approve and withdraw certificates", admin: true, verifier: false, bank: true, org: false, donor: false },
+  { what: "Create, edit and delete camps", admin: true, verifier: false, bank: false, org: false, donor: false },
+  { what: "Attach partners to a camp", admin: true, verifier: false, bank: false, org: false, donor: false },
+  { what: "Invite colleagues to their own body", admin: true, verifier: false, bank: true, org: true, donor: false },
+  { what: "Change somebody's account role", admin: true, verifier: false, bank: false, org: false, donor: false },
+  { what: "Read the audit log", admin: true, verifier: false, bank: false, org: false, donor: false },
+  { what: "Edit email templates", admin: true, verifier: false, bank: false, org: false, donor: false },
+  { what: "View the site as another person", admin: true, verifier: false, bank: false, org: false, donor: false },
 ];
 
 const COLUMNS = [
   { key: "admin" as const, label: "Admin", icon: ShieldCheck },
+  { key: "verifier" as const, label: "Verifier", icon: ClipboardCheck },
   { key: "bank" as const, label: "Blood bank", icon: Droplet },
   { key: "org" as const, label: "Organisation", icon: Building2 },
   { key: "donor" as const, label: "Donor", icon: UserRound },
@@ -68,7 +86,7 @@ export default async function RolesPage() {
         subtitle="Who can do what, and how many people hold each role. Reference only — the rules themselves live in the database."
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
           {
             icon: ShieldCheck,
@@ -76,6 +94,13 @@ export default async function RolesPage() {
             value: c.admin,
             note: "Full access to the console",
             href: "/admin/users?role=admin",
+          },
+          {
+            icon: ClipboardCheck,
+            label: "Verifiers",
+            value: c.verifier,
+            note: "Desk staff on camp day",
+            href: "/admin/users?role=verifier",
           },
           {
             icon: UserRound,

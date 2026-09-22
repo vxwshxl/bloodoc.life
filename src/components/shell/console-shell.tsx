@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
+  ShieldCheck,
   Sparkles,
   UserRound,
   Users,
@@ -79,6 +80,7 @@ const NAV_ICONS = {
   users: UserRound,
   applications: ClipboardList,
   profile: IdCard,
+  roles: ShieldCheck,
 } as const;
 
 export type NavIcon = keyof typeof NAV_ICONS;

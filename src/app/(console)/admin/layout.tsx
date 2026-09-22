@@ -19,15 +19,8 @@ const NAV: NavItem[] = [
   { href: "/admin/camps", label: "Camps", icon: "camps" },
   { href: "/admin/registrations", label: "Registrations", icon: "registrations" },
   { href: "/admin/donors", label: "Donors", icon: "donors" },
-  {
-    href: "/admin/users",
-    label: "Users",
-    icon: "users",
-    children: [
-      { href: "/admin/users", label: "Accounts" },
-      { href: "/admin/roles", label: "Roles" },
-    ],
-  },
+  { href: "/admin/users", label: "Users", icon: "users", exact: true },
+  { href: "/admin/roles", label: "Roles", icon: "roles" },
   {
     href: "/admin/partners",
     label: "Partners",

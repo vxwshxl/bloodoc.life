@@ -327,6 +327,7 @@ export async function listUsers(
 
 export type RoleCounts = {
   admin: number;
+  verifier: number;
   donor: number;
   partnerOwner: number;
   partnerMember: number;
@@ -350,6 +351,7 @@ export async function getRoleCounts(): Promise<RoleCounts> {
 
   return {
     admin: p.filter((r) => r.role === "admin").length,
+    verifier: p.filter((r) => r.role === "verifier").length,
     donor: p.filter((r) => r.role === "donor").length,
     partnerOwner: m.filter((r) => r.role === "owner").length,
     partnerMember: m.filter((r) => r.role === "member").length,
