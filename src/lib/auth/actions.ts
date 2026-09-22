@@ -25,12 +25,71 @@ export type AuthState = {
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address.");
 
 /**
+ * Addresses that are always administrators.
+ *
+ * Kept in sync by hand with `official_admins` in migration 0009, which is what
+ * actually assigns the role. This copy exists so the same addresses can also
+ * skip the "have you registered" check below — they never will have.
+ *
+ * Lowercase, because `emailSchema` has already lowercased whatever was typed.
+ */
+const OFFICIAL_ADMIN_EMAILS = ["bloodoclife@gmail.com", "hello@bloodoc.life"];
+
+/**
+ * May this address be sent a code at all?
+ *
+ * Four ways in, checked in the order they are cheapest to disprove:
+ *
+ *  - Nobody has ever signed in. The first account bootstraps the administrator
+ *    (see 0009), so it cannot require a prior record — there is nothing to have
+ *    registered against yet.
+ *  - A profile already exists. Somebody who is already in stays in, whatever
+ *    their donor record looks like now.
+ *  - A donor record exists. This is the ordinary route: you filled the camp
+ *    form, so the email you used is the account.
+ *  - A partner invite exists. Blood bank and organisation staff are not donors
+ *    and would otherwise be locked out of the panel they were invited to.
+ */
+async function signInEligibility(
+  email: string,
+): Promise<{ allowed: true } | { allowed: false }> {
+  // The project's own mailboxes are always let through, and the signup trigger
+  // makes them admin. Without this they would be refused on their very first
+  // sign-in — they have no donor record and no invite, because they are the
+  // people who hand those out.
+  if (OFFICIAL_ADMIN_EMAILS.includes(email)) return { allowed: true };
+
+  const admin = createAdminClient();
+
+  const { count: profileCount } = await admin
+    .from("profiles")
+    .select("id", { count: "exact", head: true });
+  if ((profileCount ?? 0) === 0) return { allowed: true };
+
+  const [profile, donor, member] = await Promise.all([
+    admin.from("profiles").select("id").eq("email", email).limit(1).maybeSingle(),
+    admin.from("donors").select("id").eq("email", email).limit(1).maybeSingle(),
+    admin.from("partner_members").select("id").eq("email", email).limit(1).maybeSingle(),
+  ]);
+
+  return profile.data || donor.data || member.data ? { allowed: true } : { allowed: false };
+}
+
+/**
  * Step one: mail a code.
  *
- * The response is deliberately the same whether or not the address belongs to
- * anyone — "no account with that email" is a free account-existence oracle, and
- * on a site whose user list is people's medical eligibility that is not a
- * detail to leak. A cooldown hit reports success for the same reason.
+ * This used to answer identically whether or not the address belonged to
+ * anyone, so the form could not be used to test whether a given person had
+ * registered. That is no longer true, and the trade is worth stating plainly:
+ * sign-in is now restricted to people who already have a donor record, a
+ * partner invite or an account, and telling an unknown address to go and
+ * register is precisely what makes this page usable by a student who mistyped
+ * their email. The cost is that the form will confirm whether an address is
+ * known to the site. On a register of blood donors that is real, not
+ * theoretical, and the mitigation is the rate limit below rather than silence.
+ *
+ * A cooldown hit still reports success, because that one leaks nothing an
+ * attacker could not already learn from the eligibility check above.
  */
 export async function requestSignInCode(
   _prev: AuthState,
@@ -42,6 +101,18 @@ export async function requestSignInCode(
 
   if (!emailConfigured()) {
     return { error: "Email is not configured yet. Ask an administrator to set ZEPTOMAIL_TOKEN." };
+  }
+
+  // Registering for a camp is what creates the account. There is no separate
+  // sign-up, so an address nobody has ever registered with has nothing to sign
+  // in to, and sending it a code would only produce a working session attached
+  // to an empty profile.
+  const eligible = await signInEligibility(email);
+  if (!eligible.allowed) {
+    return {
+      error:
+        "No registration found for this email. Register for a camp first — the email you use there becomes your sign-in.",
+    };
   }
 
   const issued = await issueOtp(email);

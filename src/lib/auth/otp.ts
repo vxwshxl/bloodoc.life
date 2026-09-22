@@ -23,8 +23,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 export const OTP_TTL_MINUTES = 5;
 const MAX_VERIFY_ATTEMPTS = 5;
-/** Matches the "Resend code" countdown on the sign-in page. */
-export const RESEND_COOLDOWN_SECONDS = 45;
+/**
+ * Server-side floor between two codes for the same address.
+ *
+ * Deliberately shorter than the 45s countdown the sign-in page shows. When the
+ * two were both 45 the button unlocked at the exact moment the server stopped
+ * refusing, so a resend landing a hair early was swallowed as a cooldown hit —
+ * reported as sent, no email, and no way for the donor to tell. Fifteen seconds
+ * of slack means the button is never offered before the server will honour it.
+ */
+export const RESEND_COOLDOWN_SECONDS = 30;
 
 function hashCode(code: string): string {
   return createHash("sha256").update(code).digest("hex");

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { createAdminClient, adminConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { donorRegistrationSchema } from "@/lib/validations/donor";
@@ -65,7 +66,23 @@ export async function registerDonor(
   // to their account from the start rather than at next sign-in.
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
-  const profileId = auth.user?.id ?? null;
+
+  // Signed out, but the address may still belong to an existing account — a
+  // donor who registered last year, opened the form on a different device and
+  // never signed in. Linking on the email here closes the third and last gap:
+  // the signup trigger catches "registered first, signed in later", the branch
+  // above catches "signed in first, registered later", and this one catches
+  // "has an account, is registering anonymously". Without it that person ends
+  // up with a donor row their own /me page cannot see.
+  let profileId = auth.user?.id ?? null;
+  if (!profileId) {
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("email", v.email)
+      .maybeSingle();
+    profileId = existingProfile?.id ?? null;
+  }
 
   // One person, one donor row, keyed on email. A second camp six months later
   // should update the same record rather than fork a duplicate that then
@@ -156,4 +173,64 @@ export async function registerDonor(
   revalidatePath("/admin/registrations");
   revalidatePath("/me");
   return { ok: true, donorName: v.fullName.split(" ")[0] };
+}
+
+export type DonorLookup = {
+  found: boolean;
+  fullName?: string;
+  /** Only ever populated for the signed-in owner of the record. */
+  phone?: string;
+  bloodGroup?: string;
+  kind?: string;
+  department?: string;
+};
+
+/**
+ * Look up a returning donor by the email they just typed, so the form can
+ * greet them by name instead of making them retype what the site already
+ * knows.
+ *
+ * What comes back depends on who is asking, and the split is the whole point:
+ *
+ *  - Signed in, and the address is your own record → everything the form can
+ *    prefill. You are reading your own data.
+ *  - Anyone else → the name, and nothing more. No phone, no address, no date
+ *    of birth, no blood group.
+ *
+ * Be clear about what even the name costs: this makes the public form an
+ * email-to-name oracle. Someone who guesses an address learns whether that
+ * person has registered with BlooDoc and what they are called. That is a real
+ * disclosure on a register of blood donors, and it is accepted here only
+ * because the alternative — a returning donor retyping twenty fields every
+ * camp — is what pushes people back to the paper slip. It is deliberately the
+ * narrowest thing that achieves it, and the contact details stay behind the
+ * session check.
+ */
+export async function lookupDonorByEmail(email: string): Promise<DonorLookup> {
+  const parsed = z.string().trim().toLowerCase().email().safeParse(email);
+  if (!parsed.success || !adminConfigured()) return { found: false };
+
+  const admin = createAdminClient();
+  const { data: donor } = await admin
+    .from("donors")
+    .select("full_name, phone, blood_group, kind, department, profile_id")
+    .eq("email", parsed.data)
+    .maybeSingle();
+
+  if (!donor) return { found: false };
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const isOwner = !!auth.user && auth.user.id === donor.profile_id;
+
+  if (!isOwner) return { found: true, fullName: donor.full_name };
+
+  return {
+    found: true,
+    fullName: donor.full_name,
+    phone: donor.phone ?? undefined,
+    bloodGroup: donor.blood_group ?? undefined,
+    kind: donor.kind ?? undefined,
+    department: donor.department ?? undefined,
+  };
 }

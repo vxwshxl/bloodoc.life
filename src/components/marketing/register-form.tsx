@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { registerDonor, type RegisterState } from "@/lib/donors/actions";
+import { lookupDonorByEmail, registerDonor, type RegisterState } from "@/lib/donors/actions";
 import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -217,8 +217,46 @@ export function RegisterForm({
   const [kind, setKind] = useState<string>("student");
   const [onMedication, setOnMedication] = useState<string>("no");
   const topRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
   const e = state.fieldErrors ?? {};
+
+  // "We know you" — shown once the typed address matches an existing donor.
+  const [knownName, setKnownName] = useState<string | null>(null);
+
+  /**
+   * Recognise a returning donor from the address they just typed.
+   *
+   * On blur rather than on every keystroke: a lookup per character would be a
+   * request per character against a public endpoint, and half of them would be
+   * for an address that is still being typed.
+   *
+   * The name is only written into an *empty* box. Someone who typed their name
+   * and then corrected their email must not have their own typing replaced by
+   * whatever the database remembers — the record is being updated precisely
+   * because it may be out of date.
+   */
+  async function recogniseEmail(email: string) {
+    const trimmed = email.trim();
+    if (!trimmed.includes("@")) {
+      setKnownName(null);
+      return;
+    }
+    try {
+      const found = await lookupDonorByEmail(trimmed);
+      if (!found.found || !found.fullName) {
+        setKnownName(null);
+        return;
+      }
+      setKnownName(found.fullName);
+      const box = nameRef.current;
+      if (box && box.value.trim() === "") box.value = found.fullName;
+    } catch {
+      // A failed lookup is a convenience that did not happen, never a reason to
+      // block the form.
+      setKnownName(null);
+    }
+  }
 
   // A failed submit scrolls the summary back into view. Without this the form
   // simply does nothing visible from the donor's point of view — the message is
@@ -283,7 +321,7 @@ export function RegisterForm({
       <Section step={1} title="About you" note="As it appears on the ID you will bring.">
         <div className="grid gap-4 sm:grid-cols-6">
           <Field label="Full name" name="fullName" error={e.fullName} className="sm:col-span-4">
-            <Input id="fullName" name="fullName" className={FIELD} autoComplete="name" required aria-invalid={!!e.fullName || undefined} />
+            <Input ref={nameRef} id="fullName" name="fullName" className={FIELD} autoComplete="name" required aria-invalid={!!e.fullName || undefined} />
           </Field>
           <Field label="Sex" name="sex" error={e.sex} className="sm:col-span-2">
             <Dropdown name="sex" options={SEXES} invalid={!!e.sex} />
@@ -316,7 +354,49 @@ export function RegisterForm({
         </div>
       </Section>
 
-      <Section step={2} title="What you do" note="So the organisers can group the roster by department.">
+      <Section step={2} title="Reaching you" note="Your confirmation and any change of plan goes here.">
+        <div className="grid gap-4 sm:grid-cols-6">
+          <Field
+            label="Email"
+            name="email"
+            error={e.email}
+            hint={
+              knownName
+                ? `Welcome back, ${knownName.split(" ")[0]} — this updates your existing record.`
+                : "This becomes your sign-in. Use an address you can open."
+            }
+            className="sm:col-span-3"
+          >
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              className={FIELD}
+              autoComplete="email"
+              required
+              onBlur={(ev) => recogniseEmail(ev.target.value)}
+              aria-invalid={!!e.email || undefined}
+            />
+          </Field>
+          <Field label="Phone" name="phone" error={e.phone} className="sm:col-span-3">
+            <Input id="phone" name="phone" type="tel" inputMode="tel" className={FIELD} autoComplete="tel" required placeholder="10 digits" aria-invalid={!!e.phone || undefined} />
+          </Field>
+          <Field
+            label="Alternate phone"
+            name="altPhone"
+            error={e.altPhone}
+            hint="Someone who can be reached if you cannot."
+            className="sm:col-span-3"
+          >
+            <Input id="altPhone" name="altPhone" type="tel" inputMode="tel" className={FIELD} aria-invalid={!!e.altPhone || undefined} />
+          </Field>
+          <Field label="Address" name="address" error={e.address} className="sm:col-span-3">
+            <Input id="address" name="address" className={FIELD} autoComplete="street-address" />
+          </Field>
+        </div>
+      </Section>
+
+      <Section step={3} title="What you do" note="So the organisers can group the roster by department.">
         <div className="grid gap-4 sm:grid-cols-6">
           <Field label="You are a" name="kind" error={e.kind} className="sm:col-span-2">
             <Dropdown
@@ -372,29 +452,6 @@ export function RegisterForm({
               placeholder="e.g. Shopkeeper"
               aria-invalid={!!e.occupation || undefined}
             />
-          </Field>
-        </div>
-      </Section>
-
-      <Section step={3} title="Reaching you" note="Your confirmation and any change of plan goes here.">
-        <div className="grid gap-4 sm:grid-cols-6">
-          <Field label="Email" name="email" error={e.email} className="sm:col-span-3">
-            <Input id="email" name="email" type="email" className={FIELD} autoComplete="email" required aria-invalid={!!e.email || undefined} />
-          </Field>
-          <Field label="Phone" name="phone" error={e.phone} className="sm:col-span-3">
-            <Input id="phone" name="phone" type="tel" inputMode="tel" className={FIELD} autoComplete="tel" required placeholder="10 digits" aria-invalid={!!e.phone || undefined} />
-          </Field>
-          <Field
-            label="Alternate phone"
-            name="altPhone"
-            error={e.altPhone}
-            hint="Someone who can be reached if you cannot."
-            className="sm:col-span-3"
-          >
-            <Input id="altPhone" name="altPhone" type="tel" inputMode="tel" className={FIELD} aria-invalid={!!e.altPhone || undefined} />
-          </Field>
-          <Field label="Address" name="address" error={e.address} className="sm:col-span-3">
-            <Input id="address" name="address" className={FIELD} autoComplete="street-address" />
           </Field>
         </div>
       </Section>

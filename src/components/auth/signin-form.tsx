@@ -177,6 +177,13 @@ function ResendButton({
     <button
       type="submit"
       formAction={action}
+      // This button lives inside the *verify* form, whose code input is
+      // `required`. Without `formNoValidate` the browser refuses to submit
+      // while that box is empty — which is exactly the state someone is in
+      // when they want a new code — so Resend did nothing at all and gave no
+      // hint why. The resend action only ever reads `email`, so skipping this
+      // form's validation costs nothing.
+      formNoValidate
       disabled={left > 0 || busy}
       className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
     >
