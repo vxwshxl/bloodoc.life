@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, Droplet } from "lucide-react";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { CampCard, CampTag } from "@/components/camps/camp-card";
 import { statusChartColor } from "@/components/ui/status-pill";
 import { BreakdownBars, StatTile, TrendChart } from "@/components/admin/charts";
 import { getEffectiveProfile } from "@/lib/auth/impersonation";
@@ -10,7 +11,6 @@ import {
   getPartnerDashboard,
   getPartnerSummary,
 } from "@/lib/partners/queries";
-import { formatCampDateShort } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -146,26 +146,17 @@ export default async function PartnerOverview() {
               body="When an administrator attaches your organisation to a camp, it appears here with its roster."
             />
           ) : (
-            <ul className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               {camps.slice(0, 6).map((c) => (
-                <li key={c.id}>
-                  <Link
-                    href={`/partner/registrations?camp=${c.id}`}
-                    className="flex items-center gap-3 rounded-xl border border-app-line-soft px-4 py-3 transition-colors hover:bg-muted"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{c.title}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {formatCampDateShort(c.starts_at)} · {c.venue}
-                      </span>
-                    </span>
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[0.625rem] font-semibold uppercase">
-                      {c.role === "blood_bank" ? "Blood bank" : "Organiser"}
-                    </span>
-                  </Link>
-                </li>
+                <CampCard
+                  key={c.id}
+                  camp={c}
+                  href={`/partner/registrations?camp=${c.id}`}
+                  action="Open roster"
+                  badge={<CampTag>{c.role === "blood_bank" ? "Blood bank" : "Organiser"}</CampTag>}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </Panel>
       </div>

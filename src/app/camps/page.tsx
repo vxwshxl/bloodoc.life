@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, MapPin } from "lucide-react";
 import { getUpcomingCamps } from "@/lib/camps/queries";
 import { getDashboardHref } from "@/lib/auth/dal";
 import { TopNav } from "@/components/site/top-nav";
 import { SiteFooter } from "@/components/site/footer";
 import { Live } from "@/components/shell/live";
 import { pageMetadata } from "@/lib/seo/page-metadata";
-import { campDateParts, formatTimeRange, countdownLabel } from "@/lib/format";
+import { countdownLabel } from "@/lib/format";
+import { CampCard, CampTag } from "@/components/camps/camp-card";
 
 export const metadata: Metadata = pageMetadata({
   title: "Upcoming blood donation camps",
@@ -63,59 +63,17 @@ export default async function CampsPage() {
               </Link>
             </div>
           ) : (
-            <ul className="flex flex-col gap-4">
-              {camps.map((camp) => {
-                const d = campDateParts(camp.starts_at);
-                return (
-                  <li key={camp.id}>
-                    <Link
-                      href={`/camps/${camp.slug}`}
-                      className="group press grain flex flex-col gap-4 rounded-3xl border border-border bg-card p-4 shadow-card transition-[border-color] duration-300 ease-out-strong hover:border-primary/40 sm:flex-row sm:items-center sm:gap-7 sm:p-6"
-                    >
-                      <span className="flex shrink-0 items-center gap-4 sm:flex-col sm:gap-0">
-                        <span
-                          className="font-display text-5xl leading-none font-black tracking-tighter text-primary"
-                          style={{ fontVariantNumeric: "tabular-nums" }}
-                        >
-                          {d.day}
-                        </span>
-                        <span className="flex flex-col sm:mt-1 sm:items-center">
-                          <span className="text-sm font-bold tracking-[0.14em]">
-                            {d.month} {d.year}
-                          </span>
-                          <span className="text-xs text-muted-foreground">{d.weekday}</span>
-                        </span>
-                      </span>
-
-                      <span aria-hidden className="hidden w-px self-stretch bg-border sm:block" />
-
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2.5">
-                          <span className="font-display text-lg font-bold tracking-tight">
-                            {camp.title}
-                          </span>
-                          <span className="rounded-full bg-primary/12 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                            {countdownLabel(camp.starts_at)}
-                          </span>
-                        </span>
-                        <span className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                          <span>{formatTimeRange(camp.starts_at, camp.ends_at)}</span>
-                          <span className="flex items-center gap-1.5">
-                            <MapPin className="size-3.5" strokeWidth={1.9} />
-                            {[camp.venue, camp.city].filter(Boolean).join(", ")}
-                          </span>
-                        </span>
-                      </span>
-
-                      <ArrowRight
-                        className="size-5 shrink-0 text-primary transition-transform duration-300 ease-out-strong group-hover:translate-x-1"
-                        strokeWidth={2.2}
-                      />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {camps.map((camp) => (
+                <CampCard
+                  key={camp.id}
+                  camp={camp}
+                  href={`/camps/${camp.slug}`}
+                  action="Details and registration"
+                  badge={<CampTag tone="primary">{countdownLabel(camp.starts_at)}</CampTag>}
+                />
+              ))}
+            </div>
           )}
         </div>
       </main>

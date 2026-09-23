@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CalendarDays, MapPin } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { CampCard } from "@/components/camps/camp-card";
 import { listCampRosters, listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
@@ -16,7 +17,6 @@ import { DeleteRow } from "@/components/shell/delete-row";
 import { canDeleteRegistrations } from "@/lib/records/queries";
 import { RegistrationRowLink } from "@/components/admin/registration-row-link";
 import { StatusPill } from "@/components/ui/status-pill";
-import { formatTimeRange } from "@/lib/format";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Registrations" };
@@ -78,38 +78,15 @@ export default async function RegistrationsPage({
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {rosters.map((c) => (
-              <Link
+              <CampCard
                 key={c.id}
+                camp={c}
                 href={`/admin/registrations?camp=${c.id}`}
-                className="press group flex flex-col rounded-2xl border border-app-line-soft bg-card p-5 shadow-card transition-colors hover:border-primary/40"
+                action="Open roster"
               >
-                <span className="flex items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block font-display text-base font-semibold tracking-tight">
-                      {c.title}
-                    </span>
-                    <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <CalendarDays className="size-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
-                      {formatCampDateShort(c.starts_at)} ·{" "}
-                      {formatTimeRange(c.starts_at, c.ends_at)}
-                    </span>
-                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="size-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
-                      <span className="truncate">{[c.venue, c.city].filter(Boolean).join(", ")}</span>
-                    </span>
-                  </span>
-                  <ArrowRight
-                    className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                </span>
-
                 <span className="mt-4 flex items-baseline gap-2">
                   <span className="font-display text-3xl font-bold tabular-nums">{c.total}</span>
-                  <span className="text-xs text-muted-foreground">
-                    on the roster
-                  </span>
+                  <span className="text-xs text-muted-foreground">on the roster</span>
                 </span>
 
                 {/* Outcomes, not a second copy of the total. A camp with 37
@@ -126,7 +103,7 @@ export default async function RegistrationsPage({
                     <span className="text-xs text-muted-foreground">Nobody has registered yet.</span>
                   )}
                 </span>
-              </Link>
+              </CampCard>
             ))}
           </div>
         )}

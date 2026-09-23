@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Clock, Droplet, MapPin } from "lucide-react";
+import { CalendarDays, Droplet } from "lucide-react";
+import { CampCard } from "@/components/camps/camp-card";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { StatTile } from "@/components/admin/charts";
 import { getEffectiveProfile, getEffectiveRecord } from "@/lib/auth/impersonation";
 import { getFeaturedCamp, getUpcomingCamps } from "@/lib/camps/queries";
-import { campDateParts, formatCampDate, formatTimeRange } from "@/lib/format";
+import { formatCampDate } from "@/lib/format";
 import type { RegistrationRow } from "@/lib/admin/queries";
 import type { Donor } from "@/lib/db/types";
 
@@ -74,58 +75,14 @@ export default async function DonorOverview() {
               by shape, then the detail. It was a plain row, which made the one
               action on this page look like another list item. */}
           <div className="mb-6 grid gap-3 sm:grid-cols-2">
-            {open.slice(0, 4).map((c) => {
-              const d = campDateParts(c.starts_at);
-              return (
-                <Link
-                  key={c.id}
-                  href={`/camps/${c.slug}#register`}
-                  className="group/card press grain flex cursor-pointer items-start gap-4 rounded-2xl border border-app-line-soft bg-card p-5 shadow-card transition-[border-color] select-none hover:border-primary/40"
-                >
-                  <span className="flex shrink-0 flex-col items-center">
-                    <span
-                      className="font-display text-3xl leading-none font-black tracking-tighter text-primary"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
-                    >
-                      {d.day}
-                    </span>
-                    <span className="mt-1 text-[0.625rem] font-bold tracking-[0.14em] text-foreground">
-                      {d.month}
-                    </span>
-                    <span className="text-[0.625rem] text-muted-foreground">{d.year}</span>
-                  </span>
-
-                  <span aria-hidden className="w-px self-stretch bg-app-line-soft" />
-
-                  <span className="min-w-0 flex-1">
-                    <span className="font-display block text-base leading-tight font-bold tracking-tight text-balance">
-                      {c.title}
-                    </span>
-                    <span className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
-                      <span className="flex items-start gap-1.5">
-                        <Clock className="mt-px size-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
-                        {d.weekday} · {formatTimeRange(c.starts_at, c.ends_at)}
-                      </span>
-                      <span className="flex items-start gap-1.5">
-                        <MapPin className="mt-px size-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
-                        <span className="min-w-0">
-                          {c.venue}
-                          {c.city ? `, ${c.city}` : ""}
-                        </span>
-                      </span>
-                    </span>
-                    <span className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-primary">
-                      Register to donate
-                      <ArrowRight
-                        className="size-3.5 transition-transform duration-300 ease-out-strong group-hover/card:translate-x-0.5"
-                        strokeWidth={2.2}
-                        aria-hidden
-                      />
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
+            {open.slice(0, 4).map((c) => (
+              <CampCard
+                key={c.id}
+                camp={c}
+                href={`/camps/${c.slug}#register`}
+                action="Register to donate"
+              />
+            ))}
           </div>
         </>
       )}

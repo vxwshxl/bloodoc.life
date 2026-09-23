@@ -10,7 +10,9 @@ import {
   DEFAULT_PAGE_SIZE,
   pageFromParams,
 } from "@/components/shell/pagination";
-import { formatCampDateShort } from "@/lib/format";
+import { formatCampDate, formatCampDateShort } from "@/lib/format";
+import { DetailRow } from "@/components/shell/detail-row";
+import { DetailList } from "@/components/shell/detail-list";
 
 export const metadata: Metadata = { title: "Donors" };
 
@@ -72,7 +74,56 @@ export default async function DonorsPage({
               </thead>
               <tbody>
                 {donors.map((d) => (
-                  <tr key={d.id} className="border-b border-app-line-soft last:border-b-0">
+                  <DetailRow
+                    key={d.id}
+                    label={`Open ${d.full_name}`}
+                    title={d.full_name}
+                    badge={
+                      <span className="inline-flex h-6 min-w-9 items-center justify-center rounded-md bg-primary/12 px-1.5 text-xs font-bold text-primary">
+                        {d.blood_group === "unknown" ? "?" : d.blood_group}
+                      </span>
+                    }
+                    description={`${d.email} · on file since ${formatCampDate(d.created_at)}`}
+                    detail={
+                      <div className="flex flex-col gap-5">
+                        <DetailList
+                          heading="About"
+                          items={[
+                            ["Sex", <span key="s" className="capitalize">{d.sex}</span>],
+                            ["Age", d.age],
+                            ["Date of birth", d.date_of_birth ? formatCampDate(d.date_of_birth) : null],
+                            ["Father's name", d.father_name],
+                            ["Mother's name", d.mother_name],
+                          ]}
+                        />
+                        <DetailList
+                          heading="Work"
+                          items={[
+                            ["They are", <span key="k" className="capitalize">{d.kind}</span>],
+                            [d.kind === "other" ? "Occupation" : "Department", d.kind === "other" ? d.occupation : d.department],
+                          ]}
+                        />
+                        <DetailList
+                          heading="Contact"
+                          items={[
+                            ["Phone", d.phone],
+                            ["Alternate phone", d.alt_phone],
+                            ["Email", d.email],
+                            ["Address", d.address],
+                          ]}
+                        />
+                        <DetailList
+                          heading="As a donor"
+                          items={[
+                            ["Blood group", d.blood_group === "unknown" ? "Not known" : d.blood_group],
+                            ["Donations before BlooDoc", d.prior_donations],
+                            ["Account", d.profile_id ? "Signed in at least once" : "No account (paper slip)"],
+                            ["Notes", d.notes],
+                          ]}
+                        />
+                      </div>
+                    }
+                  >
                     <td className="px-5 py-3">
                       <span className="block font-medium">{d.full_name}</span>
                       <span className="block text-xs text-muted-foreground capitalize">
@@ -131,7 +182,7 @@ export default async function DonorsPage({
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </DetailRow>
                 ))}
               </tbody>
             </table>

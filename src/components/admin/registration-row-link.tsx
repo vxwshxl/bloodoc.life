@@ -46,7 +46,7 @@ export function RegistrationRowLink({
           // Components, and an `onClick` on a `<td>` there is a function prop
           // crossing the RSC boundary — which fails at runtime, not at build.
           const hit = (e.target as HTMLElement).closest(
-            "button, a, input, select, textarea, label",
+            "button, a, input, select, textarea, label, [role=combobox], [role=dialog]",
           );
           if (hit) return;
           setOpen(true);

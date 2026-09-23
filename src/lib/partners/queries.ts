@@ -61,7 +61,7 @@ export async function getPartnerCamps(): Promise<(Camp & { role: string })[]> {
 
 export type RosterRow = Registration & {
   donor: Donor | null;
-  camp: Pick<Camp, "id" | "slug" | "title" | "starts_at"> | null;
+  camp: Pick<Camp, "id" | "slug" | "title" | "starts_at" | "ends_at" | "venue"> | null;
   certificate: Pick<Certificate, "id" | "code" | "status"> | null;
 };
 
@@ -80,7 +80,7 @@ export async function getPartnerRoster(campId?: string): Promise<RosterRow[]> {
   let q = supabase
     .from("registrations")
     .select(
-      "*, donor:donors(*), camp:camps(id, slug, title, starts_at), certificate:certificates(id, code, status)",
+      "*, donor:donors(*), camp:camps(id, slug, title, starts_at, ends_at, venue), certificate:certificates(id, code, status)",
     )
     .order("created_at", { ascending: false });
   if (campId) q = q.eq("camp_id", campId);
@@ -111,8 +111,8 @@ export async function getPartnerRosterPage(
       // registration whose donor row is missing, which is exactly the orphan
       // worth seeing on an unfiltered roster.
       term
-        ? "*, donor:donors!inner(*), camp:camps(id, slug, title, starts_at), certificate:certificates(id, code, status)"
-        : "*, donor:donors(*), camp:camps(id, slug, title, starts_at), certificate:certificates(id, code, status)",
+        ? "*, donor:donors!inner(*), camp:camps(id, slug, title, starts_at, ends_at, venue), certificate:certificates(id, code, status)"
+        : "*, donor:donors(*), camp:camps(id, slug, title, starts_at, ends_at, venue), certificate:certificates(id, code, status)",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })

@@ -5,7 +5,6 @@ import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
 import { NewCampPanel } from "@/components/admin/camp-form";
 import { CampRow } from "@/components/admin/camp-row";
-import { formatCampDate, formatTimeRange } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Camps" };
 
@@ -46,7 +45,6 @@ export default async function CampsPage({
             <CampRow
               key={camp.id}
               camp={camp}
-              when={`${formatCampDate(camp.starts_at)} · ${formatTimeRange(camp.starts_at, camp.ends_at)}`}
               registrationCount={camp.registrationCount}
               certificateCount={camp.certificateCount}
             />

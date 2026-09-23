@@ -11,9 +11,10 @@ import {
   Phone,
 } from "lucide-react";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
+import { CampCard, CampTag } from "@/components/camps/camp-card";
 import { MemberList } from "@/components/admin/partner-manager";
 import { getPartnerDetail } from "@/lib/partners/queries";
-import { formatCampDate, formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -159,32 +160,18 @@ export default async function PartnerDetailPage({ params }: Params) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {p.camps.map((c) => (
-            <Panel key={c.id} className="px-5 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{c.title}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatCampDate(c.starts_at)} · {c.venue}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[0.625rem] font-semibold uppercase">
-                    {c.role === "blood_bank" ? "Blood bank" : "Organiser"}
-                  </span>
-                  {c.is_host && (
-                    <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[0.625rem] font-semibold text-primary uppercase">
-                      Host
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Link
-                href={`/admin/registrations?camp=${c.id}`}
-                className="mt-3 inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Open roster →
-              </Link>
-            </Panel>
+            <CampCard
+              key={c.id}
+              camp={c}
+              href={`/admin/registrations?camp=${c.id}`}
+              action="Open roster"
+              badge={
+                <span className="flex flex-col items-end gap-1">
+                  <CampTag>{c.role === "blood_bank" ? "Blood bank" : "Organiser"}</CampTag>
+                  {c.is_host && <CampTag tone="primary">Host</CampTag>}
+                </span>
+              }
+            />
           ))}
         </div>
       )}

@@ -11,6 +11,8 @@ import {
 import { SearchBox } from "@/components/shell/search-box";
 import { FilterMenu } from "@/components/shell/filter-menu";
 import { formatDateTime } from "@/lib/format";
+import { DetailRow } from "@/components/shell/detail-row";
+import { DetailList } from "@/components/shell/detail-list";
 import type { AuditLog } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
 
@@ -116,9 +118,45 @@ export default async function AuditPage({
               const keys = Object.keys(changes);
 
               return (
-                <li
+                <DetailRow
                   key={r.id}
-                  className="flex items-start gap-3 border-b border-app-line-soft px-5 py-3 last:border-b-0"
+                  as="li"
+                  label={`Open change by ${r.actor_email ?? "System"}`}
+                  title={`${style.verb[0].toUpperCase()}${style.verb.slice(1)} ${r.table_name.replace(/_/g, " ").replace(/s$/, "")}`}
+                  description={`${r.actor_email ?? "System"} · ${formatDateTime(r.created_at)}`}
+                  detail={
+                    <div className="flex flex-col gap-5">
+                      <DetailList
+                        items={[
+                          ["Table", r.table_name.replace(/_/g, " ")],
+                          ["Record", r.record_id ? <span key="id" className="font-mono text-xs">{r.record_id}</span> : null],
+                          ["By", r.actor_email ?? "System"],
+                          ["When", formatDateTime(r.created_at)],
+                        ]}
+                      />
+                      {keys.length > 0 && (
+                        <DetailList
+                          heading={isDiff ? "What changed" : "Record"}
+                          items={keys.map((k) => {
+                            const c = changes[k] as { from?: unknown; to?: unknown };
+                            return [
+                              k.replace(/_/g, " "),
+                              isDiff ? (
+                                <span key={k}>
+                                  <span className="text-muted-foreground line-through">{show(c?.from)}</span>
+                                  <span className="mx-1 text-muted-foreground">→</span>
+                                  {show(c?.to)}
+                                </span>
+                              ) : (
+                                show(changes[k])
+                              ),
+                            ] as [string, React.ReactNode];
+                          })}
+                        />
+                      )}
+                    </div>
+                  }
+                  className="flex items-start gap-3 px-5 py-3"
                 >
                   <span
                     className={cn(
@@ -166,7 +204,7 @@ export default async function AuditPage({
                       </ul>
                     )}
                   </div>
-                </li>
+                </DetailRow>
               );
             })}
           </ul>

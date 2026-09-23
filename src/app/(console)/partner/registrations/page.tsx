@@ -10,6 +10,7 @@ import {
 } from "@/components/shell/pagination";
 import { OutcomeControl } from "@/components/partner/outcome-control";
 import { DeleteRow } from "@/components/shell/delete-row";
+import { RegistrationRowLink } from "@/components/admin/registration-row-link";
 import { canDeleteRegistrations } from "@/lib/records/queries";
 import { requirePartner } from "@/lib/auth/dal";
 import { getPartnerCamps, getPartnerRosterPage } from "@/lib/partners/queries";
@@ -113,7 +114,9 @@ export default async function PartnerRoster({
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-app-line-soft last:border-b-0">
+                  // Read-only here: recording outcomes stays with the control
+                  // in the Status column, which is gated per camp.
+                  <RegistrationRowLink key={r.id} registration={r} canEdit={false}>
                     <td className="px-5 py-3">
                       <span className="block font-medium">{r.donor?.full_name ?? "—"}</span>
                       {r.donor && (
@@ -183,7 +186,7 @@ export default async function PartnerRoster({
                         />
                       )}
                     </td>
-                  </tr>
+                  </RegistrationRowLink>
                 ))}
               </tbody>
             </table>

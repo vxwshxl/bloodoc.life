@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, Droplet } from "lucide-react";
 import { getOverview, getDashboardExtras } from "@/lib/admin/queries";
+import { CampCard } from "@/components/camps/camp-card";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { BreakdownBars, StatTile, TrendChart } from "@/components/admin/charts";
-import { formatCampDate, formatTimeRange } from "@/lib/format";
+import { formatCampDate } from "@/lib/format";
 import { statusChartColor } from "@/components/ui/status-pill";
 import { RecentRegistration } from "@/components/admin/recent-registration";
 
@@ -143,24 +144,12 @@ export default async function OverviewPage() {
         <Panel className="p-5">
           <h2 className="mb-4 text-sm font-semibold">Next camp</h2>
           {o.nextCamp ? (
-            <>
-              <p className="font-display text-lg leading-tight font-bold tracking-tight text-balance">
-                {o.nextCamp.title}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {formatCampDate(o.nextCamp.starts_at)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {formatTimeRange(o.nextCamp.starts_at, o.nextCamp.ends_at)}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{o.nextCamp.venue}</p>
-              <Link
-                href={`/admin/registrations?camp=${o.nextCamp.id}`}
-                className="press mt-4 inline-flex h-9 items-center rounded-lg bg-primary px-3.5 text-sm font-semibold text-primary-foreground"
-              >
-                {o.registeredForNext} on the roster
-              </Link>
-            </>
+            <CampCard
+              camp={o.nextCamp}
+              href={`/admin/registrations?camp=${o.nextCamp.id}`}
+              action={`${o.registeredForNext} on the roster`}
+              className="p-4 shadow-none"
+            />
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">
               Nothing scheduled. Create a camp and publish it.

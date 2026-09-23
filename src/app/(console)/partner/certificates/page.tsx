@@ -14,6 +14,8 @@ import { getPartnerCertificates } from "@/lib/partners/queries";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 import type { CertificateStatus } from "@/lib/db/types";
 import { StatusPill } from "@/components/ui/status-pill";
+import { DetailRow } from "@/components/shell/detail-row";
+import { CertificateDetail } from "@/components/admin/certificate-detail";
 
 export const metadata: Metadata = { title: "Certificates" };
 
@@ -102,7 +104,14 @@ export default async function PartnerCertificates({
               </thead>
               <tbody>
                 {rows.map((c) => (
-                  <tr key={c.id} className="border-b border-app-line-soft last:border-b-0">
+                  <DetailRow
+                    key={c.id}
+                    label={`Open certificate ${c.code}`}
+                    title={c.registration?.donor?.full_name ?? c.code}
+                    badge={<StatusPill status={c.status} />}
+                    description={`Certificate ${c.code}`}
+                    detail={<CertificateDetail c={c} />}
+                  >
                     <td className="px-5 py-3">
                       <span className="block font-medium">
                         {c.registration?.donor?.full_name ?? "—"}
@@ -149,7 +158,7 @@ export default async function PartnerCertificates({
                         canApprove={canApprove}
                       />
                     </td>
-                  </tr>
+                  </DetailRow>
                 ))}
               </tbody>
             </table>
