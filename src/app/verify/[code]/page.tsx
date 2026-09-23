@@ -49,19 +49,19 @@ export default async function VerifyPage({
   const BANNER = {
     valid: {
       icon: BadgeCheck,
-      tone: "bg-primary text-primary-foreground",
+      tone: "bg-status-success text-white",
       title: "Verified certificate",
       body: "This donation is recorded and signed off by the blood bank that received it.",
     },
     pending: {
       icon: CircleAlert,
-      tone: "bg-muted text-foreground",
+      tone: "bg-status-warning-wash text-status-warning",
       title: "Not yet approved",
       body: "The donation is recorded but the blood bank has not signed it off. Check again shortly.",
     },
     revoked: {
       icon: CircleSlash,
-      tone: "bg-destructive text-white",
+      tone: "bg-status-danger text-white",
       title: "Withdrawn",
       body: "This certificate was withdrawn and should not be accepted as proof of donation.",
     },

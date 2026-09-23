@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Droplet } from "lucide-react";
 import { CampCard } from "@/components/camps/camp-card";
+import { StatusPill } from "@/components/ui/status-pill";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { StatTile } from "@/components/admin/charts";
 import { getEffectiveProfile, getEffectiveRecord } from "@/lib/auth/impersonation";
@@ -122,9 +123,7 @@ export default async function DonorOverview() {
                     {formatCampDate(r.camp.starts_at)}
                   </span>
                 </span>
-                <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-medium capitalize">
-                  {r.status}
-                </span>
+                <StatusPill status={r.status} className="shrink-0" />
               </li>
             ))}
           </ul>

@@ -8,22 +8,33 @@ import { cn } from "@/lib/utils";
  * certificate's "pending" and a registration's "registered" — the same idea,
  * "nothing has happened yet" — were different colours on adjacent pages.
  *
- * The colour language, deliberately narrow:
- *   primary     — the good outcome (donated, approved, published)
- *   destructive — something a person has to act on (deferred, withdrawn)
- *   muted       — neutral, waiting, or over (registered, cancelled, closed)
+ * The colour language, one meaning per colour, used the same everywhere:
+ *   success — done, and the good outcome (donated, approved, published)
+ *   warning — part way through (screened, pending)
+ *   danger  — stopped (deferred, cancelled, withdrawn)
+ *   muted   — neutral, not started (registered, draft, closed)
  *
- * No green. This app has one accent and it is the crimson that means blood;
- * introducing a second semantic hue for "success" would put two unrelated
- * colour systems on the same screen.
+ * The status hues are their own tokens (`--status-*` in globals.css), kept to
+ * statuses: the rest of the app still has one accent, the crimson of the
+ * donate button.
  */
 
-export type Tone = "primary" | "destructive" | "muted" | "soft";
+export type Tone =
+  | "success"
+  | "warning"
+  | "danger"
+  | "primary"
+  | "destructive"
+  | "muted"
+  | "soft";
 
 /** The pill/chip classes for a tone. Exported so a control that *is* the
  * status — a select trigger tinted by its own value — wears the same colour
  * as the pill that reports it elsewhere. */
 export const TONE_CLASS: Record<Tone, string> = {
+  success: "bg-status-success/12 text-status-success",
+  warning: "bg-status-warning-wash text-status-warning",
+  danger: "bg-status-danger/12 text-status-danger",
   primary: "bg-primary/12 text-primary",
   destructive: "bg-destructive/12 text-destructive",
   // A step between neutral and the accent, for the middle of a progression.
@@ -34,17 +45,17 @@ export const TONE_CLASS: Record<Tone, string> = {
 const SEMANTIC: Record<string, { label: string; tone: Tone }> = {
   // registrations
   registered: { label: "Registered", tone: "muted" },
-  screened: { label: "Screened", tone: "soft" },
-  donated: { label: "Donated", tone: "primary" },
-  deferred: { label: "Deferred", tone: "destructive" },
-  cancelled: { label: "Cancelled", tone: "muted" },
+  screened: { label: "Screened", tone: "warning" },
+  donated: { label: "Donated", tone: "success" },
+  deferred: { label: "Deferred", tone: "danger" },
+  cancelled: { label: "Cancelled", tone: "danger" },
   // certificates
-  pending: { label: "Pending", tone: "muted" },
-  approved: { label: "Approved", tone: "primary" },
-  revoked: { label: "Withdrawn", tone: "destructive" },
+  pending: { label: "Pending", tone: "warning" },
+  approved: { label: "Approved", tone: "success" },
+  revoked: { label: "Withdrawn", tone: "danger" },
   // camps
   draft: { label: "Draft", tone: "muted" },
-  published: { label: "Published", tone: "primary" },
+  published: { label: "Published", tone: "success" },
   closed: { label: "Closed", tone: "muted" },
   // accounts
   admin: { label: "Administrator", tone: "primary" },
@@ -99,6 +110,12 @@ export function StatusPill({
  */
 export function statusChartColor(status: string): string {
   switch (statusMeta(status).tone) {
+    case "success":
+      return "var(--status-success)";
+    case "warning":
+      return "var(--status-warning)";
+    case "danger":
+      return "var(--status-danger)";
     case "primary":
       return "var(--primary)";
     case "destructive":

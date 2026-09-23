@@ -16,6 +16,7 @@ import { requirePartner } from "@/lib/auth/dal";
 import { getPartnerCamps, getPartnerRosterPage } from "@/lib/partners/queries";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { TONE_CLASS, statusMeta } from "@/components/ui/status-pill";
 
 export const metadata: Metadata = { title: "Roster" };
 
@@ -151,11 +152,7 @@ export default async function PartnerRoster({
                           <span
                             className={cn(
                               "ml-2 rounded px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase",
-                              r.certificate.status === "approved"
-                                ? "bg-primary/12 text-primary"
-                                : r.certificate.status === "revoked"
-                                  ? "bg-destructive/12 text-destructive"
-                                  : "bg-muted text-muted-foreground",
+                              TONE_CLASS[statusMeta(r.certificate.status).tone],
                             )}
                           >
                             {r.certificate.status}

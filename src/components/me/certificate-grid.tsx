@@ -47,7 +47,7 @@ export function CertificateGrid({ certs }: { certs: VerifiedCertificate[] }) {
             />
 
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-1 text-[0.6875rem] font-semibold text-primary">
+              <span className="inline-flex items-center gap-1 rounded-full bg-status-success/12 px-2.5 py-1 text-[0.6875rem] font-semibold text-status-success">
                 <BadgeCheck className="size-3.5" strokeWidth={2.2} aria-hidden />
                 Verified
               </span>

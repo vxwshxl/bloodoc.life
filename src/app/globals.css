@@ -154,6 +154,10 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-wash: var(--status-warning-wash);
+  --color-status-danger: var(--status-danger);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -207,6 +211,14 @@
   --accent-foreground: oklch(0.36 0.1 22);
   --destructive: oklch(0.58 0.185 41);
   --destructive-foreground: oklch(0.99 0 0);
+  /* Status colours, and only for statuses: green is done, amber is part way,
+   * red is stopped. Text values are dark enough to read on their own 12% wash.
+   * Red is the brand crimson, not `--destructive` (which leans orange and
+   * means "error" rather than an outcome). */
+  --status-success: oklch(0.5 0.14 150);
+  --status-warning: oklch(0.52 0.12 70);
+  --status-warning-wash: oklch(0.93 0.1 90);
+  --status-danger: oklch(0.52 0.205 22);
   --border: oklch(0.91 0 0);
   --input: oklch(0.91 0 0);
   --ring: oklch(0.52 0.205 22);

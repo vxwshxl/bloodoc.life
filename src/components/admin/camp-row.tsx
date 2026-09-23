@@ -41,7 +41,7 @@ export function CampRow({
         className={cn(
           "flex items-center justify-between gap-3 px-5 py-2",
           camp.status === "published"
-            ? "bg-primary text-primary-foreground"
+            ? "bg-status-success text-white"
             : "bg-muted text-muted-foreground",
         )}
       >
