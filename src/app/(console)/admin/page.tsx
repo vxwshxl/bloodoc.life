@@ -4,8 +4,9 @@ import { ArrowRight, BadgeCheck, Building2, Droplet } from "lucide-react";
 import { getOverview, getDashboardExtras } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { BreakdownBars, StatTile, TrendChart } from "@/components/admin/charts";
-import { formatCampDate, formatDateTime, formatTimeRange } from "@/lib/format";
-import { StatusPill, statusChartColor } from "@/components/ui/status-pill";
+import { formatCampDate, formatTimeRange } from "@/lib/format";
+import { statusChartColor } from "@/components/ui/status-pill";
+import { RecentRegistration } from "@/components/admin/recent-registration";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -186,21 +187,7 @@ export default async function OverviewPage() {
         ) : (
           <ul>
             {o.recent.map((r) => (
-              <li
-                key={r.id}
-                className="flex items-center gap-3 border-b border-app-line-soft px-5 py-3 last:border-b-0"
-              >
-                <span className="inline-flex h-6 min-w-9 items-center justify-center rounded-md bg-primary/12 px-1.5 text-xs font-bold text-primary">
-                  {r.donor.blood_group === "unknown" ? "?" : r.donor.blood_group}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{r.donor.full_name}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {r.camp.title} · {formatDateTime(r.created_at)}
-                  </span>
-                </span>
-                <StatusPill status={r.status} className="shrink-0" />
-              </li>
+              <RecentRegistration key={r.id} registration={r} canEdit />
             ))}
           </ul>
         )}

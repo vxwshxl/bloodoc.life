@@ -1,7 +1,13 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Camp, Donor, Profile, Registration } from "@/lib/db/types";
+import type {
+  Camp,
+  Donor,
+  Profile,
+  Registration,
+  RegistrationStatus,
+} from "@/lib/db/types";
 
 /**
  * Console reads.
@@ -43,6 +49,48 @@ export async function listCampsWithCounts(search?: string): Promise<CampWithCoun
       registrationCount: mine.length,
       certificateCount: mine.filter((r) => r.certificate).length,
     };
+  });
+}
+
+/**
+ * Every camp with its roster broken down by outcome — the index the
+ * Registrations page opens on.
+ *
+ * One query for the camps and one for the statuses, tallied here. The obvious
+ * alternative is a count per camp per status, which at five statuses and twenty
+ * camps is a hundred round trips to render one screen.
+ */
+export type CampRoster = Camp & {
+  total: number;
+  byStatus: Record<RegistrationStatus, number>;
+};
+
+export async function listCampRosters(): Promise<CampRoster[]> {
+  const supabase = await createClient();
+  const camps = await listCamps();
+  if (camps.length === 0) return [];
+
+  const { data } = await supabase
+    .from("registrations")
+    .select("camp_id, status")
+    .in("camp_id", camps.map((c) => c.id));
+
+  const rows = (data ?? []) as { camp_id: string; status: RegistrationStatus }[];
+  return camps.map((c) => {
+    const byStatus: Record<RegistrationStatus, number> = {
+      registered: 0,
+      screened: 0,
+      donated: 0,
+      deferred: 0,
+      cancelled: 0,
+    };
+    let total = 0;
+    for (const r of rows) {
+      if (r.camp_id !== c.id) continue;
+      total += 1;
+      byStatus[r.status] += 1;
+    }
+    return { ...c, total, byStatus };
   });
 }
 

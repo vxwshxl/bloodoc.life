@@ -12,6 +12,7 @@ import {
 import { StatusControl } from "@/components/admin/registration-row";
 import { VitalsCell } from "@/components/admin/vitals-cell";
 import { DeleteRow } from "@/components/shell/delete-row";
+import { RegistrationRowLink } from "@/components/admin/registration-row-link";
 import { canDeleteRegistrations } from "@/lib/records/queries";
 import { formatCampDateShort } from "@/lib/format";
 
@@ -92,7 +93,11 @@ export default async function DeskRoster({
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-app-line-soft last:border-b-0">
+                  // A verifier gets the same editable dialog an administrator
+                  // does — 0014 gave them the policies, and the desk is where
+                  // a record is corrected while the donor is still standing
+                  // there.
+                  <RegistrationRowLink key={r.id} registration={r} canEdit>
                     <td className="px-5 py-3">
                       <span className="block font-medium">{r.donor.full_name}</span>
                       <span className="block text-xs text-muted-foreground">{r.donor.phone}</span>
@@ -133,7 +138,7 @@ export default async function DeskRoster({
                         />
                       )}
                     </td>
-                  </tr>
+                  </RegistrationRowLink>
                 ))}
               </tbody>
             </table>

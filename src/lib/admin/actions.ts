@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { ROLE_VALUES } from "@/lib/roles";
-import { requireAdmin } from "@/lib/auth/dal";
+import { requireAdmin, requireVerifier } from "@/lib/auth/dal";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { campReminderEmail } from "@/lib/email/templates";
 import { copyFor } from "@/lib/email/copy";
@@ -165,7 +165,12 @@ export async function setRegistrationStatus(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
+  // `requireVerifier`, not `requireAdmin`. This is the control on the desk
+  // roster, and gating it on admin meant a verifier tapping "Donated" was
+  // redirected to /me — the exact work 0014 wrote them policies for. The
+  // policies are still what decide; this only stops the wrong person waiting
+  // for an update that was never going to happen.
+  await requireVerifier();
   const parsed = statusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "That status is not one of the five." };
   const { id, status, deferralReason } = parsed.data;
@@ -215,7 +220,8 @@ export async function setRegistrationVitals(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
+  // Same as the status control above: taking a cuff reading is the desk's job.
+  await requireVerifier();
   const parsed = vitalsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const v = parsed.data;
@@ -242,6 +248,80 @@ export async function setRegistrationVitals(
   if (error) return { error: "Could not save those readings." };
 
   revalidatePath("/admin/registrations");
+  return { ok: true, message: "Saved." };
+}
+
+/**
+ * Everything on one registration, saved together.
+ *
+ * The roster already has a status control and a vitals cell, and they write
+ * separately because on the roster they are used separately — a status is
+ * tapped between donors, a reading is typed once. The detail dialog is the
+ * other case: somebody has opened one person's record and is correcting it,
+ * and making them save three times, with three toasts and three chances for
+ * one of them to fail alone, is not the same interaction at all.
+ *
+ * So this is one write. It reuses the same validation as the two narrow
+ * actions rather than restating it, because a rule that holds in one place and
+ * not the other is worse than no rule.
+ */
+const detailSchema = vitalsSchema.extend({
+  status: z.enum(["registered", "screened", "donated", "deferred", "cancelled"]),
+  firstTime: z.literal("on").optional().transform((v) => v === "on"),
+  medications: z.string().trim().max(400).optional(),
+  deferralReason: z.string().trim().max(400).optional(),
+});
+
+export async function saveRegistration(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireVerifier();
+  const parsed = detailSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const v = parsed.data;
+
+  // Blood pressure is a pair; one half of it is not a reading.
+  if ((v.bpSystolic === null) !== (v.bpDiastolic === null)) {
+    return { error: "Enter both blood pressure numbers, or neither." };
+  }
+  if (v.bpSystolic !== null && v.bpDiastolic !== null && v.bpDiastolic >= v.bpSystolic) {
+    return { error: "The lower blood pressure number should be below the upper one." };
+  }
+  if (v.status === "deferred" && !v.deferralReason) {
+    // The one status that is useless without a note: the next camp needs to
+    // know whether it was low haemoglobin or a cold.
+    return { error: "A deferral needs a reason." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("registrations")
+    .update({
+      status: v.status,
+      first_time: v.firstTime,
+      height_cm: v.heightCm,
+      weight_kg: v.weightKg,
+      bp_systolic: v.bpSystolic,
+      bp_diastolic: v.bpDiastolic,
+      hemoglobin_gdl: v.hemoglobin,
+      medications: v.medications || null,
+      // Cleared when the status moves off "deferred": a stale "low
+      // haemoglobin" sitting on a row that now reads "donated" is worse than
+      // no note at all.
+      deferral_reason: v.status === "deferred" ? (v.deferralReason || null) : null,
+    })
+    .eq("id", v.id)
+    .select("id");
+
+  if (error) return { error: "Could not save that registration." };
+  // PostgREST reports a delete or update that matched no policy as a success
+  // with no rows, so "nothing happened" must not be reported as "saved".
+  if (!data?.length) return { error: "You do not have permission to change that record." };
+
+  revalidatePath("/admin/registrations");
+  revalidatePath("/admin");
+  revalidatePath("/desk/roster");
   return { ok: true, message: "Saved." };
 }
 

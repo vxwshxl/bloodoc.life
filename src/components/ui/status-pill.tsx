@@ -60,11 +60,19 @@ export function StatusPill({
   status,
   label,
   tone,
+  /**
+   * How many rows are in this state. Set only where the pill is a tally
+   * rather than one row's own state — a camp card summarising its roster.
+   * The number leads, because "12 donated" is read as a quantity and
+   * "donated 12" is not.
+   */
+  count,
   className,
 }: {
   status?: string;
   label?: string;
   tone?: Tone;
+  count?: number;
   className?: string;
 }) {
   const meta = status ? statusMeta(status) : undefined;
@@ -76,6 +84,7 @@ export function StatusPill({
         className,
       )}
     >
+      {count != null && <span className="mr-1 font-bold tabular-nums">{count}</span>}
       {label ?? meta?.label ?? status}
     </span>
   );
