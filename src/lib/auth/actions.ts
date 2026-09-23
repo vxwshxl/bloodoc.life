@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -8,7 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { consumeOtp, issueOtp, normaliseEmail, OTP_TTL_MINUTES } from "@/lib/auth/otp";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { signInCodeEmail, signInAlertEmail } from "@/lib/email/templates";
-import { getLoginContext } from "@/lib/email/login-context";
+import { firstIp, getLoginContext } from "@/lib/email/login-context";
 import { copyFor } from "@/lib/email/copy";
 
 export type AuthState = {
@@ -27,71 +28,20 @@ export type AuthState = {
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address.");
 
 /**
- * Addresses that are always administrators.
- *
- * Kept in sync by hand with `official_admins` in migration 0009, which is what
- * actually assigns the role. This copy exists so the same addresses can also
- * skip the "have you registered" check below — they never will have.
- *
- * Lowercase, because `emailSchema` has already lowercased whatever was typed.
- */
-const OFFICIAL_ADMIN_EMAILS = ["bloodoclife@gmail.com", "hello@bloodoc.life"];
-
-/**
- * May this address be sent a code at all?
- *
- * Four ways in, checked in the order they are cheapest to disprove:
- *
- *  - Nobody has ever signed in. The first account bootstraps the administrator
- *    (see 0009), so it cannot require a prior record — there is nothing to have
- *    registered against yet.
- *  - A profile already exists. Somebody who is already in stays in, whatever
- *    their donor record looks like now.
- *  - A donor record exists. This is the ordinary route: you filled the camp
- *    form, so the email you used is the account.
- *  - A partner invite exists. Blood bank and organisation staff are not donors
- *    and would otherwise be locked out of the panel they were invited to.
- */
-async function signInEligibility(
-  email: string,
-): Promise<{ allowed: true } | { allowed: false }> {
-  // The project's own mailboxes are always let through, and the signup trigger
-  // makes them admin. Without this they would be refused on their very first
-  // sign-in — they have no donor record and no invite, because they are the
-  // people who hand those out.
-  if (OFFICIAL_ADMIN_EMAILS.includes(email)) return { allowed: true };
-
-  const admin = createAdminClient();
-
-  const { count: profileCount } = await admin
-    .from("profiles")
-    .select("id", { count: "exact", head: true });
-  if ((profileCount ?? 0) === 0) return { allowed: true };
-
-  const [profile, donor, member] = await Promise.all([
-    admin.from("profiles").select("id").eq("email", email).limit(1).maybeSingle(),
-    admin.from("donors").select("id").eq("email", email).limit(1).maybeSingle(),
-    admin.from("partner_members").select("id").eq("email", email).limit(1).maybeSingle(),
-  ]);
-
-  return profile.data || donor.data || member.data ? { allowed: true } : { allowed: false };
-}
-
-/**
  * Step one: mail a code.
  *
- * This used to answer identically whether or not the address belonged to
- * anyone, so the form could not be used to test whether a given person had
- * registered. That is no longer true, and the trade is worth stating plainly:
- * sign-in is now restricted to people who already have a donor record, a
- * partner invite or an account, and telling an unknown address to go and
- * register is precisely what makes this page usable by a student who mistyped
- * their email. The cost is that the form will confirm whether an address is
- * known to the site. On a register of blood donors that is real, not
- * theoretical, and the mitigation is the rate limit below rather than silence.
+ * Any address may sign in. There used to be a gate here refusing addresses
+ * with no donor record, partner invite or profile, which meant somebody who
+ * had not registered yet was turned away with nowhere to go. Now they sign in,
+ * land on the panel with an empty record, and apply to a camp from there — the
+ * registration is what creates the donor row, exactly as it does signed out.
  *
- * A cooldown hit still reports success, because that one leaks nothing an
- * attacker could not already learn from the eligibility check above.
+ * A side effect worth keeping: the form answers identically for every address
+ * again, so it can no longer be used to test whether someone has registered.
+ *
+ * What stops it being used to mail strangers is the per-IP and per-address
+ * hourly cap in `issueOtp`. A cooldown hit still reports success; it leaks
+ * nothing.
  */
 export async function requestSignInCode(
   _prev: AuthState,
@@ -105,19 +55,11 @@ export async function requestSignInCode(
     return { error: "Email is not configured yet. Ask an administrator to set ZEPTOMAIL_TOKEN." };
   }
 
-  // Registering for a camp is what creates the account. There is no separate
-  // sign-up, so an address nobody has ever registered with has nothing to sign
-  // in to, and sending it a code would only produce a working session attached
-  // to an empty profile.
-  const eligible = await signInEligibility(email);
-  if (!eligible.allowed) {
-    return {
-      error:
-        "No registration found for this email. Register for a camp first — the email you use there becomes your sign-in.",
-    };
+  const ip = firstIp(await headers());
+  const issued = await issueOtp(email, "signin", ip);
+  if (issued.status === "limited") {
+    return { error: "Too many codes requested. Wait a while and try again." };
   }
-
-  const issued = await issueOtp(email);
   if (issued.status === "error") {
     return { error: "Could not send a code right now. Try again in a moment." };
   }

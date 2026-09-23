@@ -102,6 +102,11 @@ export type Camp = {
    * hero animates around.
    */
   featured: boolean;
+  /**
+   * Registration questions this camp requires beyond the always-required
+   * core. Keys from `CONFIGURABLE_FIELDS`; see 0019.
+   */
+  required_fields: string[];
   created_at: string;
   updated_at: string;
 };
@@ -285,6 +290,7 @@ export type Database = {
         expires_at: string;
         consumed_at: string | null;
         created_at: string;
+        ip: string | null;
       }>;
       email_log: Table<EmailLog>;
       audit_log: Table<AuditLog>;

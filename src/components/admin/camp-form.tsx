@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Camp } from "@/lib/db/types";
+import { CONFIGURABLE_FIELDS } from "@/lib/validations/donor";
 
 /** An ISO instant → the "YYYY-MM-DDTHH:mm" a datetime-local input wants, in IST. */
 function toLocalInput(iso: string | null): string {
@@ -267,6 +268,31 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           </span>
         </span>
       </label>
+
+      {/*
+        Which optional questions this camp insists on. Name, contact, blood
+        group and the rest of the core are always required and are not offered
+        here. Ticked ones show a red asterisk on the public form and are
+        enforced by `registerDonor`; the rest read "(Optional)".
+      */}
+      <fieldset className="rounded-xl border border-app-line bg-muted/40 p-4">
+        <legend className="px-1 text-xs font-semibold">Make required on the registration form</legend>
+        <p className="mb-3 text-xs text-muted-foreground">Unticked questions stay optional.</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {CONFIGURABLE_FIELDS.map((f) => (
+            <label key={f.key} className="flex cursor-pointer items-center gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                name="requiredFields"
+                value={f.key}
+                defaultChecked={camp?.required_fields?.includes(f.key) ?? false}
+                className="tickbox shrink-0"
+              />
+              {f.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       {state.error && (
         <p role="alert" className="text-sm font-medium text-destructive">{state.error}</p>

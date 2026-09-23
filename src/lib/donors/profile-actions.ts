@@ -44,6 +44,9 @@ export async function requestProfileChangeCode(): Promise<ProfileState> {
   if (issued.status === "error") {
     return { error: "Could not send a code. Try again in a moment." };
   }
+  if (issued.status === "limited") {
+    return { error: "Too many codes sent in the last hour. Try again later." };
+  }
   // A cooldown hit still reports success: a code is already in their inbox, and
   // saying "wait 30 seconds" to someone who has one is just noise.
   if (issued.status === "issued") {

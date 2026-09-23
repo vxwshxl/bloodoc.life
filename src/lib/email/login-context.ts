@@ -29,7 +29,15 @@ export type LoginContext = {
   time: string;
 };
 
-function firstIp(h: Headers): string | null {
+/**
+ * The client's address, as the edge reported it.
+ *
+ * Also what the sign-in rate limit in lib/auth/otp.ts keys on. That makes the
+ * header order a security property, not just a cosmetic one: `cf-connecting-ip`
+ * is only trustworthy because Cloudflare overwrites it. A request sent straight
+ * to the Vercel origin can set it to anything.
+ */
+export function firstIp(h: Headers): string | null {
   const cf = h.get("cf-connecting-ip");
   if (cf) return cf.trim();
   const xff = h.get("x-forwarded-for");

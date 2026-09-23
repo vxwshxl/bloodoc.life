@@ -34,6 +34,17 @@ const MAX_VERIFY_ATTEMPTS = 5;
  */
 export const RESEND_COOLDOWN_SECONDS = 30;
 
+/**
+ * Hourly caps on codes issued, per address and per client IP.
+ *
+ * Sign-in is open to any address, so without these the form is a free way to
+ * mail our branded email to a list of strangers (by IP) or to flood one inbox
+ * thirty seconds at a time (by address). The IP cap is generous on purpose: a
+ * camp is a college, and a hall of students on one Wi-Fi share one address.
+ */
+const MAX_CODES_PER_EMAIL_PER_HOUR = 6;
+const MAX_CODES_PER_IP_PER_HOUR = 30;
+
 function hashCode(code: string): string {
   return createHash("sha256").update(code).digest("hex");
 }
@@ -56,6 +67,7 @@ export function normaliseEmail(email: string): string {
 export type IssueResult =
   | { status: "issued"; code: string }
   | { status: "cooldown" }
+  | { status: "limited" }
   | { status: "error" };
 
 /**
@@ -64,10 +76,38 @@ export type IssueResult =
  * window — the caller reports success either way, because telling a stranger
  * "a code was already sent to this address" confirms the address exists.
  */
-export async function issueOtp(email: string, purpose = "signin"): Promise<IssueResult> {
+export async function issueOtp(
+  email: string,
+  purpose = "signin",
+  ip: string | null = null,
+): Promise<IssueResult> {
   try {
     const admin = createAdminClient();
     const at = normaliseEmail(email);
+
+    // Counted across every purpose: a profile-change code costs the same email
+    // as a sign-in code.
+    const hourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
+    const [byEmail, byIp] = await Promise.all([
+      admin
+        .from("email_otps")
+        .select("id", { count: "exact", head: true })
+        .eq("email", at)
+        .gt("created_at", hourAgo),
+      ip
+        ? admin
+            .from("email_otps")
+            .select("id", { count: "exact", head: true })
+            .eq("ip", ip)
+            .gt("created_at", hourAgo)
+        : Promise.resolve({ count: 0 }),
+    ]);
+    if (
+      (byEmail.count ?? 0) >= MAX_CODES_PER_EMAIL_PER_HOUR ||
+      (byIp.count ?? 0) >= MAX_CODES_PER_IP_PER_HOUR
+    ) {
+      return { status: "limited" };
+    }
 
     const cutoff = new Date(Date.now() - RESEND_COOLDOWN_SECONDS * 1000).toISOString();
     const { data: recent } = await admin
@@ -93,6 +133,7 @@ export async function issueOtp(email: string, purpose = "signin"): Promise<Issue
       email: at,
       code_hash: hashCode(code),
       purpose,
+      ip,
       expires_at: new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString(),
     });
     if (error) return { status: "error" };

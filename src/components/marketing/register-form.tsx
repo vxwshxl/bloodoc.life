@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { lookupDonorByEmail, registerDonor, type RegisterState } from "@/lib/donors/actions";
 import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
@@ -48,11 +48,51 @@ const THIS_YEAR = new Date().getFullYear();
 
 const FIELD = "h-10 data-[size=default]:h-10";
 
+/**
+ * Every label says whether its question must be answered: a red asterisk, or
+ * "(Optional)". Marking only one kind leaves the donor guessing about the
+ * other, and which questions are required varies by camp.
+ */
+function Mark({ required }: { required: boolean }) {
+  return required ? (
+    <span aria-hidden className="text-destructive">*</span>
+  ) : (
+    <span className="font-normal text-muted-foreground/70">(Optional)</span>
+  );
+}
+
+/** Field names → labels, for the list of problems at the top of the form. */
+const LABELS: Record<string, string> = {
+  fullName: "Full name",
+  sex: "Sex",
+  dateOfBirth: "Date of birth",
+  age: "Age",
+  fatherName: "Father's name",
+  motherName: "Mother's name",
+  email: "Email",
+  phone: "Phone",
+  altPhone: "Alternate phone",
+  address: "Address",
+  kind: "You are a",
+  department: "Department",
+  occupation: "Occupation",
+  bloodGroup: "Blood group",
+  priorDonations: "Times donated before",
+  firstTime: "First-time donor",
+  heightCm: "Height",
+  weightKg: "Weight",
+  onMedication: "Are you on medications?",
+  medications: "What are you taking?",
+  consent: "Consent",
+  campId: "Camp",
+};
+
 function Field({
   label,
   name,
   error,
   hint,
+  required = false,
   className,
   children,
 }: {
@@ -60,13 +100,15 @@ function Field({
   name: string;
   error?: string;
   hint?: string;
+  required?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={name} className="text-xs font-medium text-muted-foreground">
+      <Label htmlFor={name} className="gap-1 text-xs font-medium text-muted-foreground">
         {label}
+        <Mark required={required} />
       </Label>
       {children}
       {/* The hint is replaced by the error rather than joined by it: two lines
@@ -183,6 +225,8 @@ export function RegisterForm({
   const nameRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
   const e = state.fieldErrors ?? {};
+  /** Required for this camp beyond the fixed core — set by the organisers. */
+  const req = (key: string) => (camp.required_fields ?? []).includes(key);
 
   // "We know you" — shown once the typed address matches an existing donor.
   const [knownName, setKnownName] = useState<string | null>(null);
@@ -257,7 +301,19 @@ export function RegisterForm({
   }
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form
+      action={action}
+      // Submitted by hand so a failed attempt keeps every answer. React resets
+      // a form after its `action` runs, which on a validation error wiped
+      // twenty boxes to report one mistake. Preventing the default skips that
+      // reset; `action` stays as the no-JavaScript fallback.
+      onSubmit={(ev) => {
+        ev.preventDefault();
+        const data = new FormData(ev.currentTarget);
+        startTransition(() => action(data));
+      }}
+      className="flex flex-col gap-6"
+    >
       <div ref={topRef} />
       <input type="hidden" name="campId" value={camp.id} />
 
@@ -272,21 +328,36 @@ export function RegisterForm({
       )}
 
       {state.error && (
-        <p
+        <div
           id={errorId}
           role="alert"
           className="rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm font-medium text-destructive"
         >
-          {state.error}
-        </p>
+          <p>{state.error}</p>
+          {/* Named, not just flagged. A field error can belong to a box the
+              donor has scrolled past, or one that is not on screen at all,
+              and "some answers" with nothing pointing at them is a dead end. */}
+          {Object.keys(e).length > 0 && (
+            <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs">
+              {Object.entries(e).map(([key, msg]) => (
+                <li key={key}>
+                  <a href={`#${key}`} className="underline underline-offset-2">
+                    {LABELS[key] ?? key}
+                  </a>
+                  : {msg}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <Section step={1} title="About you" note="As it appears on the ID you will bring.">
         <div className="grid gap-4 sm:grid-cols-6">
-          <Field label="Full name" name="fullName" error={e.fullName} className="sm:col-span-4">
+          <Field label="Full name" name="fullName" error={e.fullName} required className="sm:col-span-4">
             <Input ref={nameRef} id="fullName" name="fullName" className={FIELD} autoComplete="name" required aria-invalid={!!e.fullName || undefined} />
           </Field>
-          <Field label="Sex" name="sex" error={e.sex} className="sm:col-span-2">
+          <Field label="Sex" name="sex" error={e.sex} required className="sm:col-span-2">
             <Dropdown name="sex" options={SEXES} invalid={!!e.sex} />
           </Field>
 
@@ -294,6 +365,8 @@ export function RegisterForm({
             label="Date of birth"
             name="dateOfBirth"
             error={e.dateOfBirth}
+            hint="Or give your age."
+            required
             className="sm:col-span-3"
           >
             {/* Bounded to plausible donor birth years, and opened on one, so
@@ -312,16 +385,17 @@ export function RegisterForm({
             name="age"
             error={e.age}
             hint="Either one is enough."
+            required
             className="sm:col-span-3"
           >
             <Input id="age" name="age" inputMode="numeric" className={FIELD} placeholder="e.g. 21" aria-invalid={!!e.age || undefined} />
           </Field>
 
-          <Field label="Father's name" name="fatherName" error={e.fatherName} className="sm:col-span-3">
-            <Input id="fatherName" name="fatherName" className={FIELD} />
+          <Field label="Father's name" name="fatherName" error={e.fatherName} required={req("fatherName")} className="sm:col-span-3">
+            <Input id="fatherName" name="fatherName" className={FIELD} required={req("fatherName")} aria-invalid={!!e.fatherName || undefined} />
           </Field>
-          <Field label="Mother's name" name="motherName" error={e.motherName} className="sm:col-span-3">
-            <Input id="motherName" name="motherName" className={FIELD} />
+          <Field label="Mother's name" name="motherName" error={e.motherName} required={req("motherName")} className="sm:col-span-3">
+            <Input id="motherName" name="motherName" className={FIELD} required={req("motherName")} aria-invalid={!!e.motherName || undefined} />
           </Field>
         </div>
       </Section>
@@ -337,6 +411,7 @@ export function RegisterForm({
                 ? `Welcome back, ${knownName.split(" ")[0]} — this updates your existing record.`
                 : "This becomes your sign-in. Use an address you can open."
             }
+            required
             className="sm:col-span-3"
           >
             <Input
@@ -350,7 +425,7 @@ export function RegisterForm({
               aria-invalid={!!e.email || undefined}
             />
           </Field>
-          <Field label="Phone" name="phone" error={e.phone} className="sm:col-span-3">
+          <Field label="Phone" name="phone" error={e.phone} required className="sm:col-span-3">
             <Input id="phone" name="phone" type="tel" inputMode="tel" className={FIELD} autoComplete="tel" required placeholder="10 digits" aria-invalid={!!e.phone || undefined} />
           </Field>
           <Field
@@ -358,19 +433,20 @@ export function RegisterForm({
             name="altPhone"
             error={e.altPhone}
             hint="Someone who can be reached if you cannot."
+            required={req("altPhone")}
             className="sm:col-span-3"
           >
-            <Input id="altPhone" name="altPhone" type="tel" inputMode="tel" className={FIELD} aria-invalid={!!e.altPhone || undefined} />
+            <Input id="altPhone" name="altPhone" type="tel" inputMode="tel" className={FIELD} required={req("altPhone")} aria-invalid={!!e.altPhone || undefined} />
           </Field>
-          <Field label="Address" name="address" error={e.address} className="sm:col-span-3">
-            <Input id="address" name="address" className={FIELD} autoComplete="street-address" />
+          <Field label="Address" name="address" error={e.address} required={req("address")} className="sm:col-span-3">
+            <Input id="address" name="address" className={FIELD} autoComplete="street-address" required={req("address")} aria-invalid={!!e.address || undefined} />
           </Field>
         </div>
       </Section>
 
       <Section step={3} title="What you do" note="So the organisers can group the roster by department.">
         <div className="grid gap-4 sm:grid-cols-6">
-          <Field label="You are a" name="kind" error={e.kind} className="sm:col-span-2">
+          <Field label="You are a" name="kind" error={e.kind} required className="sm:col-span-2">
             <Dropdown
               name="kind"
               defaultValue="student"
@@ -399,6 +475,7 @@ export function RegisterForm({
             label={kind === "student" ? "Department" : "Faculty / department"}
             name="department"
             error={e.department}
+            required
             className={cn("sm:col-span-4", kind === "other" && "hidden")}
           >
             <Input
@@ -415,6 +492,7 @@ export function RegisterForm({
             name="occupation"
             error={e.occupation}
             hint="What you do for a living."
+            required
             className={cn("sm:col-span-4", kind !== "other" && "hidden")}
           >
             <Input
@@ -430,7 +508,7 @@ export function RegisterForm({
 
       <Section step={4} title="As a donor" note="Nothing here disqualifies you. It tells the desk what to expect.">
         <div className="grid gap-4 sm:grid-cols-6">
-          <Field label="Blood group" name="bloodGroup" error={e.bloodGroup} className="sm:col-span-2">
+          <Field label="Blood group" name="bloodGroup" error={e.bloodGroup} required className="sm:col-span-2">
             <Dropdown
               name="bloodGroup"
               defaultValue="unknown"
@@ -446,12 +524,16 @@ export function RegisterForm({
             name="priorDonations"
             error={e.priorDonations}
             hint="Anywhere, not just here."
+            required={req("priorDonations")}
             className="sm:col-span-2"
           >
-            <Input id="priorDonations" name="priorDonations" inputMode="numeric" className={FIELD} placeholder="0" aria-invalid={!!e.priorDonations || undefined} />
+            <Input id="priorDonations" name="priorDonations" inputMode="numeric" className={FIELD} placeholder="0" required={req("priorDonations")} aria-invalid={!!e.priorDonations || undefined} />
           </Field>
           <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label className="text-xs font-medium text-muted-foreground">First-time donor</Label>
+            <Label className="gap-1 text-xs font-medium text-muted-foreground">
+              First-time donor
+              <Mark required />
+            </Label>
             <YesNo name="firstTime" defaultValue="no" />
           </div>
         </div>
@@ -477,20 +559,22 @@ export function RegisterForm({
         */}
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Height (cm)" name="heightCm" error={e.heightCm}>
+            <Field label="Height (cm)" name="heightCm" error={e.heightCm} required={req("heightCm")}>
               <Input
                 id="heightCm"
                 name="heightCm"
+                required={req("heightCm")}
                 inputMode="decimal"
                 className={FIELD}
                 placeholder="e.g. 168"
                 aria-invalid={!!e.heightCm || undefined}
               />
             </Field>
-            <Field label="Weight (kg)" name="weightKg" error={e.weightKg}>
+            <Field label="Weight (kg)" name="weightKg" error={e.weightKg} required={req("weightKg")}>
               <Input
                 id="weightKg"
                 name="weightKg"
+                required={req("weightKg")}
                 inputMode="decimal"
                 className={FIELD}
                 placeholder="e.g. 62"
@@ -501,8 +585,9 @@ export function RegisterForm({
 
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">
+              <Label className="gap-1 text-xs font-medium text-muted-foreground">
                 Are you on medications?
+                <Mark required />
               </Label>
               <YesNo name="onMedication" defaultValue="no" onChange={setOnMedication} />
               <p className="text-xs text-muted-foreground">
@@ -522,6 +607,7 @@ export function RegisterForm({
                 label="What are you taking?"
                 name="medications"
                 error={e.medications}
+                required
                 hint="Brand or generic name is fine. This is the answer the medical officer most needs."
               >
                 <Textarea
@@ -540,8 +626,9 @@ export function RegisterForm({
       </Section>
 
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 p-4">
-        <input type="checkbox" name="consent" aria-invalid={!!e.consent || undefined} className="tickbox mt-0.5 shrink-0" />
+        <input type="checkbox" id="consent" name="consent" aria-invalid={!!e.consent || undefined} className="tickbox mt-0.5 shrink-0" />
         <span className="text-xs leading-relaxed text-muted-foreground">
+          <span aria-hidden className="mr-1 text-destructive">*</span>
           I understand that registering does not clear me to donate, that a
           medical officer will screen me at the camp, and that BlooDoc will hold
           these details to run this camp and contact me about future ones.

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAdminClient, adminConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { donorRegistrationSchema } from "@/lib/validations/donor";
+import { CONFIGURABLE_FIELDS, donorRegistrationSchema } from "@/lib/validations/donor";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { registrationConfirmedEmail } from "@/lib/email/templates";
 import { copyFor } from "@/lib/email/copy";
@@ -62,6 +62,19 @@ export async function registerDonor(
     .eq("status", "published")
     .maybeSingle();
   if (!camp) return { error: "That camp is not open for registration." };
+
+  // The questions this camp's organisers made required. Checked here against
+  // the camp just read, not against anything the form claimed, because the
+  // form's asterisks are only a hint to the donor.
+  const missing: Record<string, string> = {};
+  for (const f of CONFIGURABLE_FIELDS) {
+    if ((camp.required_fields ?? []).includes(f.key) && v[f.key] === null) {
+      missing[f.key] = `${f.label} is required for this camp.`;
+    }
+  }
+  if (Object.keys(missing).length) {
+    return { error: "Some answers need a look.", fieldErrors: missing };
+  }
 
   // Someone already signed in registers as themselves, so the record is linked
   // to their account from the start rather than at next sign-in.

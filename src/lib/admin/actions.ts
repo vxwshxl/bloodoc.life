@@ -9,6 +9,7 @@ import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { campReminderEmail } from "@/lib/email/templates";
 import { copyFor } from "@/lib/email/copy";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
+import { CONFIGURABLE_FIELDS } from "@/lib/validations/donor";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string };
 
@@ -89,6 +90,13 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
   const parsed = campSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const v = parsed.data;
+  // Ticked boxes sharing one name post several values, which
+  // `Object.fromEntries` above would collapse to the last. Read separately,
+  // and kept to known keys — the check constraint in 0019 would refuse others.
+  const known = new Set<string>(CONFIGURABLE_FIELDS.map((f) => f.key));
+  const requiredFields = [
+    ...new Set(formData.getAll("requiredFields").map(String).filter((k) => known.has(k))),
+  ];
 
   const startsAt = istToIso(v.startsAt);
   if (!startsAt) return { error: "That start time is not a valid date." };
@@ -127,6 +135,7 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
     collaboration: v.collaboration,
     partner_name: v.partnerName,
     partner_note: v.partnerNote,
+    required_fields: requiredFields,
   };
 
   if (v.id) {

@@ -17,25 +17,34 @@ export const SEXES = [
   { value: "other", label: "Other" },
 ] as const;
 
+/**
+ * A form box that may be missing from the submission entirely.
+ *
+ * An input that is not mounted posts no key at all, so the server sees
+ * `undefined` rather than "". The medication box is only rendered on "yes",
+ * and treating its absence as a type error failed every registration that
+ * answered "no" — with the message attached to a field that was not on screen.
+ */
+const box = z
+  .string()
+  .optional()
+  .transform((s) => (s ?? "").trim());
+
 /** Indian mobile numbers, with or without +91 and separators. */
 const phone = z
-  .string()
+  .string({ message: "Enter a 10-digit mobile number." })
   .trim()
   .transform((s) => s.replace(/[\s()-]/g, ""))
   .refine((s) => /^(\+?91)?[6-9]\d{9}$/.test(s), "Enter a 10-digit mobile number.");
 
-const optionalPhone = z
-  .string()
-  .trim()
+const optionalPhone = box
   .transform((s) => s.replace(/[\s()-]/g, ""))
   .refine((s) => s === "" || /^(\+?91)?[6-9]\d{9}$/.test(s), "Enter a 10-digit mobile number.")
   .transform((s) => (s === "" ? null : s));
 
-/** "" → null, for every optional text box on the form. */
-const optionalText = z
-  .string()
-  .trim()
-  .max(500)
+/** "" or missing → null, for every optional text box on the form. */
+const optionalText = box
+  .refine((s) => s.length <= 500, "Keep this under 500 characters.")
   .transform((s) => (s === "" ? null : s));
 
 /**
@@ -44,46 +53,60 @@ const optionalText = z
  * blood pressure of zero — so emptiness is handled before coercion, not after.
  */
 const optionalNumber = (min: number, max: number, label: string) =>
-  z
-    .string()
-    .trim()
+  box
     .transform((s) => (s === "" ? null : Number(s)))
     .refine(
       (n) => n === null || (Number.isFinite(n) && n >= min && n <= max),
       `${label} should be between ${min} and ${max}.`,
     );
 
+const optionalDate = box
+  .transform((s) => (s === "" ? null : s))
+  .refine((s) => s === null || !Number.isNaN(Date.parse(s)), "That date does not look right.");
+
+/**
+ * Questions that are optional unless a camp asks for them.
+ *
+ * The camp editor offers exactly these as "also require" ticks, and
+ * `registerDonor` enforces whichever the camp chose. The keys are the form's
+ * input names and must match the check constraint in migration 0019.
+ */
+export const CONFIGURABLE_FIELDS = [
+  { key: "fatherName", label: "Father's name" },
+  { key: "motherName", label: "Mother's name" },
+  { key: "altPhone", label: "Alternate phone" },
+  { key: "address", label: "Address" },
+  { key: "priorDonations", label: "Times donated before" },
+  { key: "heightCm", label: "Height" },
+  { key: "weightKg", label: "Weight" },
+] as const;
+
+export type ConfigurableField = (typeof CONFIGURABLE_FIELDS)[number]["key"];
+
 export const donorRegistrationSchema = z
   .object({
     // --- About you ---
-    fullName: z.string().trim().min(2, "Tell us your name.").max(120),
-    sex: z.enum(["male", "female", "other"]),
-    dateOfBirth: z
-      .string()
-      .trim()
-      .transform((s) => (s === "" ? null : s))
-      .refine(
-        (s) => s === null || !Number.isNaN(Date.parse(s)),
-        "That date does not look right.",
-      ),
+    fullName: z.string({ message: "Tell us your name." }).trim().min(2, "Tell us your name.").max(120),
+    sex: z.enum(["male", "female", "other"], { message: "Pick one." }),
+    dateOfBirth: optionalDate,
     age: optionalNumber(16, 120, "Age"),
     fatherName: optionalText,
     motherName: optionalText,
 
     // --- What you do ---
-    kind: z.enum(["student", "faculty", "staff", "other"]),
+    kind: z.enum(["student", "faculty", "staff", "other"], { message: "Pick one." }),
     occupation: optionalText,
     department: optionalText,
 
     // --- Reaching you ---
-    email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+    email: z.string({ message: "Enter your email address." }).trim().toLowerCase().email("Enter a valid email address."),
     phone,
     altPhone: optionalPhone,
     address: optionalText,
 
     // --- As a donor ---
-    bloodGroup: z.enum(BLOOD_GROUPS),
-    firstTime: z.enum(["yes", "no"]),
+    bloodGroup: z.enum(BLOOD_GROUPS, { message: "Pick one, or \"I don't know\"." }),
+    firstTime: z.enum(["yes", "no"], { message: "Pick yes or no." }),
     priorDonations: optionalNumber(0, 200, "Number of donations"),
 
     // --- On the day ---
@@ -103,11 +126,11 @@ export const donorRegistrationSchema = z
     // this question", and those are opposite answers to the one question on
     // the form the medical officer most needs settled. A deliberate No is a
     // recorded answer; a blank box is a shrug.
-    onMedication: z.enum(["yes", "no"]),
+    onMedication: z.enum(["yes", "no"], { message: "Pick yes or no." }),
     medications: optionalText,
 
     // --- Which camp ---
-    campId: z.string().uuid("Pick a camp."),
+    campId: z.string({ message: "Pick a camp." }).uuid("Pick a camp."),
     consent: z.literal("on", { message: "Please confirm you have read the eligibility note." }),
   })
   .superRefine((v, ctx) => {
@@ -184,14 +207,7 @@ export const donorProfileSchema = z
   .object({
     fullName: z.string().trim().min(2, "Enter your full name.").max(120),
     sex: z.enum(["male", "female", "other"]),
-    dateOfBirth: z
-      .string()
-      .trim()
-      .transform((s) => (s === "" ? null : s))
-      .refine(
-        (s) => s === null || !Number.isNaN(Date.parse(s)),
-        "That date does not look right.",
-      ),
+    dateOfBirth: optionalDate,
     age: optionalNumber(16, 120, "Age"),
     fatherName: optionalText,
     motherName: optionalText,
