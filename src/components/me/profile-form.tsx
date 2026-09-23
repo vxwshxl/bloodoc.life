@@ -12,6 +12,16 @@ import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
 import { Dropdown } from "@/components/ui/dropdown";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Donor } from "@/lib/db/types";
+import { mobileInputProps } from "@/lib/utils";
+
+/**
+ * A stored number as the box now expects it. Records saved before the rule
+ * tightened may carry +91 or spaces, and opening the profile should not greet
+ * the donor with a number their own form rejects.
+ */
+function tenDigits(stored: string | null | undefined): string {
+  return (stored ?? "").replace(/\D/g, "").slice(-10);
+}
 
 const PROFILE_YEAR = new Date().getFullYear();
 
@@ -124,10 +134,10 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
             </div>
           </Field>
           <Field label="Phone" error={e.phone}>
-            <input name="phone" type="tel" required defaultValue={donor?.phone ?? ""} className={field} />
+            <input name="phone" {...mobileInputProps} required placeholder="10 digits" defaultValue={tenDigits(donor?.phone)} className={field} />
           </Field>
           <Field label="Alternate phone" error={e.altPhone}>
-            <input name="altPhone" type="tel" defaultValue={donor?.alt_phone ?? ""} className={field} />
+            <input name="altPhone" {...mobileInputProps} placeholder="10 digits" defaultValue={tenDigits(donor?.alt_phone)} className={field} />
           </Field>
           <Field label="Address" error={e.address}>
             <input name="address" defaultValue={donor?.address ?? ""} className={field} />

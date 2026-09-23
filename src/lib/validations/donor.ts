@@ -30,16 +30,20 @@ const box = z
   .optional()
   .transform((s) => (s ?? "").trim());
 
-/** Indian mobile numbers, with or without +91 and separators. */
+/**
+ * Exactly ten digits, starting 6–9: an Indian mobile number as people write
+ * it. No country code, no separators — the inputs strip anything that is not
+ * a digit as it is typed, so a strict rule here costs the donor nothing.
+ */
+const MOBILE = /^[6-9]\d{9}$/;
+
 const phone = z
   .string({ message: "Enter a 10-digit mobile number." })
   .trim()
-  .transform((s) => s.replace(/[\s()-]/g, ""))
-  .refine((s) => /^(\+?91)?[6-9]\d{9}$/.test(s), "Enter a 10-digit mobile number.");
+  .refine((s) => MOBILE.test(s), "Enter a 10-digit mobile number.");
 
 const optionalPhone = box
-  .transform((s) => s.replace(/[\s()-]/g, ""))
-  .refine((s) => s === "" || /^(\+?91)?[6-9]\d{9}$/.test(s), "Enter a 10-digit mobile number.")
+  .refine((s) => s === "" || MOBILE.test(s), "Enter a 10-digit mobile number.")
   .transform((s) => (s === "" ? null : s));
 
 /** "" or missing → null, for every optional text box on the form. */

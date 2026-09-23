@@ -10,7 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dropdown } from "@/components/ui/dropdown";
-import { cn } from "@/lib/utils";
+import { cn, mobileInputProps } from "@/lib/utils";
 import type { Camp } from "@/lib/db/types";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 
@@ -426,7 +426,7 @@ export function RegisterForm({
             />
           </Field>
           <Field label="Phone" name="phone" error={e.phone} required className="sm:col-span-3">
-            <Input id="phone" name="phone" type="tel" inputMode="tel" className={FIELD} autoComplete="tel" required placeholder="10 digits" aria-invalid={!!e.phone || undefined} />
+            <Input id="phone" name="phone" {...mobileInputProps} className={FIELD} required placeholder="10 digits" aria-invalid={!!e.phone || undefined} />
           </Field>
           <Field
             label="Alternate phone"
@@ -436,7 +436,7 @@ export function RegisterForm({
             required={req("altPhone")}
             className="sm:col-span-3"
           >
-            <Input id="altPhone" name="altPhone" type="tel" inputMode="tel" className={FIELD} required={req("altPhone")} aria-invalid={!!e.altPhone || undefined} />
+            <Input id="altPhone" name="altPhone" {...mobileInputProps} className={FIELD} placeholder="10 digits" required={req("altPhone")} aria-invalid={!!e.altPhone || undefined} />
           </Field>
           <Field label="Address" name="address" error={e.address} required={req("address")} className="sm:col-span-3">
             <Input id="address" name="address" className={FIELD} autoComplete="street-address" required={req("address")} aria-invalid={!!e.address || undefined} />
