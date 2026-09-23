@@ -4,10 +4,11 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { saveRegistration, type ActionState } from "@/lib/admin/actions";
-import { Dropdown } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/ui/status-pill";
+import { StatusBar } from "@/components/admin/registration-row";
+import { DetailList, type DetailItem } from "@/components/shell/detail-list";
 import {
   Dialog,
   DialogContent,
@@ -17,14 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { formatCampDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import type { RegistrationStatus } from "@/lib/db/types";
-
-const STATUSES: { value: RegistrationStatus; label: string }[] = [
-  { value: "registered", label: "Registered" },
-  { value: "screened", label: "Screened" },
-  { value: "donated", label: "Donated" },
-  { value: "deferred", label: "Deferred" },
-  { value: "cancelled", label: "Cancelled" },
-];
 
 /**
  * What the dialog needs. Deliberately a plain shape rather than the joined row
@@ -86,7 +79,10 @@ export function RegistrationDetail({
   onOpenChange: (open: boolean) => void;
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveRegistration, {});
+  // Owned by the status bar, which saves on its own. The form below posts
+  // whatever it last reported, so saving readings never rewinds the outcome.
   const [status, setStatus] = useState<RegistrationStatus>(r.status);
+  const [reason, setReason] = useState<string | null>(r.deferral_reason);
 
   const seen = useRef<ActionState | null>(null);
   useEffect(() => {
@@ -117,7 +113,7 @@ export function RegistrationDetail({
             <span className="inline-flex h-6 min-w-9 items-center justify-center rounded-md bg-primary/12 px-1.5 text-xs font-bold text-primary">
               {donor?.blood_group === "unknown" ? "?" : donor?.blood_group}
             </span>
-            <StatusPill status={r.status} />
+            <StatusPill status={status} />
           </DialogTitle>
           <DialogDescription className="text-xs">
             {camp ? (
@@ -135,46 +131,40 @@ export function RegistrationDetail({
             the donor record, which outlives this one camp — editing them from
             inside a registration is how two camps end up disagreeing about
             somebody's phone number. */}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-app-line-soft bg-muted/40 p-4 text-sm sm:grid-cols-3">
-          {[
+        <DetailList
+          items={[
             ["Phone", donor?.phone],
             ["Email", donor?.email],
-            ["They are", donor?.kind],
+            ["They are", donor ? <span key="k" className="capitalize">{donor.kind}</span> : null],
             ["Department", donor?.department ?? donor?.occupation],
-            ["Age", donor?.age != null ? String(donor.age) : null],
-            ["Sex", donor?.sex],
-            ["Donations before BlooDoc", donor ? String(donor.prior_donations) : null],
+            ["Age", donor?.age],
+            ["Sex", donor ? <span key="s" className="capitalize">{donor.sex}</span> : null],
+            ["Donations before BlooDoc", donor?.prior_donations],
             ["Venue", camp?.venue],
             ["Registered", formatDateTime(r.created_at)],
-          ].map(([label, value]) => (
-            <div key={label} className="min-w-0">
-              <dt className="text-[0.6875rem] text-muted-foreground">{label}</dt>
-              <dd className="truncate text-sm font-medium capitalize" title={value ?? undefined}>
-                {value || "—"}
-              </dd>
-            </div>
-          ))}
-          {donor?.address && (
-            <div className="col-span-2 min-w-0 sm:col-span-3">
-              <dt className="text-[0.6875rem] text-muted-foreground">Address</dt>
-              <dd className="text-sm font-medium">{donor.address}</dd>
-            </div>
-          )}
-        </dl>
+            ...(donor?.address ? ([["Address", donor.address, { wide: true }]] as DetailItem[]) : []),
+          ]}
+        />
 
         {canEdit ? (
           <form action={action} className="flex flex-col gap-4">
             <input type="hidden" name="id" value={r.id} />
+            <input type="hidden" name="status" value={status} />
+            {reason && <input type="hidden" name="deferralReason" value={reason} />}
+
+            <Field label="Outcome" hint="Saves as soon as you pick one.">
+              <StatusBar
+                id={r.id}
+                status={r.status}
+                reason={r.deferral_reason}
+                onSaved={(next, why) => {
+                  setStatus(next);
+                  setReason(why);
+                }}
+              />
+            </Field>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field label="Outcome" className="col-span-2">
-                <Dropdown
-                  name="status"
-                  value={status}
-                  onValueChange={(v) => setStatus(v as RegistrationStatus)}
-                  options={STATUSES}
-                />
-              </Field>
               <Field label="Height (cm)">
                 <Input name="heightCm" type="number" defaultValue={r.height_cm ?? ""} className="h-10" />
               </Field>
@@ -218,19 +208,6 @@ export function RegistrationDetail({
               />
             </Field>
 
-            {/* Only where it means something. A reason box beside a "donated"
-                row invites a note that then contradicts the outcome. */}
-            {status === "deferred" && (
-              <Field label="Why deferred" hint="Required — the next camp reads this.">
-                <Input
-                  name="deferralReason"
-                  defaultValue={r.deferral_reason ?? ""}
-                  placeholder="Low haemoglobin, recent fever…"
-                  autoFocus
-                  className="h-10"
-                />
-              </Field>
-            )}
 
             <div className="flex items-center justify-end gap-2 border-t border-app-line-soft pt-4">
               <button
@@ -246,14 +223,15 @@ export function RegistrationDetail({
                 className="press inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
               >
                 {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-                Save changes
+                Save readings
               </button>
             </div>
           </form>
         ) : (
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
-            {[
-              ["Outcome", r.status],
+          <DetailList
+            heading="On the day"
+            items={[
+              ["Outcome", <StatusPill key="o" status={r.status} />],
               ["Height", r.height_cm ? `${r.height_cm} cm` : null],
               ["Weight", r.weight_kg ? `${r.weight_kg} kg` : null],
               [
@@ -262,15 +240,12 @@ export function RegistrationDetail({
               ],
               ["Haemoglobin", r.hemoglobin_gdl != null ? `${r.hemoglobin_gdl} g/dL` : null],
               ["First time", r.first_time ? "Yes" : "No"],
-              ["Medications", r.medications],
-              ["Deferral reason", r.deferral_reason],
-            ].map(([label, value]) => (
-              <div key={label} className="min-w-0">
-                <dt className="text-[0.6875rem] text-muted-foreground">{label}</dt>
-                <dd className="text-sm font-medium capitalize">{value || "—"}</dd>
-              </div>
-            ))}
-          </dl>
+              ["Medications", r.medications, { wide: true }],
+              ...(r.deferral_reason
+                ? ([["Deferral reason", r.deferral_reason, { wide: true }]] as DetailItem[])
+                : []),
+            ]}
+          />
         )}
 
         <p className="text-[0.6875rem] text-muted-foreground">

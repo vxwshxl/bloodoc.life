@@ -108,8 +108,8 @@ export default async function DonorsPage({
                           items={[
                             ["Phone", d.phone],
                             ["Alternate phone", d.alt_phone],
-                            ["Email", d.email],
-                            ["Address", d.address],
+                            ["Email", d.email, { wide: true }],
+                            ["Address", d.address, { wide: true }],
                           ]}
                         />
                         <DetailList
@@ -118,7 +118,7 @@ export default async function DonorsPage({
                             ["Blood group", d.blood_group === "unknown" ? "Not known" : d.blood_group],
                             ["Donations before BlooDoc", d.prior_donations],
                             ["Account", d.profile_id ? "Signed in at least once" : "No account (paper slip)"],
-                            ["Notes", d.notes],
+                            ["Notes", d.notes, { wide: true }],
                           ]}
                         />
                       </div>

@@ -19,6 +19,7 @@ import { StatusPill, TONE_CLASS, statusMeta } from "@/components/ui/status-pill"
 import type { ConsoleUser } from "@/lib/admin/queries";
 import type { UserRole } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
+import { DetailList } from "@/components/shell/detail-list";
 
 export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(setUserRole, {});
@@ -152,7 +153,7 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
       </tr>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               {user.full_name ?? donor?.full_name ?? user.email}
@@ -163,13 +164,14 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
             </DialogDescription>
           </DialogHeader>
 
-          <dl className="flex flex-col gap-2 text-sm">
-            {[
-              ["Blood group", donor?.blood_group === "unknown" ? "Not known" : donor?.blood_group],
+          <DetailList
+            items={[
+              ["Blood group", donor ? (donor.blood_group === "unknown" ? "Not known" : donor.blood_group) : null],
               ["Phone", donor?.phone],
-              ["They are", donor?.kind],
+              ["They are", donor ? <span key="k" className="capitalize">{donor.kind}</span> : null],
               ["Department", donor?.department],
-              ["Donations before BlooDoc", donor ? String(donor.prior_donations) : undefined],
+              ["Donations before BlooDoc", donor ? donor.prior_donations : null],
+              ["Role", <span key="r" className="capitalize">{user.role}</span>],
               [
                 "Partner access",
                 partners.length
@@ -179,18 +181,11 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
                           `${p.short_name ?? p.name} (${p.kind === "blood_bank" ? "blood bank" : "organisation"})`,
                       )
                       .join(", ")
-                  : undefined,
+                  : null,
+                { wide: true },
               ],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="flex justify-between gap-4 border-b border-app-line-soft pb-2 last:border-b-0"
-              >
-                <dt className="text-xs text-muted-foreground">{label}</dt>
-                <dd className="text-right text-sm font-medium capitalize">{value || "—"}</dd>
-              </div>
-            ))}
-          </dl>
+            ]}
+          />
 
           {!donor && (
             <p className="rounded-xl border border-app-line-soft bg-muted/40 p-3 text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { DetailList } from "@/components/shell/detail-list";
+import { DetailList, type DetailItem } from "@/components/shell/detail-list";
 import { formatCampDate, formatDateTime } from "@/lib/format";
 import type { CertificateStatus } from "@/lib/db/types";
 
@@ -26,12 +26,12 @@ export function CertificateDetail({ c }: { c: CertificateDetailData }) {
         items={[
           ["Donor", donor?.full_name],
           ["Blood group", !donor || donor.blood_group === "unknown" ? "Not known" : donor.blood_group],
-          ["Camp", camp?.title],
+          ["Camp", camp?.title, { wide: true }],
           ["Camp date", camp ? formatCampDate(camp.starts_at) : null],
           ["Code", <span key="c" className="font-mono">{c.code}</span>],
           ["Issued", c.issued_at ? formatDateTime(c.issued_at) : "Not yet"],
           ...(c.status === "revoked"
-            ? ([["Revoked because", c.revoked_reason]] as [string, React.ReactNode][])
+            ? ([["Revoked because", c.revoked_reason, { wide: true }]] as DetailItem[])
             : []),
         ]}
       />

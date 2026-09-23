@@ -12,7 +12,7 @@ import { SearchBox } from "@/components/shell/search-box";
 import { FilterMenu } from "@/components/shell/filter-menu";
 import { formatDateTime } from "@/lib/format";
 import { DetailRow } from "@/components/shell/detail-row";
-import { DetailList } from "@/components/shell/detail-list";
+import { DetailList, type DetailItem } from "@/components/shell/detail-list";
 import type { AuditLog } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
 
@@ -129,7 +129,7 @@ export default async function AuditPage({
                       <DetailList
                         items={[
                           ["Table", r.table_name.replace(/_/g, " ")],
-                          ["Record", r.record_id ? <span key="id" className="font-mono text-xs">{r.record_id}</span> : null],
+                          ["Record", r.record_id ? <span key="id" className="font-mono text-xs">{r.record_id}</span> : null, { wide: true }],
                           ["By", r.actor_email ?? "System"],
                           ["When", formatDateTime(r.created_at)],
                         ]}
@@ -150,7 +150,7 @@ export default async function AuditPage({
                               ) : (
                                 show(changes[k])
                               ),
-                            ] as [string, React.ReactNode];
+                            { wide: true }] as DetailItem;
                           })}
                         />
                       )}

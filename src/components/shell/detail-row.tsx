@@ -74,7 +74,7 @@ export function DetailRow({
       {as === "li" ? <li {...rowProps}>{children}</li> : <tr {...rowProps}>{children}</tr>}
       {open && (
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
                 {title}

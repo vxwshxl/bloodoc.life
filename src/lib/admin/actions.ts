@@ -185,7 +185,7 @@ export async function setRegistrationStatus(
   const { id, status, deferralReason } = parsed.data;
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("registrations")
     .update({
       status,
@@ -194,11 +194,15 @@ export async function setRegistrationStatus(
       // worse than no note at all.
       deferral_reason: status === "deferred" ? (deferralReason || null) : null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) return { error: "Could not update that registration." };
+  // An update RLS refused comes back as a success with no rows.
+  if (!data?.length) return { error: "You do not have permission to change that record." };
 
   revalidatePath("/admin/registrations");
   revalidatePath("/admin");
+  revalidatePath("/desk", "layout");
   return { ok: true };
 }
 
@@ -330,7 +334,7 @@ export async function saveRegistration(
 
   revalidatePath("/admin/registrations");
   revalidatePath("/admin");
-  revalidatePath("/desk/roster");
+  revalidatePath("/desk", "layout");
   return { ok: true, message: "Saved." };
 }
 
