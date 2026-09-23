@@ -19,8 +19,8 @@ const RESEND_SECONDS = 45;
  * become indistinguishable.
  *
  * There is no password anywhere in this component, and no "create an account"
- * link. Registering for a camp creates the record; typing your email here is
- * how you get back to it. A donor should never be asked to remember a second
+ * link. Any address can sign in; the donor record is created the first time
+ * they apply to a camp, from here or from the public form. A donor should never be asked to remember a second
  * thing about a site they use twice a year.
  */
 export function SignInForm() {
@@ -93,7 +93,7 @@ export function SignInForm() {
       <input type="hidden" name="email" value={email} />
 
       <p className="text-sm text-muted-foreground">
-        We sent a six-digit code to <span className="font-medium text-foreground">{email}</span>.
+        Code sent to <span className="font-medium text-foreground">{email}</span>.
       </p>
 
       <div className="flex flex-col gap-1.5">
@@ -139,7 +139,7 @@ export function SignInForm() {
           onClick={() => window.location.reload()}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="size-3.5" /> Use a different email
+          <ArrowLeft className="size-3.5" /> Change email
         </button>
         {/* Keyed on the send nonce, so each new code remounts this and the
             countdown starts again from a clean state. That is what lets the

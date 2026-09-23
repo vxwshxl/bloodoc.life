@@ -58,10 +58,10 @@ export async function requestSignInCode(
   const ip = firstIp(await headers());
   const issued = await issueOtp(email, "signin", ip);
   if (issued.status === "limited") {
-    return { error: "Too many codes requested. Wait a while and try again." };
+    return { error: "Too many tries. Try again later." };
   }
   if (issued.status === "error") {
-    return { error: "Could not send a code right now. Try again in a moment." };
+    return { error: "Couldn't send a code. Try again." };
   }
   if (issued.status === "issued") {
     const copy = await copyFor("signin_code", {
@@ -70,7 +70,7 @@ export async function requestSignInCode(
     });
     const { subject, html } = signInCodeEmail(issued.code, OTP_TTL_MINUTES, copy);
     const sent = await sendEmailNow({ to: email, subject, html, template: "signin-code" });
-    if (!sent.ok) return { error: "Could not send the email. Try again in a moment." };
+    if (!sent.ok) return { error: "Couldn't send the email. Try again." };
   }
 
   return { sent: true, email, sentAt: Date.now() };
@@ -92,13 +92,13 @@ export async function verifySignInCode(
 ): Promise<AuthState> {
   const parsed = emailSchema.safeParse(formData.get("email"));
   const code = String(formData.get("code") ?? "").replace(/\D/g, "");
-  if (!parsed.success) return { error: "Start again. That email address is not valid." };
-  if (code.length !== 6) return { error: "Enter the six digits from the email.", sent: true, email: parsed.data };
+  if (!parsed.success) return { error: "Invalid email. Start again." };
+  if (code.length !== 6) return { error: "Enter the 6-digit code.", sent: true, email: parsed.data };
 
   const email = parsed.data;
   const ok = await consumeOtp(email, code);
   if (!ok) {
-    return { error: "That code is wrong or has expired. Send a new one.", sent: true, email };
+    return { error: "Wrong or expired code.", sent: true, email };
   }
 
   const admin = createAdminClient();
@@ -133,7 +133,7 @@ export async function verifySignInCode(
       // without this in the server log the failure is invisible — which is
       // precisely why the original outage took a database inspection to find.
       console.error("[signin] createUser failed", created.error);
-      return { error: "Could not complete sign-in. Try again in a moment.", sent: true, email };
+      return { error: "Sign-in failed. Try again.", sent: true, email };
     }
     link = await admin.auth.admin.generateLink({ type: "magiclink", email });
   }
@@ -141,7 +141,7 @@ export async function verifySignInCode(
   const tokenHash = link.data?.properties?.hashed_token;
   if (link.error || !tokenHash) {
     console.error("[signin] generateLink failed", link.error);
-    return { error: "Could not complete sign-in. Try again in a moment.", sent: true, email };
+    return { error: "Sign-in failed. Try again.", sent: true, email };
   }
 
   const supabase = await createClient();
@@ -151,7 +151,7 @@ export async function verifySignInCode(
   });
   if (error) {
     console.error("[signin] verifyOtp failed", error);
-    return { error: "Could not complete sign-in. Try again in a moment.", sent: true, email };
+    return { error: "Sign-in failed. Try again.", sent: true, email };
   }
 
   // Tell them it happened.

@@ -15,14 +15,14 @@ export default function SignInPage() {
   return (
     <AuthShell
       title="Sign in"
-      subtitle="No password. We email you a six-digit code and that is the whole of it."
+      subtitle="We'll email you a 6-digit code."
       footer={
         <>
-          Never donated with us before?{" "}
-          <Link href="/#camp" className="font-medium text-foreground underline underline-offset-4">
-            Register for the next camp
-          </Link>{" "}
-          . That creates your record.
+          New here? Sign in, then{" "}
+          <Link href="/camps" className="font-medium text-foreground underline underline-offset-4">
+            pick a camp
+          </Link>
+          .
         </>
       }
     >

@@ -110,6 +110,9 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
             className="h-10"
             placeholder="e.g. Terapanth Yuvak Parishad, Guwahati"
           />
+          <p className="text-xs text-muted-foreground">
+            Shown on the site. Leave blank to show the linked partner organisations.
+          </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="partnerName" className="text-xs font-medium text-muted-foreground">

@@ -18,39 +18,39 @@ export type PartnerDisplay = {
 };
 
 /**
- * Prefer the rows; fall back to the legacy text columns.
+ * What the public pages print as a camp's collaborators and blood bank.
  *
- * 0008 added `camp_partners` and left `camps.collaboration` / `partner_name` /
- * `partner_note` in place rather than dropping them in the same migration,
- * precisely so this fallback exists: a camp created before the change, or one
- * an admin has not yet attached partners to, keeps printing what it always
- * printed instead of losing its collaborators the moment the deploy lands.
+ * The camp's own text fields win when they are filled in; the linked
+ * `camp_partners` rows are the fallback. It used to be the other way round,
+ * and the result was an editor that did nothing: once any partner was linked,
+ * changing "In collaboration with" in the camp form saved to the database and
+ * never appeared anywhere. The camp form is where an admin edits what the
+ * poster says, so it has to be what the site shows.
  *
- * When 0009 drops those columns, the second half of this function goes with
- * them and nothing else has to change.
+ * Decided per line, not per camp — a filled collaboration field does not hide
+ * the linked blood bank, and vice versa.
+ *
+ * The rows still matter for everything that is not display: they are what
+ * gives a partner's staff access to the camp in their panel (0008).
  */
 export function partnerDisplay(
   camp: Pick<Camp, "collaboration" | "partner_name" | "partner_note">,
   rows?: CampPartnerWithBody[] | null,
 ): PartnerDisplay {
-  if (rows && rows.length > 0) {
-    const sorted = [...rows].sort(
-      (a, b) => Number(b.is_host) - Number(a.is_host) || a.sort_order - b.sort_order,
-    );
-    return {
-      collaborators: sorted
-        .filter((r) => r.role === "organisation")
-        .map((r) => ({ name: r.partner.name, note: r.partner.parent_institution })),
-      bloodBanks: sorted
-        .filter((r) => r.role === "blood_bank")
-        .map((r) => ({ name: r.partner.name, note: r.partner.parent_institution })),
-    };
-  }
+  const sorted = [...(rows ?? [])].sort(
+    (a, b) => Number(b.is_host) - Number(a.is_host) || a.sort_order - b.sort_order,
+  );
+  const linked = (role: string) =>
+    sorted
+      .filter((r) => r.role === role)
+      .map((r) => ({ name: r.partner.name, note: r.partner.parent_institution }));
 
   return {
-    collaborators: camp.collaboration ? [{ name: camp.collaboration, note: null }] : [],
+    collaborators: camp.collaboration
+      ? [{ name: camp.collaboration, note: null }]
+      : linked("organisation"),
     bloodBanks: camp.partner_name
       ? [{ name: camp.partner_name, note: camp.partner_note }]
-      : [],
+      : linked("blood_bank"),
   };
 }
