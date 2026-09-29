@@ -34,7 +34,23 @@ export async function emailCertificateFor(registrationId: string): Promise<void>
   });
   const row = data?.[0];
   if (!row?.donor_email) return;
+  await sendCertificateEmail(row);
+}
 
+export type CertificateEmailData = {
+  code: string;
+  donor_name: string;
+  donor_email: string;
+  camp_title: string;
+  camp_starts: string;
+};
+
+/**
+ * Build and send the certificate email. No checks of its own: callers decide
+ * whether it should go — `emailCertificateFor` through the once-only claim,
+ * the console's "Send certificate" button on purpose, as many times as asked.
+ */
+export async function sendCertificateEmail(row: CertificateEmailData) {
   const firstName = row.donor_name.split(" ")[0];
   const copy = await copyFor("certificate_issued", {
     name: firstName,
@@ -50,7 +66,7 @@ export async function emailCertificateFor(registrationId: string): Promise<void>
     },
     copy,
   );
-  await sendEmailNow({
+  return sendEmailNow({
     to: row.donor_email,
     toName: row.donor_name,
     subject,

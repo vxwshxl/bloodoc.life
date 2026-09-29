@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, requireConsoleUser } from "@/lib/auth/dal";
-import { emailCertificateFor } from "@/lib/certificates/email";
+import { emailCertificateFor, sendCertificateEmail } from "@/lib/certificates/email";
+import { emailConfigured } from "@/lib/email/send";
 
 /**
  * Writes from the partner panel.
@@ -156,6 +157,71 @@ export async function approveCertificate(
   revalidatePath("/dashboard/certificates");
   revalidatePath("/me");
   return { ok: true };
+}
+
+export type SendState = ActionState & { message?: string };
+
+/**
+ * Send a certificate to its donor now, whether or not it has been sent before.
+ *
+ * The automatic email goes once, when the donation is recorded. This is the
+ * button for everything else: a donor who deleted it, a bounced address since
+ * corrected, or checking what the email looks like. Only an approved
+ * certificate can be sent — mailing a pending or withdrawn one would hand the
+ * donor a link that says it is not valid.
+ *
+ * On the session client: the select is how RLS says who may send — anyone who
+ * can read the certificate and the donor's address behind it, which is an
+ * administrator or a partner of that camp.
+ */
+export async function resendCertificate(
+  _prev: SendState,
+  formData: FormData,
+): Promise<SendState> {
+  await requireConsoleUser();
+  const id = z.uuid().safeParse(formData.get("certificateId"));
+  if (!id.success) return { error: "Unknown certificate." };
+  if (!emailConfigured()) return { error: "Email is not configured (ZEPTOMAIL_TOKEN)." };
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("certificates")
+    .select("code, status, registration:registrations(donor:donors(full_name, email), camp:camps(title, starts_at))")
+    .eq("id", id.data)
+    .maybeSingle();
+  const row = data as unknown as {
+    code: string;
+    status: string;
+    registration: {
+      donor: { full_name: string; email: string } | null;
+      camp: { title: string; starts_at: string } | null;
+    } | null;
+  } | null;
+
+  if (!row) return { error: "You cannot send that certificate." };
+  if (row.status !== "approved") return { error: "Approve it first. Only an approved certificate can be sent." };
+  const donor = row.registration?.donor;
+  const camp = row.registration?.camp;
+  if (!donor?.email || !camp) return { error: "This donor has no email address on file." };
+
+  const result = await sendCertificateEmail({
+    code: row.code,
+    donor_name: donor.full_name,
+    donor_email: donor.email,
+    camp_title: camp.title,
+    camp_starts: camp.starts_at,
+  });
+  if (!result.ok) return { error: "The email did not go through. The attempt is in the email log." };
+
+  // Recorded where the policy allows it (an admin, the blood bank). A
+  // partner organisation's send still went; it just is not stamped.
+  await supabase
+    .from("certificates")
+    .update({ emailed_at: new Date().toISOString() })
+    .eq("id", id.data);
+
+  revalidatePath("/admin/email");
+  return { ok: true, message: `Sent to ${donor.email}.` };
 }
 
 /**

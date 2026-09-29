@@ -1,111 +1,179 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { ArrowLeft } from "lucide-react";
+import { CampCard } from "@/components/camps/camp-card";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
 import { FilterMenu } from "@/components/shell/filter-menu";
-import {
-  Pagination,
-  pageFromParams,
-  rangeFor,
-} from "@/components/shell/pagination";
+import { Pagination, pageFromParams, rangeFor } from "@/components/shell/pagination";
 import { CertificateActions } from "@/components/partner/certificate-actions";
 import { formatCampDateShort, formatDateTime } from "@/lib/format";
 import type { CertificateStatus } from "@/lib/db/types";
 import { StatusPill } from "@/components/ui/status-pill";
 import { DetailRow } from "@/components/shell/detail-row";
-import { CertificateDetail } from "@/components/admin/certificate-detail";
+import { CertificateOverview } from "@/components/admin/certificate-overview";
+import { BulkCertificateDownload } from "@/components/admin/certificate-tools";
 import { DeleteRow } from "@/components/shell/delete-row";
 import { isAdmin } from "@/lib/records/queries";
+import { listCamps } from "@/lib/admin/queries";
+import {
+  listApprovedCertificates,
+  listCertificateCamps,
+  listCertificates,
+} from "@/lib/certificates/queries";
 
 export const metadata: Metadata = { title: "Certificates" };
 
-const FILTERS: { value: CertificateStatus | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Awaiting approval" },
+const FILTERS: { value: CertificateStatus; label: string }[] = [
   { value: "approved", label: "Approved" },
+  { value: "pending", label: "Awaiting approval" },
   { value: "revoked", label: "Withdrawn" },
 ];
-
-type Row = {
-  id: string;
-  code: string;
-  status: CertificateStatus;
-  issued_at: string | null;
-  revoked_reason: string | null;
-  registration: {
-    donor: { full_name: string; blood_group: string } | null;
-    camp: { title: string; starts_at: string } | null;
-  } | null;
-};
 
 export default async function AdminCertificates({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; q?: string }>;
+  searchParams: Promise<{ camp?: string; page?: string; status?: string; q?: string; all?: string }>;
 }) {
-  const { page: pageParam, status, q } = await searchParams;
+  const { camp: campId, page: pageParam, status, q, all } = await searchParams;
   const page = pageFromParams(pageParam);
-  const filter = FILTERS.some((f) => f.value === status)
-    ? (status as CertificateStatus | "all")
-    : "all";
+  const filter = FILTERS.find((f) => f.value === status)?.value;
 
-  const supabase = await createClient();
+  /**
+   * Camps first, as on Registrations. Certificates are handed out a camp at a
+   * time — printed for a ceremony, zipped for the organisers — so the camp is
+   * where the work starts. Searching still spans every camp, and `?all=1`
+   * keeps the flat list.
+   */
+  const showIndex = !campId && !q?.trim() && all !== "1" && !filter;
+
+  if (showIndex) {
+    const camps = await listCertificateCamps();
+    const totalAll = camps.reduce((n, c) => n + c.total, 0);
+    return (
+      <>
+        <PageHeader
+          title="Certificates"
+          subtitle={`${totalAll} issued across ${camps.length} camp${camps.length === 1 ? "" : "s"}`}
+        />
+
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <SearchBox
+            placeholder="Donor name or certificate code — across every camp"
+            clearHref="/admin/certificates"
+          />
+          <Link
+            href="/admin/certificates?all=1"
+            className="press inline-flex h-9 shrink-0 items-center rounded-lg border border-app-line px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            One long list
+          </Link>
+        </div>
+
+        {camps.length === 0 ? (
+          <Panel>
+            <EmptyState
+              title="No camps yet"
+              body="Certificates belong to a camp. They appear here as donations are recorded."
+            />
+          </Panel>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {camps.map((c) => (
+              <CampCard
+                key={c.id}
+                camp={c}
+                href={`/admin/certificates?camp=${c.id}`}
+                action="Open certificates"
+              >
+                <span className="mt-4 flex items-baseline gap-2">
+                  <span className="font-display text-3xl font-bold tabular-nums">{c.total}</span>
+                  <span className="text-xs text-muted-foreground">
+                    certificate{c.total === 1 ? "" : "s"}
+                  </span>
+                </span>
+                <span className="mt-3 flex flex-wrap gap-1.5">
+                  {(["approved", "pending", "revoked"] as const)
+                    .filter((k) => c.byStatus[k] > 0)
+                    .map((k) => (
+                      <StatusPill key={k} status={k} count={c.byStatus[k]} />
+                    ))}
+                  {c.total === 0 && (
+                    <span className="text-xs text-muted-foreground">No donations recorded yet.</span>
+                  )}
+                </span>
+              </CampCard>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  }
+
   const [from, to] = rangeFor(page);
-  let query = supabase
-    .from("certificates")
-    .select(
-      "id, code, status, issued_at, revoked_reason, registration:registrations(donor:donors(full_name, blood_group), camp:camps(title, starts_at))",
-      { count: "exact" },
-    )
-    .order("created_at", { ascending: false })
-    .range(from, to);
-  if (filter !== "all") query = query.eq("status", filter);
-  // The code is the only field on this table worth searching by — it is what
-  // is printed on the paper someone is holding when they ring up. Searching by
-  // donor name would need a join filter PostgREST cannot express here, and the
-  // Donors page already answers that question.
-  if (q?.trim()) query = query.ilike("code", `%${q.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
-
-  const { data, count } = await query;
-  const rows = (data as unknown as Row[] | null) ?? [];
-  const total = count ?? 0;
-  // Never delegated: the setting on the Roles page reaches registrations only.
-  const canDelete = await isAdmin();
+  const [camps, { rows, total }, approved, canDelete] = await Promise.all([
+    listCamps(),
+    listCertificates({ campId, status: filter, q, from, to }),
+    campId ? listApprovedCertificates(campId) : Promise.resolve([]),
+    // Never delegated: the setting on the Roles page reaches registrations only.
+    isAdmin(),
+  ]);
+  const active = camps.find((c) => c.id === campId) ?? null;
 
   return (
     <>
+      <Link
+        href="/admin/certificates"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" strokeWidth={2} aria-hidden /> All camps
+      </Link>
+
       <PageHeader
-        title="Certificates"
-        subtitle={`${total} issued across every camp`}
+        title={active ? active.title : "Certificates"}
+        subtitle={
+          active
+            ? `${formatCampDateShort(active.starts_at)} · ${total} certificate${total === 1 ? "" : "s"}${filter ? ` ${FILTERS.find((f) => f.value === filter)?.label.toLowerCase()}` : ""} · ${approved.length} approved`
+            : `${total} across every camp`
+        }
+        // One camp at a time: a zip of every certificate ever issued is a
+        // download nobody wants and a browser tab that runs out of memory.
+        action={active ? <BulkCertificateDownload certs={approved} campTitle={active.title} /> : null}
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4">
         <SearchBox
-          placeholder="Find a certificate code…"
+          placeholder="Donor name or certificate code"
           defaultValue={q}
-          keep={{ status: filter === "all" ? undefined : filter }}
-          clearHref="/admin/certificates"
+          keep={{ camp: campId, status: filter }}
+          clearHref={campId ? `/admin/certificates?camp=${campId}` : "/admin/certificates"}
         />
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <FilterMenu
+          label="Camp"
+          paramName="camp"
+          active={campId}
+          options={camps.map((c) => ({
+            value: c.id,
+            label: c.title,
+            hint: formatCampDateShort(c.starts_at),
+          }))}
+        />
+        <FilterMenu
           label="State"
           paramName="status"
-          active={filter === "all" ? undefined : filter}
-          options={FILTERS.filter((f) => f.value !== "all").map((f) => ({
-            value: f.value,
-            label: f.label,
-          }))}
+          active={filter}
+          options={FILTERS.map((f) => ({ value: f.value, label: f.label }))}
         />
       </div>
 
-      {total === 0 ? (
+      {rows.length === 0 ? (
         <Panel>
           <EmptyState
             title="Nothing here yet"
-            body="A certificate is created automatically the moment a donation is recorded on a roster."
+            body="A certificate is issued and emailed automatically the moment a donation is recorded on a roster."
           />
         </Panel>
       ) : (
@@ -114,7 +182,7 @@ export default async function AdminCertificates({
             <table className="w-full min-w-[44rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-app-line-soft">
-                  {["Donor", "Camp", "Code", "State", ""].map((h, i) => (
+                  {["#", "Donor", "Camp", "Code", "State", ""].map((h, i) => (
                     <th
                       key={i}
                       className="px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
@@ -125,36 +193,35 @@ export default async function AdminCertificates({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((c) => (
+                {rows.map((c, i) => (
                   <DetailRow
                     key={c.id}
                     label={`Open certificate ${c.code}`}
-                    title={c.registration?.donor?.full_name ?? c.code}
+                    title={c.donor.full_name}
                     badge={<StatusPill status={c.status} />}
                     description={`Certificate ${c.code}`}
-                    detail={<CertificateDetail c={c} />}
+                    detail={<CertificateOverview c={c} />}
                   >
+                    <td
+                      className="w-12 py-3 pr-0 pl-5 text-xs text-muted-foreground"
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {from + i + 1}
+                    </td>
                     <td className="px-5 py-3">
-                      <span className="block font-medium">
-                        {c.registration?.donor?.full_name ?? "—"}
-                      </span>
+                      <span className="block font-medium">{c.donor.full_name}</span>
                       <span className="block text-xs text-muted-foreground">
-                        {c.registration?.donor?.blood_group ?? ""}
+                        {c.donor.blood_group === "unknown" ? "Group not known" : c.donor.blood_group}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-xs text-muted-foreground">
-                      <span className="block max-w-40 truncate">
-                        {c.registration?.camp?.title ?? "—"}
-                      </span>
-                      {c.registration?.camp && (
-                        <span className="block">
-                          {formatCampDateShort(c.registration.camp.starts_at)}
-                        </span>
-                      )}
+                      <span className="block max-w-40 truncate">{c.camp.title}</span>
+                      <span className="block">{formatCampDateShort(c.camp.starts_at)}</span>
                     </td>
                     <td className="px-5 py-3">
                       <Link
                         href={`/verify/${c.code}`}
+                        target="_blank"
                         className="font-mono text-xs underline-offset-2 hover:underline"
                       >
                         {c.code}
@@ -175,8 +242,6 @@ export default async function AdminCertificates({
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        {/* An admin can approve anywhere; the policy in 0008 lets
-                            `is_admin()` through every certificate branch. */}
                         <CertificateActions certificateId={c.id} status={c.status} canApprove />
                         {canDelete && (
                           <DeleteRow
@@ -187,8 +252,8 @@ export default async function AdminCertificates({
                             instead={
                               <>
                                 A certificate issued in error should be{" "}
-                                <span className="font-medium text-foreground">revoked</span>,
-                                not deleted — a revoked code still resolves at /verify and
+                                <span className="font-medium text-foreground">withdrawn</span>,
+                                not deleted — a withdrawn code still resolves at /verify and
                                 says so, while a deleted one just stops existing for
                                 whoever is holding the printout.
                               </>
@@ -206,7 +271,7 @@ export default async function AdminCertificates({
             page={page}
             total={total}
             basePath="/admin/certificates"
-            params={{ status: filter === "all" ? undefined : filter, q }}
+            params={{ camp: campId, status: filter, q, all }}
             unit="certificate"
           />
         </Panel>

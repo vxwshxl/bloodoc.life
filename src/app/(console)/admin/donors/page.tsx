@@ -12,8 +12,7 @@ import {
 } from "@/components/shell/pagination";
 import { formatCampDate, formatCampDateShort } from "@/lib/format";
 import { DetailRow } from "@/components/shell/detail-row";
-import { DetailList, type DetailItem } from "@/components/shell/detail-list";
-import { parentName } from "@/lib/validations/donor";
+import { DonorProfile } from "@/components/admin/donor-profile";
 
 export const metadata: Metadata = { title: "Donors" };
 
@@ -85,53 +84,7 @@ export default async function DonorsPage({
                       </span>
                     }
                     description={`${d.email} · on file since ${formatCampDate(d.created_at)}`}
-                    detail={
-                      <div className="flex flex-col gap-5">
-                        <DetailList
-                          heading="About"
-                          items={[
-                            ["Sex", <span key="s" className="capitalize">{d.sex}</span>],
-                            ["Age", d.age],
-                            ["Date of birth", d.date_of_birth ? formatCampDate(d.date_of_birth) : null],
-                            ["Father's name", parentName(d.father_title, d.father_name)],
-                            ["Mother's name", parentName(d.mother_title, d.mother_name)],
-                          ]}
-                        />
-                        <DetailList
-                          heading="Work"
-                          items={[
-                            ["They are", <span key="k" className="capitalize">{d.kind}</span>],
-                            ...(d.kind !== "other" ? ([["School", d.school, { wide: true }]] as DetailItem[]) : []),
-                            [d.kind === "other" ? "Occupation" : "Department", d.kind === "other" ? d.occupation : d.department],
-                          ]}
-                        />
-                        <DetailList
-                          heading="Contact"
-                          items={[
-                            ["Phone", d.phone],
-                            ["Alternate phone", d.alt_phone],
-                            ["Email", d.email, { wide: true }],
-                            ["Residential address", d.address, { wide: true }],
-                            [
-                              "Permanent address",
-                              d.permanent_address && d.permanent_address === d.address
-                                ? "Same as residential"
-                                : d.permanent_address,
-                              { wide: true },
-                            ],
-                          ]}
-                        />
-                        <DetailList
-                          heading="As a donor"
-                          items={[
-                            ["Blood group", d.blood_group === "unknown" ? "Not known" : d.blood_group],
-                            ["Donations before BlooDoc", d.prior_donations],
-                            ["Account", d.profile_id ? "Signed in at least once" : "No account (paper slip)"],
-                            ["Notes", d.notes, { wide: true }],
-                          ]}
-                        />
-                      </div>
-                    }
+                    detail={<DonorProfile donor={d} />}
                   >
                     {/* The row's place in the list, carried across pages, so a
                         printed or read-aloud list can be referred to by number.

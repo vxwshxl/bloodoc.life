@@ -20,6 +20,9 @@ const NAV: NavItem[] = [
   { href: "/admin/camps", label: "Camps", icon: "camps" },
   { href: "/admin/registrations", label: "Registrations", icon: "registrations" },
   { href: "/admin/donors", label: "Donors", icon: "donors" },
+  // Beside Donors: a certificate is a donor's record of a donation, and the
+  // two are looked at together.
+  { href: "/admin/certificates", label: "Certificates", icon: "certificates" },
   { href: "/admin/users", label: "Users", icon: "users", exact: true },
   { href: "/admin/roles", label: "Roles", icon: "roles" },
   {
@@ -35,7 +38,6 @@ const NAV: NavItem[] = [
       { href: "/admin/partners/organisations", label: "Organisations" },
     ],
   },
-  { href: "/admin/certificates", label: "Certificates", icon: "certificates" },
   {
     href: "/admin/email",
     label: "Email",

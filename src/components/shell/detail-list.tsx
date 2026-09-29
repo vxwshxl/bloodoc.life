@@ -2,9 +2,14 @@ import { cn } from "@/lib/utils";
 
 /**
  * One fact in an overview. `wide` spans the whole row, for values that are
- * long by nature — an address, an email, a list of changes.
+ * long by nature — an address, a list of changes. `span: 2` takes two of the
+ * three columns, for a value that is long but not that long, like a school.
  */
-export type DetailItem = [label: string, value: React.ReactNode, opts?: { wide?: boolean }];
+export type DetailItem = [
+  label: string,
+  value: React.ReactNode,
+  opts?: { wide?: boolean; span?: 2 },
+];
 
 /**
  * The facts in an overview dialog, as a tinted panel of small labels over
@@ -28,15 +33,22 @@ export function DetailList({
   return (
     <section>
       {heading && (
-        <h3 className="mb-2 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+        <h3 className="mb-1.5 text-[0.625rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
           {heading}
         </h3>
       )}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-app-line-soft bg-muted/40 p-4 sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border border-app-line-soft bg-muted/40 px-3.5 py-3 sm:grid-cols-3">
         {items.map(([label, value, opts]) => (
-          <div key={label} className={cn("min-w-0", opts?.wide && "col-span-2 sm:col-span-3")}>
-            <dt className="text-[0.6875rem] text-muted-foreground">{label}</dt>
-            <dd className="text-sm font-medium break-words">
+          <div
+            key={label}
+            className={cn(
+              "min-w-0",
+              opts?.wide && "col-span-2 sm:col-span-3",
+              opts?.span === 2 && "col-span-2",
+            )}
+          >
+            <dt className="text-[0.6875rem] leading-tight text-muted-foreground">{label}</dt>
+            <dd className="mt-0.5 text-sm leading-snug font-medium break-words">
               {value === null || value === undefined || value === "" ? "—" : value}
             </dd>
           </div>
