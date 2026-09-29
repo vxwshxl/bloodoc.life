@@ -169,6 +169,7 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
               ["Blood group", donor ? (donor.blood_group === "unknown" ? "Not known" : donor.blood_group) : null],
               ["Phone", donor?.phone],
               ["They are", donor ? <span key="k" className="capitalize">{donor.kind}</span> : null],
+              ["School", donor?.school],
               ["Department", donor?.department],
               ["Donations before BlooDoc", donor ? donor.prior_donations : null],
               ["Role", <span key="r" className="capitalize">{user.role}</span>],

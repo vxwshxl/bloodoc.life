@@ -17,7 +17,8 @@ export type TemplateKey =
   | "registration_confirmed"
   | "camp_reminder"
   | "profile_change"
-  | "signin_alert";
+  | "signin_alert"
+  | "certificate_issued";
 
 export type TemplateCopy = { subject?: string; heading?: string; lead?: string };
 
@@ -69,6 +70,16 @@ export const TEMPLATE_META: Record<
       { token: "{{device}}", means: "Browser and operating system" },
       { token: "{{location}}", means: "Approximate city" },
       { token: "{{time}}", means: "When they signed in" },
+    ],
+  },
+  certificate_issued: {
+    label: "Certificate issued",
+    description:
+      "Sent to the donor as soon as their donation is recorded. The camp card and the link to the certificate are fixed.",
+    tokens: [
+      { token: "{{name}}", means: "The donor's first name" },
+      { token: "{{camp}}", means: "The camp's title" },
+      { token: "{{code}}", means: "The certificate number" },
     ],
   },
   camp_reminder: {

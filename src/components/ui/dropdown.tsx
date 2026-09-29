@@ -66,7 +66,7 @@ export function Dropdown({
         aria-invalid={invalid || undefined}
         // `text-base md:text-sm`: anything under 16px makes iOS Safari zoom
         // the page when the control is focused, and it never zooms back.
-        className={cn("h-10 w-full text-base md:text-sm", className)}
+        className={cn("h-10 w-full text-base data-[size=default]:h-10 md:text-sm", className)}
       >
         <SelectValue placeholder={placeholder ?? "Select"} />
       </SelectTrigger>

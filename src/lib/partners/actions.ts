@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, requireConsoleUser } from "@/lib/auth/dal";
+import { emailCertificateFor } from "@/lib/certificates/email";
 
 /**
  * Writes from the partner panel.
@@ -47,10 +48,11 @@ function blankToNull(v: FormDataEntryValue | null) {
 /**
  * Record what happened at the desk.
  *
- * Reaching `donated` is what mints the certificate, and that happens in a
- * trigger rather than here — see `handle_registration_donated` in 0008. A
+ * Reaching `donated` is what issues the certificate, and that happens in a
+ * trigger rather than here — see `handle_registration_donated` in 0021. A
  * donation entered by an admin fixing a typo, by an import, or by this action
- * all produce a certificate, because none of them can skip the trigger.
+ * all produce a certificate, because none of them can skip the trigger. This
+ * action then emails it to the donor.
  */
 export async function recordOutcome(
   _prev: ActionState,
@@ -103,6 +105,8 @@ export async function recordOutcome(
     return { error: "Only the blood bank running this camp can record an outcome." };
   }
 
+  if (v.status === "donated") await emailCertificateFor(v.registrationId);
+
   revalidatePath("/partner");
   revalidatePath("/partner/registrations");
   revalidatePath("/partner/certificates");
@@ -137,13 +141,19 @@ export async function approveCertificate(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id.data)
-    .select("id")
+    .select("id, registration_id")
     .maybeSingle();
 
   if (error) return { error: "Could not approve that certificate." };
   if (!data) return { error: "Only the blood bank running this camp can approve certificates." };
 
+  // Sends only if this certificate has never been emailed, so reinstating a
+  // withdrawn one does not mail the donor a second time.
+  await emailCertificateFor(data.registration_id);
+
   revalidatePath("/partner/certificates");
+  revalidatePath("/admin/certificates");
+  revalidatePath("/dashboard/certificates");
   revalidatePath("/me");
   return { ok: true };
 }

@@ -24,6 +24,21 @@ things that will bite you.
 - **Times are IST.** `datetime-local` posts a zoneless string; `istToIso` in
   `lib/admin/actions.ts` reads it as +05:30. Every display format pins
   `Asia/Kolkata`, or the server and the browser render different days.
+- **`donors.address` is the residential address.** It predates
+  `permanent_address` (0020) and kept its name. Parents' titles
+  (`father_title` / `mother_title`: `mr` / `mrs` / `late`, printed "Lt.") are
+  separate from the names; display through `parentName()`.
+- **Age is derived, never posted.** The form shows it; `finishPerson` in
+  `lib/validations/donor.ts` recomputes it from the date of birth in IST.
+- **RGU schools and departments live in `lib/rgu.ts`**, copied from rgu.ac.
+  Not constrained in the database. A school with no departments stores its
+  own plain name as `department`.
+- **Certificates:** issued `approved` by a trigger the moment a registration
+  reaches `donated` (0021), then emailed by `emailCertificateFor`, which every
+  action that can record a donation calls. `claim_certificate_email` sends at
+  most once per certificate; call it freely. A camp's `certificate_art` picks organiser artwork from
+  `lib/certificates/artwork.ts` (name printed at measured percentages);
+  null gets the standard design drawn from the camp's data.
 - **Camp slugs are never updated on edit.** They are in public URLs and in
   confirmation emails already sent.
 

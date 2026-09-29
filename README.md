@@ -52,6 +52,7 @@ actually happens.
 | --------------------------------- | ----------------------------------- |
 | 🩸 Camp registration, in two minutes | 📋 Live roster with screening status |
 | 🧬 Donor record that carries between camps | 🔎 Filter by group, department or status |
+| 🎖️ Certificate emailed the moment a donation is recorded | 🔏 Anyone can check a certificate at `/verify` |
 | 📧 Confirmation + reminder email, branded | 📊 Counts by group, deferral and first-timer |
 | ✅ Eligibility guidance, honestly hedged | ✨ Assistant that reads your own roster |
 | 🔑 Sign in with an emailed code, no password | 🗓️ Camps: draft, published, closed |
@@ -132,8 +133,11 @@ permanent second one.
 
 | Asset | Path |
 | ----- | ---- |
-| Mark | [`public/brand/logo.svg`](public/brand/logo.svg) — a drop with an ECG trace through it. Also inline in [`src/components/brand.tsx`](src/components/brand.tsx) so it takes `currentColor` |
+| Mark | [`public/brand/logo.svg`](public/brand/logo.svg) — a drop holding a heart and cross in two cupped hands. Also inline in [`src/components/brand.tsx`](src/components/brand.tsx) |
+| Wordmark | **BLOOD**OC in heavy caps, OC in crimson — `WordmarkText` in `brand.tsx` |
 | Favicon | [`public/icon.svg`](public/icon.svg) |
+| App icons | `public/apple-icon.png`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` — rendered from the mark with `node scripts/render-icons.mjs`; the manifest is [`src/app/manifest.ts`](src/app/manifest.ts) |
+| Certificate artwork | [`public/certificates`](public/certificates), registered with its name position in [`src/lib/certificates/artwork.ts`](src/lib/certificates/artwork.ts) |
 | Link preview | [`public/og.png`](public/og.png) — source in [`marketing/og/og.html`](marketing/og/og.html), re-render with `node marketing/og/render.mjs`, then bump `?v=` in `src/lib/seo/page-metadata.ts` |
 
 Near-monochrome ground, one crimson accent (`--primary`, oklch `0.52 0.205 22`).
@@ -152,7 +156,6 @@ a three-way Light / Dark / System control back in the header.
       distinct people.
 - [ ] **Donor self-edit.** Corrections currently go through re-registering or an
       email.
-- [ ] **Certificates.** Mentioned in `/llms.txt` as a service; not generated.
 - [ ] **A lawyer on the legal pages.** `src/lib/legal/documents.ts` is honest
       about what the software does, which is not the same as being reviewed.
 - [ ] **Real-hardware pass.** Pinning plus momentum scroll is exactly the

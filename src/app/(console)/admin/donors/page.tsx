@@ -12,7 +12,8 @@ import {
 } from "@/components/shell/pagination";
 import { formatCampDate, formatCampDateShort } from "@/lib/format";
 import { DetailRow } from "@/components/shell/detail-row";
-import { DetailList } from "@/components/shell/detail-list";
+import { DetailList, type DetailItem } from "@/components/shell/detail-list";
+import { parentName } from "@/lib/validations/donor";
 
 export const metadata: Metadata = { title: "Donors" };
 
@@ -62,7 +63,7 @@ export default async function DonorsPage({
             <table className="w-full min-w-[44rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-app-line-soft">
-                  {["Donor", "Group", "Who", "Contact", "Donations", "Since", ""].map((h, i) => (
+                  {["#", "Donor", "Group", "Who", "Contact", "Donations", "Since", ""].map((h, i) => (
                     <th
                       key={h || i}
                       className="px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
@@ -73,7 +74,7 @@ export default async function DonorsPage({
                 </tr>
               </thead>
               <tbody>
-                {donors.map((d) => (
+                {donors.map((d, i) => (
                   <DetailRow
                     key={d.id}
                     label={`Open ${d.full_name}`}
@@ -92,14 +93,15 @@ export default async function DonorsPage({
                             ["Sex", <span key="s" className="capitalize">{d.sex}</span>],
                             ["Age", d.age],
                             ["Date of birth", d.date_of_birth ? formatCampDate(d.date_of_birth) : null],
-                            ["Father's name", d.father_name],
-                            ["Mother's name", d.mother_name],
+                            ["Father's name", parentName(d.father_title, d.father_name)],
+                            ["Mother's name", parentName(d.mother_title, d.mother_name)],
                           ]}
                         />
                         <DetailList
                           heading="Work"
                           items={[
                             ["They are", <span key="k" className="capitalize">{d.kind}</span>],
+                            ...(d.kind !== "other" ? ([["School", d.school, { wide: true }]] as DetailItem[]) : []),
                             [d.kind === "other" ? "Occupation" : "Department", d.kind === "other" ? d.occupation : d.department],
                           ]}
                         />
@@ -109,7 +111,14 @@ export default async function DonorsPage({
                             ["Phone", d.phone],
                             ["Alternate phone", d.alt_phone],
                             ["Email", d.email, { wide: true }],
-                            ["Address", d.address, { wide: true }],
+                            ["Residential address", d.address, { wide: true }],
+                            [
+                              "Permanent address",
+                              d.permanent_address && d.permanent_address === d.address
+                                ? "Same as residential"
+                                : d.permanent_address,
+                              { wide: true },
+                            ],
                           ]}
                         />
                         <DetailList
@@ -124,6 +133,16 @@ export default async function DonorsPage({
                       </div>
                     }
                   >
+                    {/* The row's place in the list, carried across pages, so a
+                        printed or read-aloud list can be referred to by number.
+                        Not an id: it moves when donors are added or a search
+                        narrows the list. */}
+                    <td
+                      className="w-12 py-3 pr-0 pl-5 text-xs text-muted-foreground"
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {(page - 1) * DEFAULT_PAGE_SIZE + i + 1}
+                    </td>
                     <td className="px-5 py-3">
                       <span className="block font-medium">{d.full_name}</span>
                       <span className="block text-xs text-muted-foreground capitalize">

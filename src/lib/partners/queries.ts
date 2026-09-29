@@ -209,7 +209,23 @@ export type VerifiedCertificate = {
   camp_date: string;
   venue: string;
   city: string | null;
-  partners: { name: string; short_name: string | null; kind: string; parent_institution: string | null }[];
+  /** A key into `CERTIFICATE_ART`, or null for the standard design. */
+  art: string | null;
+  /**
+   * The camp's free-text credits. Printed only when no partner rows are linked
+   * — they are what camps set up before partners existed carry.
+   */
+  organiser: string | null;
+  collaboration: string | null;
+  partner_name: string | null;
+  partner_note: string | null;
+  partners: {
+    name: string;
+    short_name: string | null;
+    kind: string;
+    parent_institution: string | null;
+    logo_url: string | null;
+  }[];
 };
 
 /**
@@ -232,7 +248,7 @@ export async function verifyCertificate(code: string): Promise<VerifiedCertifica
   const { data } = await admin
     .from("certificates")
     .select(
-      "code, status, issued_at, registration:registrations(donor:donors(full_name, blood_group), camp:camps(id, title, starts_at, venue, city))",
+      "code, status, issued_at, registration:registrations(donor:donors(full_name, blood_group), camp:camps(id, title, starts_at, venue, city, certificate_art, organiser, collaboration, partner_name, partner_note))",
     )
     .eq("code", code.trim().toUpperCase())
     .maybeSingle();
@@ -249,6 +265,11 @@ export async function verifyCertificate(code: string): Promise<VerifiedCertifica
         starts_at: string;
         venue: string;
         city: string | null;
+        certificate_art: string | null;
+        organiser: string | null;
+        collaboration: string | null;
+        partner_name: string | null;
+        partner_note: string | null;
       } | null;
     } | null;
   } | null;
@@ -257,7 +278,7 @@ export async function verifyCertificate(code: string): Promise<VerifiedCertifica
 
   const { data: partnerRows } = await admin
     .from("camp_partners")
-    .select("role, partner:partners(name, short_name, kind, parent_institution)")
+    .select("role, partner:partners(name, short_name, kind, parent_institution, logo_url)")
     .eq("camp_id", row.registration.camp.id)
     .order("sort_order", { ascending: true });
 
@@ -268,6 +289,7 @@ export async function verifyCertificate(code: string): Promise<VerifiedCertifica
         short_name: string | null;
         kind: string;
         parent_institution: string | null;
+        logo_url: string | null;
       } | null;
     }[] | null) ?? [];
 
@@ -281,6 +303,11 @@ export async function verifyCertificate(code: string): Promise<VerifiedCertifica
     camp_date: row.registration.camp.starts_at,
     venue: row.registration.camp.venue,
     city: row.registration.camp.city,
+    art: row.registration.camp.certificate_art,
+    organiser: row.registration.camp.organiser,
+    collaboration: row.registration.camp.collaboration,
+    partner_name: row.registration.camp.partner_name,
+    partner_note: row.registration.camp.partner_note,
     partners: partners.flatMap((p) => (p.partner ? [p.partner] : [])),
   };
 }

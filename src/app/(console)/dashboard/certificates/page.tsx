@@ -57,7 +57,7 @@ export default async function DonorCertificates() {
             body={
               waiting > 0
                 ? "Your certificate appears here once the blood bank signs it off. It usually takes a day or two."
-                : "Once you donate and the blood bank signs it off, your certificate appears here."
+                : "Once your donation is recorded at the camp, your certificate appears here and is emailed to you."
             }
           />
         </Panel>

@@ -5,6 +5,7 @@ import { TemplateEditor } from "@/components/admin/template-editor";
 import { TEMPLATE_META, fillTokens, type TemplateKey } from "@/lib/email/copy";
 import {
   campReminderEmail,
+  certificateIssuedEmail,
   profileChangeCodeEmail,
   registrationConfirmedEmail,
   signInAlertEmail,
@@ -72,6 +73,16 @@ function renderPreview(key: TemplateKey, saved: EmailTemplate | undefined) {
       );
     case "profile_change":
       return profileChangeCodeEmail(SAMPLE.code, Number(SAMPLE.minutes), copy);
+    case "certificate_issued":
+      return certificateIssuedEmail(
+        {
+          donorName: SAMPLE.name,
+          campTitle: SAMPLE.camp,
+          campDate: "Tuesday, 6 October 2026",
+          code: "BD-2026-9F3A7C",
+        },
+        copy,
+      );
     case "camp_reminder":
       return campReminderEmail(
         {

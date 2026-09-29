@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OTHER_SCHOOL, schoolById, schoolPlainName } from "@/lib/rgu";
 
 export const BLOOD_GROUPS = [
   "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "unknown",
@@ -64,9 +65,57 @@ const optionalNumber = (min: number, max: number, label: string) =>
       `${label} should be between ${min} and ${max}.`,
     );
 
-const optionalDate = box
-  .transform((s) => (s === "" ? null : s))
-  .refine((s) => s === null || !Number.isNaN(Date.parse(s)), "That date does not look right.");
+/**
+ * Today's date in India, as `YYYY-MM-DD`.
+ *
+ * A server in UTC is still on yesterday until 05:30 IST, and a birthday
+ * compared against the wrong day makes somebody a year younger for five and a
+ * half hours.
+ */
+export function todayInIst(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+}
+
+/**
+ * Whole years between a `YYYY-MM-DD` birth date and `today`.
+ *
+ * Text arithmetic, never `new Date(dob)`: that parses as UTC midnight and a
+ * browser west of Greenwich reads the day before back off it. Used by the form
+ * to show the age as the date is picked, and by the server to store it — the
+ * posted age is never trusted, because it is derived.
+ */
+export function ageOn(dob: string, today: string = todayInIst()): number | null {
+  const b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dob);
+  const t = /^(\d{4})-(\d{2})-(\d{2})$/.exec(today);
+  if (!b || !t) return null;
+  const [by, bm, bd] = b.slice(1).map(Number);
+  const [ty, tm, td] = t.slice(1).map(Number);
+  const beforeBirthday = tm < bm || (tm === bm && td < bd);
+  return ty - by - (beforeBirthday ? 1 : 0);
+}
+
+/**
+ * The title printed before a parent's name.
+ *
+ * "Lt." is the late — the usage on Indian forms, not the military rank.
+ */
+export const FATHER_TITLES = [
+  { value: "mr", label: "Mr." },
+  { value: "late", label: "Lt." },
+] as const;
+
+export const MOTHER_TITLES = [
+  { value: "mrs", label: "Mrs." },
+  { value: "late", label: "Lt." },
+] as const;
+
+const TITLE_LABEL: Record<string, string> = { mr: "Mr.", mrs: "Mrs.", late: "Lt." };
+
+/** "Lt. Ramesh Das", or the bare name for a row saved before titles existed. */
+export function parentName(title: string | null | undefined, name: string | null | undefined) {
+  if (!name) return null;
+  return title && TITLE_LABEL[title] ? `${TITLE_LABEL[title]} ${name}` : name;
+}
 
 /**
  * Questions that are optional unless a camp asks for them.
@@ -74,12 +123,13 @@ const optionalDate = box
  * The camp editor offers exactly these as "also require" ticks, and
  * `registerDonor` enforces whichever the camp chose. The keys are the form's
  * input names and must match the check constraint in migration 0019.
+ *
+ * Parents' names and the address were here until 0020 made them required for
+ * every camp. The constraint still allows the old keys, so a camp saved with
+ * them ticked stays valid.
  */
 export const CONFIGURABLE_FIELDS = [
-  { key: "fatherName", label: "Father's name" },
-  { key: "motherName", label: "Mother's name" },
   { key: "altPhone", label: "Alternate phone" },
-  { key: "address", label: "Address" },
   { key: "priorDonations", label: "Times donated before" },
   { key: "heightCm", label: "Height" },
   { key: "weightKg", label: "Weight" },
@@ -87,33 +137,149 @@ export const CONFIGURABLE_FIELDS = [
 
 export type ConfigurableField = (typeof CONFIGURABLE_FIELDS)[number]["key"];
 
+const parentText = (message: string) =>
+  z.string({ message }).trim().min(2, message).max(120);
+
+const addressText = (message: string) =>
+  z.string({ message }).trim().min(8, message).max(500, "Keep this under 500 characters.");
+
+/**
+ * Who the donor is, where they live and what they do: the fields the public
+ * registration and the donor's own profile editor share. Each schema below
+ * adds what belongs only to it.
+ */
+const personShape = {
+  fullName: z.string({ message: "Tell us your name." }).trim().min(2, "Tell us your name.").max(120),
+  sex: z.enum(["male", "female", "other"], { message: "Pick one." }),
+  // Required, and the age is worked out from it. Asking for both let the two
+  // disagree, and asking for either meant the roster had ages with no birth
+  // date behind them.
+  dateOfBirth: z
+    .string({ message: "Pick your date of birth." })
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick your date of birth."),
+  fatherTitle: z.enum(["mr", "late"], { message: "Pick Mr. or Lt." }),
+  fatherName: parentText("Enter your father's name."),
+  motherTitle: z.enum(["mrs", "late"], { message: "Pick Mrs. or Lt." }),
+  motherName: parentText("Enter your mother's name."),
+
+  kind: z.enum(["student", "faculty", "staff", "other"], { message: "Pick one." }),
+  occupation: box,
+  // The school's id from `RGU_SCHOOLS`, or "other". Resolved to its stored
+  // name in `finishPerson`.
+  school: box,
+  department: box,
+
+  phone,
+  altPhone: optionalPhone,
+  address: addressText("Enter your residential address."),
+  // Ticked → the permanent address is the residential one, and its box is not
+  // on screen to post anything.
+  sameAddress: z.literal("on").optional(),
+  permanentAddress: box,
+  bloodGroup: z.enum(BLOOD_GROUPS, { message: "Pick one, or \"I don't know\"." }),
+};
+
+type PersonFields = {
+  dateOfBirth: string;
+  kind: "student" | "faculty" | "staff" | "other";
+  occupation: string;
+  school: string;
+  department: string;
+  sameAddress?: "on";
+  permanentAddress: string;
+};
+
+/** The rules that span more than one person field. */
+function checkPerson(v: PersonFields, ctx: z.RefinementCtx) {
+  const age = ageOn(v.dateOfBirth);
+  if (age === null || age < 16 || age > 120) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["dateOfBirth"],
+      message: "Check your date of birth.",
+    });
+  }
+
+  if (!v.sameAddress && v.permanentAddress.length < 8) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["permanentAddress"],
+      message: "Enter your permanent address, or tick \"Same as residential\".",
+    });
+  }
+
+  // Which question is asked depends on `kind`, and only the one that was
+  // shown is required. "Other" is the catch-all — a shopkeeper has an
+  // occupation and no school, and asking them for one is how a form tells
+  // somebody it was not written for them.
+  if (v.kind === "other") {
+    if (!v.occupation) {
+      ctx.addIssue({ code: "custom", path: ["occupation"], message: "What do you do?" });
+    }
+    return;
+  }
+
+  if (!v.school) {
+    ctx.addIssue({ code: "custom", path: ["school"], message: "Which school?" });
+    return;
+  }
+  if (v.school === OTHER_SCHOOL) {
+    if (!v.department) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["department"],
+        message: v.kind === "student" ? "Which department?" : "Which department or office?",
+      });
+    }
+    return;
+  }
+  const school = schoolById(v.school);
+  if (!school) {
+    ctx.addIssue({ code: "custom", path: ["school"], message: "Pick your school from the list." });
+    return;
+  }
+  if (school.departments.length > 0 && !school.departments.includes(v.department)) {
+    ctx.addIssue({ code: "custom", path: ["department"], message: "Which department?" });
+  }
+}
+
+/**
+ * The validated person fields as they are stored: the age derived, the school
+ * resolved to its name, the permanent address filled in, and the half of
+ * "school or occupation" that does not apply cleared rather than kept.
+ */
+function finishPerson<T extends PersonFields & { address: string }>(v: T) {
+  const school = v.kind === "other" ? undefined : schoolById(v.school);
+  const typedDepartment = v.kind !== "other" && v.school === OTHER_SCHOOL;
+  return {
+    ...v,
+    age: ageOn(v.dateOfBirth),
+    permanentAddress: v.sameAddress ? v.address : v.permanentAddress,
+    occupation: v.kind === "other" ? v.occupation : null,
+    school: school?.name ?? null,
+    department: typedDepartment
+      ? v.department.slice(0, 120)
+      : school
+        ? school.departments.length > 0
+          ? v.department
+          : schoolPlainName(school)
+        : null,
+  };
+}
+
 export const donorRegistrationSchema = z
   .object({
-    // --- About you ---
-    fullName: z.string({ message: "Tell us your name." }).trim().min(2, "Tell us your name.").max(120),
-    sex: z.enum(["male", "female", "other"], { message: "Pick one." }),
-    dateOfBirth: optionalDate,
-    age: optionalNumber(16, 120, "Age"),
-    fatherName: optionalText,
-    motherName: optionalText,
-
-    // --- What you do ---
-    kind: z.enum(["student", "faculty", "staff", "other"], { message: "Pick one." }),
-    occupation: optionalText,
-    department: optionalText,
+    ...personShape,
 
     // --- Reaching you ---
     email: z.string({ message: "Enter your email address." }).trim().toLowerCase().email("Enter a valid email address."),
-    phone,
-    altPhone: optionalPhone,
-    address: optionalText,
 
     // --- As a donor ---
-    bloodGroup: z.enum(BLOOD_GROUPS, { message: "Pick one, or \"I don't know\"." }),
     firstTime: z.enum(["yes", "no"], { message: "Pick yes or no." }),
     priorDonations: optionalNumber(0, 200, "Number of donations"),
 
-    // --- On the day ---
+    // --- Health details ---
     //
     // Blood pressure and haemoglobin are deliberately absent. They are
     // measured at the desk with a cuff and a test, and a number a donor typed
@@ -138,15 +304,7 @@ export const donorRegistrationSchema = z
     consent: z.literal("on", { message: "Please confirm you have read the eligibility note." }),
   })
   .superRefine((v, ctx) => {
-    // Age or date of birth — one of them, because the medical officer needs to
-    // know the donor is over 18 and neither field alone is always supplied.
-    if (v.age === null && v.dateOfBirth === null) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["age"],
-        message: "Give your age or your date of birth.",
-      });
-    }
+    checkPerson(v, ctx);
     // A first-time donor with a donation count is a contradiction, and the two
     // boxes sit next to each other on the paper form precisely because people
     // fill them both in without thinking.
@@ -157,18 +315,6 @@ export const donorRegistrationSchema = z
         message: "You marked yourself a first-time donor. Leave this blank, or change that to No.",
       });
     }
-    // Which of the two boxes is asked for depends on `kind`, and only the one
-    // that was shown is required. "Other" is the catch-all — a shopkeeper has
-    // an occupation and no department, and asking them for one is how a form
-    // tells somebody it was not written for them.
-    if (v.kind !== "other" && !v.department) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["department"],
-        message:
-          v.kind === "student" ? "Which department?" : "Which faculty or department?",
-      });
-    }
     if (v.onMedication === "yes" && !v.medications) {
       ctx.addIssue({
         code: "custom",
@@ -176,22 +322,16 @@ export const donorRegistrationSchema = z
         message: "Name what you are taking.",
       });
     }
-    if (v.kind === "other" && !v.occupation) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["occupation"],
-        message: "What do you do?",
-      });
-    }
-  });
+  })
+  .transform(finishPerson);
 
 export type DonorRegistrationInput = z.infer<typeof donorRegistrationSchema>;
 
 /**
  * The donor's own profile, edited from /me.
  *
- * A deliberate subset of the registration schema, not a reuse of it. Three
- * groups of fields are missing and each absence is a decision:
+ * The same person fields as the registration, and deliberately nothing else.
+ * Three groups of fields are missing and each absence is a decision:
  *
  *  - `campId`, `consent`, `firstTime` — these belong to an application to a
  *    particular camp, not to the person. Carrying them here would mean editing
@@ -209,39 +349,10 @@ export type DonorRegistrationInput = z.infer<typeof donorRegistrationSchema>;
  */
 export const donorProfileSchema = z
   .object({
-    fullName: z.string().trim().min(2, "Enter your full name.").max(120),
-    sex: z.enum(["male", "female", "other"]),
-    dateOfBirth: optionalDate,
-    age: optionalNumber(16, 120, "Age"),
-    fatherName: optionalText,
-    motherName: optionalText,
-    kind: z.enum(["student", "faculty", "staff", "other"]),
-    occupation: optionalText,
-    department: optionalText,
-    phone,
-    altPhone: optionalPhone,
-    address: optionalText,
-    bloodGroup: z.enum(BLOOD_GROUPS),
+    ...personShape,
     priorDonations: optionalNumber(0, 200, "Number of donations"),
   })
-  .superRefine((v, ctx) => {
-    if (v.age === null && v.dateOfBirth === null) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["age"],
-        message: "Give your age or your date of birth.",
-      });
-    }
-    if (v.kind !== "other" && !v.department) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["department"],
-        message: v.kind === "student" ? "Which department?" : "Which faculty or department?",
-      });
-    }
-    if (v.kind === "other" && !v.occupation) {
-      ctx.addIssue({ code: "custom", path: ["occupation"], message: "What do you do?" });
-    }
-  });
+  .superRefine(checkPerson)
+  .transform(finishPerson);
 
 export type DonorProfileInput = z.infer<typeof donorProfileSchema>;

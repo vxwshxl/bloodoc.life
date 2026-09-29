@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import type { Camp } from "@/lib/db/types";
 import { CONFIGURABLE_FIELDS } from "@/lib/validations/donor";
+import { Dropdown } from "@/components/ui/dropdown";
+import { CERTIFICATE_ART_OPTIONS, STANDARD_CERTIFICATE } from "@/lib/certificates/artwork";
 
 /** An ISO instant → the "YYYY-MM-DDTHH:mm" a datetime-local input wants, in IST. */
 function toLocalInput(iso: string | null): string {
@@ -271,6 +273,28 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           </span>
         </span>
       </label>
+
+      {/*
+        What donors receive once the blood bank signs off their donation. The
+        standard design is filled from this camp's details; an organiser's own
+        artwork is chosen here once it has been added to the codebase (see
+        lib/certificates/artwork.ts).
+      */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="certificateArt" className="text-xs font-medium text-muted-foreground">
+          Certificate design
+        </Label>
+        <Dropdown
+          id="certificateArt"
+          name="certificateArt"
+          defaultValue={camp?.certificate_art ?? STANDARD_CERTIFICATE}
+          options={CERTIFICATE_ART_OPTIONS}
+        />
+        <p className="text-xs text-muted-foreground">
+          The donor&rsquo;s name and verification code are printed on it. Changing
+          this also changes certificates already issued for this camp.
+        </p>
+      </div>
 
       {/*
         Which optional questions this camp insists on. Name, contact, blood

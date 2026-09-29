@@ -3,7 +3,15 @@
 import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { lookupDonorByEmail, registerDonor, type RegisterState } from "@/lib/donors/actions";
-import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
+import {
+  BLOOD_GROUPS,
+  DONOR_KINDS,
+  FATHER_TITLES,
+  MOTHER_TITLES,
+  SEXES,
+  ageOn,
+} from "@/lib/validations/donor";
+import { OTHER_SCHOOL, SCHOOL_OPTIONS, schoolById } from "@/lib/rgu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -22,8 +30,8 @@ import { formatCampDate, formatTimeRange } from "@/lib/format";
  * donations, medication — sit in the middle of it with nothing marking them out
  * from a parent's name. So the same twenty questions are grouped into five
  * sections that each answer one question about the donor, in the order a person
- * can answer them: who you are, what you do, how we reach you, what you have
- * given before, and how you are today.
+ * can answer them: who you are, how we reach you, what you do, what you have
+ * given before, and the health details the desk will check.
  *
  * Nothing was dropped and nothing was added. "Location of camp" became the camp
  * itself, because the page already knows which one you clicked.
@@ -66,14 +74,17 @@ const LABELS: Record<string, string> = {
   fullName: "Full name",
   sex: "Sex",
   dateOfBirth: "Date of birth",
-  age: "Age",
+  fatherTitle: "Father's title",
   fatherName: "Father's name",
+  motherTitle: "Mother's title",
   motherName: "Mother's name",
   email: "Email",
   phone: "Phone",
   altPhone: "Alternate phone",
-  address: "Address",
+  address: "Residential address",
+  permanentAddress: "Permanent address",
   kind: "You are a",
+  school: "School",
   department: "Department",
   occupation: "Occupation",
   bloodGroup: "Blood group",
@@ -93,6 +104,7 @@ function Field({
   error,
   hint,
   required = false,
+  computed = false,
   className,
   children,
 }: {
@@ -101,6 +113,8 @@ function Field({
   error?: string;
   hint?: string;
   required?: boolean;
+  /** Filled in by the form, so neither required nor optional. */
+  computed?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -108,7 +122,7 @@ function Field({
     <div className={cn("flex flex-col gap-1.5", className)}>
       <Label htmlFor={name} className="gap-1 text-xs font-medium text-muted-foreground">
         {label}
-        <Mark required={required} />
+        {!computed && <Mark required={required} />}
       </Label>
       {children}
       {/* The hint is replaced by the error rather than joined by it: two lines
@@ -221,6 +235,13 @@ export function RegisterForm({
   );
   const [kind, setKind] = useState<string>("student");
   const [onMedication, setOnMedication] = useState<string>("no");
+  // Shown as the date is picked. Display only — the server works it out again
+  // from the date, so this box posts nothing.
+  const [age, setAge] = useState<number | null>(null);
+  const [school, setSchool] = useState<string>("");
+  const [department, setDepartment] = useState<string>("");
+  const [sameAddress, setSameAddress] = useState(false);
+  const schoolDepartments = schoolById(school)?.departments ?? [];
   const topRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
@@ -365,9 +386,8 @@ export function RegisterForm({
             label="Date of birth"
             name="dateOfBirth"
             error={e.dateOfBirth}
-            hint="Or give your age."
             required
-            className="sm:col-span-3"
+            className="sm:col-span-4"
           >
             {/* Bounded to plausible donor birth years, and opened on one, so
                 the year list is short and the field does not start in 2026. */}
@@ -378,24 +398,52 @@ export function RegisterForm({
               toYear={THIS_YEAR - 15}
               initialYear={THIS_YEAR - 25}
               placeholder="Pick your date of birth"
+              invalid={!!e.dateOfBirth}
+              onChange={(v) => setAge(ageOn(v))}
             />
           </Field>
-          <Field
-            label="Age"
-            name="age"
-            error={e.age}
-            hint="Either one is enough."
-            required
-            className="sm:col-span-3"
-          >
-            <Input id="age" name="age" inputMode="numeric" className={FIELD} placeholder="e.g. 21" aria-invalid={!!e.age || undefined} />
+          <Field label="Age" name="age" hint="Worked out from your date of birth." computed className="sm:col-span-2">
+            <Input
+              id="age"
+              readOnly
+              tabIndex={-1}
+              value={age === null ? "" : `${age} years`}
+              placeholder="—"
+              className={cn(FIELD, "bg-muted/50 text-foreground")}
+            />
           </Field>
 
-          <Field label="Father's name" name="fatherName" error={e.fatherName} required={req("fatherName")} className="sm:col-span-3">
-            <Input id="fatherName" name="fatherName" className={FIELD} required={req("fatherName")} aria-invalid={!!e.fatherName || undefined} />
+          {/* The title and the name are one line on the paper form, so they are
+              one control here: a short menu joined to the text box. */}
+          <Field label="Father's name" name="fatherName" error={e.fatherName ?? e.fatherTitle} required className="sm:col-span-3">
+            <div className="flex gap-2">
+              <Label htmlFor="fatherTitle" className="sr-only">
+                Father&rsquo;s title
+              </Label>
+              <Dropdown
+                name="fatherTitle"
+                defaultValue="mr"
+                options={FATHER_TITLES}
+                invalid={!!e.fatherTitle}
+                className="w-20 shrink-0"
+              />
+              <Input id="fatherName" name="fatherName" className={FIELD} required aria-invalid={!!e.fatherName || undefined} />
+            </div>
           </Field>
-          <Field label="Mother's name" name="motherName" error={e.motherName} required={req("motherName")} className="sm:col-span-3">
-            <Input id="motherName" name="motherName" className={FIELD} required={req("motherName")} aria-invalid={!!e.motherName || undefined} />
+          <Field label="Mother's name" name="motherName" error={e.motherName ?? e.motherTitle} required className="sm:col-span-3">
+            <div className="flex gap-2">
+              <Label htmlFor="motherTitle" className="sr-only">
+                Mother&rsquo;s title
+              </Label>
+              <Dropdown
+                name="motherTitle"
+                defaultValue="mrs"
+                options={MOTHER_TITLES}
+                invalid={!!e.motherTitle}
+                className="w-20 shrink-0"
+              />
+              <Input id="motherName" name="motherName" className={FIELD} required aria-invalid={!!e.motherName || undefined} />
+            </div>
           </Field>
         </div>
       </Section>
@@ -412,7 +460,7 @@ export function RegisterForm({
                 : "This becomes your sign-in. Use an address you can open."
             }
             required
-            className="sm:col-span-3"
+            className="sm:col-span-6"
           >
             <Input
               id="email"
@@ -438,9 +486,59 @@ export function RegisterForm({
           >
             <Input id="altPhone" name="altPhone" {...mobileInputProps} className={FIELD} placeholder="10 digits" required={req("altPhone")} aria-invalid={!!e.altPhone || undefined} />
           </Field>
-          <Field label="Address" name="address" error={e.address} required={req("address")} className="sm:col-span-3">
-            <Input id="address" name="address" className={FIELD} autoComplete="street-address" required={req("address")} aria-invalid={!!e.address || undefined} />
+
+          <Field
+            label="Residential address"
+            name="address"
+            error={e.address}
+            hint="Where you live now: house, street, locality, city, PIN."
+            required
+            className="sm:col-span-6"
+          >
+            <Textarea
+              id="address"
+              name="address"
+              rows={2}
+              autoComplete="street-address"
+              required
+              className="min-h-16"
+              aria-invalid={!!e.address || undefined}
+            />
           </Field>
+
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm sm:col-span-6">
+            <input
+              type="checkbox"
+              name="sameAddress"
+              checked={sameAddress}
+              onChange={(ev) => setSameAddress(ev.target.checked)}
+              className="tickbox shrink-0"
+            />
+            My permanent address is the same as my residential address
+          </label>
+
+          {/* Not rendered while ticked, rather than hidden: a hidden box would
+              still post whatever was typed before the tick, and the server
+              would have two addresses to choose between. */}
+          {!sameAddress && (
+            <Field
+              label="Permanent address"
+              name="permanentAddress"
+              error={e.permanentAddress}
+              hint="Your home address, if you live somewhere else for study or work."
+              required
+              className="sm:col-span-6"
+            >
+              <Textarea
+                id="permanentAddress"
+                name="permanentAddress"
+                rows={2}
+                required
+                className="min-h-16"
+                aria-invalid={!!e.permanentAddress || undefined}
+              />
+            </Field>
+          )}
         </div>
       </Section>
 
@@ -457,35 +555,65 @@ export function RegisterForm({
           </Field>
 
           {/*
-            One box, not two side by side.
+            School, then department — or occupation, never both.
 
-            The paper form has a single "Occupation — Department / Faculty"
-            line, and which half of it applies depends entirely on who is
-            filling it in. Showing both means a student stares at an Occupation
-            box that means nothing to them and a shopkeeper stares at a
-            Department box they have no answer for — and whichever they leave
-            blank, the roster ends up with a column that is empty for most
-            people. So the question that applies is the only one asked.
+            Students, faculty and staff pick their RGU school, then the
+            department within it. A school with no departments of its own is
+            the whole answer, and the second menu does not appear. "Other"
+            covers a central office or another institution, and turns the
+            department into a box to type in.
 
-            Both inputs stay mounted rather than being swapped, so switching
-            "You are a" does not throw away what was already typed in the
-            other one.
+            "Other" as the kind is the catch-all for everyone else: a
+            shopkeeper has an occupation and no school, and asking for one is
+            how a form tells somebody it was not written for them.
           */}
-          <Field
-            label={kind === "student" ? "Department" : "Faculty / department"}
-            name="department"
-            error={e.department}
-            required
-            className={cn("sm:col-span-4", kind === "other" && "hidden")}
-          >
-            <Input
-              id="department"
+          {kind !== "other" && (
+            <Field label="School" name="school" error={e.school} required className="sm:col-span-4">
+              <Dropdown
+                name="school"
+                value={school}
+                onValueChange={(v) => {
+                  setSchool(v);
+                  setDepartment("");
+                }}
+                options={SCHOOL_OPTIONS}
+                placeholder="Pick your school"
+                invalid={!!e.school}
+              />
+            </Field>
+          )}
+
+          {kind !== "other" && schoolDepartments.length > 0 && (
+            <Field label="Department" name="department" error={e.department} required className="sm:col-span-6">
+              <Dropdown
+                name="department"
+                value={department}
+                onValueChange={setDepartment}
+                options={schoolDepartments.map((d) => ({ value: d, label: d }))}
+                placeholder="Pick your department"
+                invalid={!!e.department}
+              />
+            </Field>
+          )}
+
+          {kind !== "other" && school === OTHER_SCHOOL && (
+            <Field
+              label={kind === "student" ? "Department" : "Department / office"}
               name="department"
-              className={FIELD}
-              placeholder={kind === "student" ? "e.g. Physics" : "e.g. Zoology"}
-              aria-invalid={!!e.department || undefined}
-            />
-          </Field>
+              error={e.department}
+              hint="Name it as it appears on your ID."
+              required
+              className="sm:col-span-6"
+            >
+              <Input
+                id="department"
+                name="department"
+                className={FIELD}
+                placeholder={kind === "student" ? "e.g. Physics" : "e.g. Examinations office"}
+                aria-invalid={!!e.department || undefined}
+              />
+            </Field>
+          )}
 
           <Field
             label="Occupation"
@@ -541,7 +669,7 @@ export function RegisterForm({
 
       <Section
         step={5}
-        title="How you are today"
+        title="Health details"
         note="Roughly is fine. Everything here is checked again at the desk."
       >
         {/*

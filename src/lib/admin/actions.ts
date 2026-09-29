@@ -10,6 +10,8 @@ import { campReminderEmail } from "@/lib/email/templates";
 import { copyFor } from "@/lib/email/copy";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 import { CONFIGURABLE_FIELDS } from "@/lib/validations/donor";
+import { CERTIFICATE_ART, STANDARD_CERTIFICATE } from "@/lib/certificates/artwork";
+import { emailCertificateFor } from "@/lib/certificates/email";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string };
 
@@ -76,6 +78,13 @@ const campSchema = z.object({
   collaboration: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
   partnerName: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
   partnerNote: z.string().trim().max(200).transform((s) => (s === "" ? null : s)),
+  // A key of `CERTIFICATE_ART`, or "standard" for none. Unknown keys are
+  // refused here because the database, deliberately, does not check them.
+  certificateArt: z
+    .string()
+    .optional()
+    .refine((k) => !k || k === STANDARD_CERTIFICATE || k in CERTIFICATE_ART, "Unknown certificate design.")
+    .transform((k) => (!k || k === STANDARD_CERTIFICATE ? null : k)),
 });
 
 /** "2026-09-25T09:00" in IST → an ISO instant. */
@@ -136,6 +145,7 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
     partner_name: v.partnerName,
     partner_note: v.partnerNote,
     required_fields: requiredFields,
+    certificate_art: v.certificateArt,
   };
 
   if (v.id) {
@@ -199,6 +209,9 @@ export async function setRegistrationStatus(
   if (error) return { error: "Could not update that registration." };
   // An update RLS refused comes back as a success with no rows.
   if (!data?.length) return { error: "You do not have permission to change that record." };
+
+  // The trigger has just issued the certificate; this hands it over.
+  if (status === "donated") await emailCertificateFor(id);
 
   revalidatePath("/admin/registrations");
   revalidatePath("/admin");
@@ -331,6 +344,9 @@ export async function saveRegistration(
   // PostgREST reports a delete or update that matched no policy as a success
   // with no rows, so "nothing happened" must not be reported as "saved".
   if (!data?.length) return { error: "You do not have permission to change that record." };
+
+  // Safe on every save of a donated row: the claim sends at most once.
+  if (v.status === "donated") await emailCertificateFor(v.id);
 
   revalidatePath("/admin/registrations");
   revalidatePath("/admin");

@@ -33,6 +33,9 @@ export type RegistrationStatus =
 export type PartnerKind = "organisation" | "blood_bank";
 export type PartnerMemberRole = "owner" | "member";
 export type CertificateStatus = "pending" | "approved" | "revoked";
+/** Printed before a parent's name: "Mr." / "Mrs." / "Lt." (late). See 0020. */
+export type FatherTitle = "mr" | "late";
+export type MotherTitle = "mrs" | "late";
 
 export type Profile = {
   id: string;
@@ -50,15 +53,21 @@ export type Donor = {
   sex: Sex;
   date_of_birth: string | null;
   age: number | null;
+  father_title: FatherTitle | null;
   father_name: string | null;
+  mother_title: MotherTitle | null;
   mother_name: string | null;
   kind: DonorKind;
   occupation: string | null;
+  /** The RGU school, as its display name. Null for "other" and older rows. */
+  school: string | null;
   department: string | null;
   email: string;
   phone: string;
   alt_phone: string | null;
+  /** The residential address. Named before 0020 added the permanent one. */
   address: string | null;
+  permanent_address: string | null;
   blood_group: BloodGroup;
   prior_donations: number;
   notes: string | null;
@@ -107,6 +116,11 @@ export type Camp = {
    * core. Keys from `CONFIGURABLE_FIELDS`; see 0019.
    */
   required_fields: string[];
+  /**
+   * Which certificate design this camp's donors receive: a key into
+   * `CERTIFICATE_ART`, or null for the standard one. See 0020.
+   */
+  certificate_art: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -250,8 +264,9 @@ export type CampPartner = {
 };
 
 /**
- * One per donation, minted `pending` by a trigger the moment a registration
- * reaches `donated` and valid only once a human approves it.
+ * One per donation, issued `approved` by a trigger the moment a registration
+ * reaches `donated` (0021). Rows minted before that start `pending` and wait
+ * for the blood bank's approval.
  */
 export type Certificate = {
   id: string;
@@ -263,6 +278,8 @@ export type Certificate = {
   issued_by: string | null;
   revoked_at: string | null;
   revoked_reason: string | null;
+  /** When the donor was emailed it. Set only by `claim_certificate_email`. */
+  emailed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -302,7 +319,18 @@ export type Database = {
       certificates: Table<Certificate>;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      claim_certificate_email: {
+        Args: { target_registration: string };
+        Returns: {
+          code: string;
+          donor_name: string;
+          donor_email: string;
+          camp_title: string;
+          camp_starts: string;
+        }[];
+      };
+    };
     Enums: {
       user_role: UserRole;
       donor_kind: DonorKind;

@@ -43,11 +43,13 @@ export type RegistrationDetailData = {
     phone: string;
     blood_group: string;
     kind: string;
+    school: string | null;
     department: string | null;
     occupation: string | null;
     age: number | null;
     sex: string;
     address: string | null;
+    permanent_address: string | null;
     prior_donations: number;
   } | null;
   camp: { title: string; starts_at: string; ends_at: string | null; venue: string } | null;
@@ -136,13 +138,17 @@ export function RegistrationDetail({
             ["Phone", donor?.phone],
             ["Email", donor?.email],
             ["They are", donor ? <span key="k" className="capitalize">{donor.kind}</span> : null],
-            ["Department", donor?.department ?? donor?.occupation],
+            ...(donor?.school ? ([["School", donor.school, { wide: true }]] as DetailItem[]) : []),
+            [donor?.kind === "other" ? "Occupation" : "Department", donor?.department ?? donor?.occupation],
             ["Age", donor?.age],
             ["Sex", donor ? <span key="s" className="capitalize">{donor.sex}</span> : null],
             ["Donations before BlooDoc", donor?.prior_donations],
             ["Venue", camp?.venue],
             ["Registered", formatDateTime(r.created_at)],
-            ...(donor?.address ? ([["Address", donor.address, { wide: true }]] as DetailItem[]) : []),
+            ...(donor?.address ? ([["Residential address", donor.address, { wide: true }]] as DetailItem[]) : []),
+            ...(donor?.permanent_address && donor.permanent_address !== donor.address
+              ? ([["Permanent address", donor.permanent_address, { wide: true }]] as DetailItem[])
+              : []),
           ]}
         />
 

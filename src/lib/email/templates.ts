@@ -93,6 +93,45 @@ export function registrationConfirmedEmail(input: {
   };
 }
 
+/**
+ * The certificate is ready. Sent once per certificate, the moment it is issued
+ * — when the donation is recorded (0021), or when the blood bank approves one
+ * minted before that. Never while pending: a certificate announced then would
+ * be one the donor could forward and nobody could verify.
+ */
+export function certificateIssuedEmail(input: {
+  donorName: string;
+  campTitle: string;
+  campDate: string;
+  code: string;
+}, copy?: TemplateCopy) {
+  const verifyUrl = `${site()}/verify/${encodeURIComponent(input.code)}`;
+  return {
+    subject: copy?.subject || `Your certificate for ${input.campTitle}`,
+    html: renderEmail({
+      preheader: `Certificate ${input.code} is ready to download.`,
+      blocks: [
+        heading(copy?.heading || `Thank you, ${input.donorName}.`),
+        paragraph(
+          copy?.lead ||
+            "Thank you for donating blood. Your certificate of appreciation is ready. Open it to print it or save it as a PDF.",
+        ),
+        infoCard([
+          { label: "Camp", value: input.campTitle, strong: true },
+          { label: "Donated on", value: input.campDate },
+          { label: "Certificate no.", value: input.code },
+        ]),
+        button("View your certificate", verifyUrl),
+        paragraph(
+          `Anyone you show it to can check it at ${site().replace(/^https?:\/\//, "")}/verify with the number above. All your certificates are also kept on your dashboard.`,
+          { muted: true },
+        ),
+      ],
+      footerNote: "You are receiving this because you donated at a camp registered on bloodoc.life.",
+    }),
+  };
+}
+
 /** A nudge the day before. Sent from the console, not automatically. */
 export function campReminderEmail(input: {
   donorName: string;

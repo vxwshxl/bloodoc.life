@@ -94,7 +94,7 @@ export const PAGES: Record<string, PageKnowledge> = {
   "/admin/certificates": {
     title: "Certificates",
     about:
-      "One certificate per donation, minted pending the moment a registration reaches 'donated'. It is only valid once a human approves it. The code (BD-2026-XXXXXX) is what anybody can type into /verify.",
+      "One certificate per donation, issued and emailed to the donor the moment a registration reaches 'donated'. Older ones may still be pending approval. A certificate can be withdrawn with a reason. The code (BD-2026-XXXXXX) is what anybody can type into /verify.",
     actions: ["Approve a pending certificate", "Revoke one, with a reason"],
     audit: ["certificates"],
   },

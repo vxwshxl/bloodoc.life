@@ -333,7 +333,7 @@ export async function getDashboardExtras(days = 30): Promise<DashboardExtras> {
 }
 
 export type ConsoleUser = Profile & {
-  donor: Pick<Donor, "id" | "full_name" | "phone" | "blood_group" | "kind" | "department" | "prior_donations"> | null;
+  donor: Pick<Donor, "id" | "full_name" | "phone" | "blood_group" | "kind" | "school" | "department" | "prior_donations"> | null;
   memberships: { partner: { name: string; short_name: string | null; kind: string } | null }[];
 };
 
@@ -356,7 +356,7 @@ export async function listUsers(
   let q = supabase
     .from("profiles")
     .select(
-      "*, donor:donors(id, full_name, phone, blood_group, kind, department, prior_donations), memberships:partner_members(partner:partners(name, short_name, kind))",
+      "*, donor:donors(id, full_name, phone, blood_group, kind, school, department, prior_donations), memberships:partner_members(partner:partners(name, short_name, kind))",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })

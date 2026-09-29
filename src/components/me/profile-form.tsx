@@ -8,7 +8,15 @@ import {
   updateMyProfile,
   type ProfileState,
 } from "@/lib/donors/profile-actions";
-import { BLOOD_GROUPS, DONOR_KINDS, SEXES } from "@/lib/validations/donor";
+import {
+  BLOOD_GROUPS,
+  DONOR_KINDS,
+  FATHER_TITLES,
+  MOTHER_TITLES,
+  SEXES,
+  ageOn,
+} from "@/lib/validations/donor";
+import { OTHER_SCHOOL, SCHOOL_OPTIONS, schoolById, schoolIdForName } from "@/lib/rgu";
 import { Dropdown } from "@/components/ui/dropdown";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Donor } from "@/lib/db/types";
@@ -70,6 +78,19 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
   );
   const [saveState, save, saving] = useActionState<ProfileState, FormData>(updateMyProfile, {});
   const [kind, setKind] = useState<string>(donor?.kind ?? "student");
+  const [age, setAge] = useState<number | null>(
+    donor?.date_of_birth ? ageOn(donor.date_of_birth) : null,
+  );
+  // A stored school the list no longer has, or a typed department from before
+  // the list existed, opens as "Other" with the text kept, not as a blank menu.
+  const initialSchool =
+    schoolIdForName(donor?.school) ?? (donor?.department ? OTHER_SCHOOL : "");
+  const [school, setSchool] = useState<string>(initialSchool);
+  const [department, setDepartment] = useState<string>(donor?.department ?? "");
+  const [sameAddress, setSameAddress] = useState(
+    !!donor?.address && donor.address === donor.permanent_address,
+  );
+  const schoolDepartments = schoolById(school)?.departments ?? [];
 
   const awaiting = codeState.awaitingCode || saveState.awaitingCode;
   const e = saveState.fieldErrors ?? {};
@@ -103,16 +124,39 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
               toYear={PROFILE_YEAR - 15}
               initialYear={PROFILE_YEAR - 25}
               placeholder="Pick your date of birth"
+              onChange={(v) => setAge(ageOn(v))}
             />
           </Field>
-          <Field label="Age" hint="Either one is enough." error={e.age}>
-            <input name="age" inputMode="numeric" defaultValue={donor?.age ?? ""} className={field} />
+          <Field label="Age" hint="Worked out from your date of birth.">
+            <input
+              readOnly
+              tabIndex={-1}
+              value={age === null ? "" : `${age} years`}
+              placeholder="—"
+              className={`${field} bg-muted/50`}
+            />
           </Field>
-          <Field label="Father's name" error={e.fatherName}>
-            <input name="fatherName" defaultValue={donor?.father_name ?? ""} className={field} />
+          <Field label="Father's name" error={e.fatherName ?? e.fatherTitle}>
+            <span className="flex gap-2">
+              <Dropdown
+                name="fatherTitle"
+                defaultValue={donor?.father_title ?? "mr"}
+                options={FATHER_TITLES}
+                className="w-20 shrink-0"
+              />
+              <input name="fatherName" required defaultValue={donor?.father_name ?? ""} className={field} />
+            </span>
           </Field>
-          <Field label="Mother's name" error={e.motherName}>
-            <input name="motherName" defaultValue={donor?.mother_name ?? ""} className={field} />
+          <Field label="Mother's name" error={e.motherName ?? e.motherTitle}>
+            <span className="flex gap-2">
+              <Dropdown
+                name="motherTitle"
+                defaultValue={donor?.mother_title ?? "mrs"}
+                options={MOTHER_TITLES}
+                className="w-20 shrink-0"
+              />
+              <input name="motherName" required defaultValue={donor?.mother_name ?? ""} className={field} />
+            </span>
           </Field>
         </div>
       </section>
@@ -139,9 +183,38 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
           <Field label="Alternate phone" error={e.altPhone}>
             <input name="altPhone" {...mobileInputProps} placeholder="10 digits" defaultValue={tenDigits(donor?.alt_phone)} className={field} />
           </Field>
-          <Field label="Address" error={e.address}>
-            <input name="address" defaultValue={donor?.address ?? ""} className={field} />
+        </div>
+        <div className="mt-4 flex flex-col gap-4">
+          <Field label="Residential address" error={e.address}>
+            <textarea
+              name="address"
+              rows={2}
+              required
+              defaultValue={donor?.address ?? ""}
+              className={`${field} h-auto min-h-16 py-2`}
+            />
           </Field>
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              name="sameAddress"
+              checked={sameAddress}
+              onChange={(ev) => setSameAddress(ev.target.checked)}
+              className="tickbox shrink-0"
+            />
+            My permanent address is the same as my residential address
+          </label>
+          {!sameAddress && (
+            <Field label="Permanent address" error={e.permanentAddress}>
+              <textarea
+                name="permanentAddress"
+                rows={2}
+                required
+                defaultValue={donor?.permanent_address ?? ""}
+                className={`${field} h-auto min-h-16 py-2`}
+              />
+            </Field>
+          )}
         </div>
       </section>
 
@@ -156,8 +229,38 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
               <input name="occupation" defaultValue={donor?.occupation ?? ""} className={field} />
             </Field>
           ) : (
+            <Field label="School" error={e.school}>
+              <Dropdown
+                name="school"
+                value={school}
+                onValueChange={(v) => {
+                  setSchool(v);
+                  setDepartment("");
+                }}
+                options={SCHOOL_OPTIONS}
+                placeholder="Pick your school"
+              />
+            </Field>
+          )}
+          {kind !== "other" && schoolDepartments.length > 0 && (
             <Field label="Department" error={e.department}>
-              <input name="department" defaultValue={donor?.department ?? ""} className={field} />
+              <Dropdown
+                name="department"
+                value={schoolDepartments.includes(department) ? department : ""}
+                onValueChange={setDepartment}
+                options={schoolDepartments.map((d) => ({ value: d, label: d }))}
+                placeholder="Pick your department"
+              />
+            </Field>
+          )}
+          {kind !== "other" && school === OTHER_SCHOOL && (
+            <Field label={kind === "student" ? "Department" : "Department / office"} error={e.department}>
+              <input
+                name="department"
+                value={department}
+                onChange={(ev) => setDepartment(ev.target.value)}
+                className={field}
+              />
             </Field>
           )}
         </div>

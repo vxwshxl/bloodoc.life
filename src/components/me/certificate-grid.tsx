@@ -84,15 +84,13 @@ export function CertificateGrid({ certs }: { certs: VerifiedCertificate[] }) {
       </div>
 
       <Dialog open={!!open} onOpenChange={(v) => !v && setOpen(null)}>
-        <DialogContent className="gap-0 p-0 sm:max-w-lg">
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-4xl">
           <DialogTitle className="sr-only">
             {open ? `Certificate for ${open.camp_title}` : "Certificate"}
           </DialogTitle>
           {open && (
             <>
-              <div className="grain">
-                <CertificateView cert={open} />
-              </div>
+              <CertificateView cert={open} />
               <div className="flex flex-col gap-2 border-t border-app-line-soft p-4 sm:flex-row">
                 <Link
                   href={`/verify/${open.code}`}

@@ -51,7 +51,7 @@ export default async function VerifyPage({
       icon: BadgeCheck,
       tone: "bg-status-success text-white",
       title: "Verified certificate",
-      body: "This donation is recorded and signed off by the blood bank that received it.",
+      body: "This donation was recorded at the camp by the team that took it.",
     },
     pending: {
       icon: CircleAlert,
@@ -76,15 +76,26 @@ export default async function VerifyPage({
   const Icon = BANNER.icon;
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 py-16 sm:px-6">
+    <main className="mx-auto w-full max-w-5xl px-5 py-16 sm:px-6 print:max-w-none print:p-0">
+      {/* One landscape sheet, edge to edge. Scoped to this page by rendering
+          it here: an @page rule in globals.css would turn every printed page
+          on the site sideways. */}
+      <style>{"@page { size: A4 landscape; margin: 0; }"}</style>
       <div className="mb-8 flex justify-center print:hidden">
         <Link href="/">
           <Wordmark />
         </Link>
       </div>
 
-      <div className="grain overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--panel-shadow)] print:border-black print:shadow-none">
-        <div className={`flex items-center gap-3 px-6 py-4 ${BANNER.tone}`}>
+      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-[var(--panel-shadow)] print:rounded-none print:border-0 print:shadow-none">
+        {/* A valid certificate prints as the certificate alone: "verified" on
+            the paper would be the very claim /verify exists to check, and it
+            would go on saying it after a withdrawal. Anything not valid prints
+            as the banner and nothing else, so a pending or withdrawn code can
+            never come out of the printer looking like a clean sheet. */}
+        <div
+          className={`flex items-center gap-3 px-6 py-4 ${BANNER.tone} ${state === "valid" ? "print:hidden" : ""}`}
+        >
           <Icon className="size-5 shrink-0" strokeWidth={2} aria-hidden />
           <div>
             <p className="text-sm font-bold tracking-tight">{BANNER.title}</p>
@@ -92,7 +103,11 @@ export default async function VerifyPage({
           </div>
         </div>
 
-        {cert && <CertificateView cert={cert} />}
+        {cert && (
+          <div className={state === "valid" ? undefined : "print:hidden"}>
+            <CertificateView cert={cert} />
+          </div>
+        )}
       </div>
 
       {/* Print is the download. A browser's "Save as PDF" produces the same

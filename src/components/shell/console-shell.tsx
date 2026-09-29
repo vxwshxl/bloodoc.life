@@ -24,7 +24,7 @@ import {
   IdCard,
   X,
 } from "lucide-react";
-import { DropMark } from "@/components/brand";
+import { DropMark, WordmarkText } from "@/components/brand";
 import { AssistantPanelContext } from "@/components/shell/assistant-context";
 import {
   DropdownMenu,
@@ -273,9 +273,7 @@ export function ConsoleShell({
           >
             <DropMark />
             <span data-rail-hide className="flex min-w-0 flex-col leading-none">
-              <span className="font-display text-base font-semibold tracking-tight">
-                Bloo<span className="text-primary">Doc</span>
-              </span>
+              <WordmarkText />
               <span className="text-[11px] tracking-wide text-sidebar-foreground/60">
                 give blood, give life
               </span>

@@ -145,7 +145,7 @@ export function renderEmail(input: RenderEmailInput): string {
       <table role="presentation" width="580" cellpadding="0" cellspacing="0"
         style="width:580px;max-width:100%;background:#ffffff;border:1px solid ${BORDER};border-radius:14px;overflow:hidden;">
         <tr><td style="padding:20px 32px;border-bottom:1px solid ${BORDER};">
-          <span style="font-family:${FONT};font-size:16px;font-weight:600;letter-spacing:-0.01em;color:${INK};">Bloo<span style="color:${BRAND};">Doc</span></span>
+          <span style="font-family:${FONT};font-size:17px;font-weight:800;letter-spacing:-0.01em;text-transform:uppercase;color:${INK};">BLOOD<span style="color:${BRAND};">OC</span></span>
           <span style="font-family:${FONT};font-size:12px;color:${MUTED};margin-left:8px;">give blood, give life</span>
         </td></tr>
         <tr><td style="height:3px;background:${BRAND};line-height:3px;font-size:0;">&nbsp;</td></tr>
