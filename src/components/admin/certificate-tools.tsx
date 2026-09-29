@@ -14,10 +14,21 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { resendCertificate, type SendState } from "@/lib/partners/actions";
 import { cn } from "@/lib/utils";
 
-/** One look for every button in a certificate's popup. */
+/**
+ * The popup's buttons, one colour each.
+ *
+ * They were four grey outlines in a row, and on the tinted popup they read as
+ * labels rather than things to press. Each now has its own fill, so the eye
+ * finds "the certificate" (crimson, the main action), "check it" (blue) and
+ * "email it" (indigo) without reading, and none can be mistaken for Approve
+ * (green) or Withdraw (red) at the end of the row.
+ */
 const BUTTON =
-  "press inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50";
-const OUTLINE = `${BUTTON} border border-app-line hover:bg-muted`;
+  "press inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold ring-1 transition-colors ring-inset focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-45";
+const PRIMARY = `${BUTTON} bg-primary text-primary-foreground ring-primary hover:bg-primary/90`;
+const VERIFY = `${BUTTON} bg-sky-600/10 text-sky-700 ring-sky-600/30 hover:bg-sky-600/18`;
+const SEND = `${BUTTON} bg-indigo-600/10 text-indigo-700 ring-indigo-600/30 hover:bg-indigo-600/18`;
+const OUTLINE = `${BUTTON} bg-card ring-app-line hover:bg-muted`;
 
 /**
  * "Download all": every approved certificate at a camp, each a PDF named for
@@ -54,7 +65,7 @@ export function BulkCertificateDownload({
       onClick={run}
       disabled={certs.length === 0 || progress !== null}
       title={certs.length === 0 ? "No approved certificates at this camp yet" : undefined}
-      className={cn(BUTTON, "bg-primary text-primary-foreground hover:bg-primary/90")}
+      className={cn(PRIMARY, "shadow-sm")}
     >
       {progress ? (
         <>
@@ -89,7 +100,7 @@ export function CertificatePreviewButton({ cert }: { cert: VerifiedCertificate }
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={OUTLINE}>
+      <button type="button" onClick={() => setOpen(true)} className={PRIMARY}>
         <Award className="size-4" strokeWidth={2} aria-hidden />
         Certificate
       </button>
@@ -121,7 +132,7 @@ export function CertificatePreviewButton({ cert }: { cert: VerifiedCertificate }
 /** "Verify": the public page for this code, as a stranger would see it. */
 export function VerifyLink({ code }: { code: string }) {
   return (
-    <Link href={`/verify/${code}`} target="_blank" className={OUTLINE}>
+    <Link href={`/verify/${code}`} target="_blank" className={VERIFY}>
       Verify
       <ExternalLink className="size-3.5" strokeWidth={2} aria-hidden />
     </Link>
@@ -153,7 +164,7 @@ export function SendCertificateButton({
         type="submit"
         disabled={!approved || sending}
         title={approved ? undefined : "Approve it first"}
-        className={OUTLINE}
+        className={SEND}
       >
         {sending ? (
           <Loader2 className="size-4 animate-spin" aria-hidden />

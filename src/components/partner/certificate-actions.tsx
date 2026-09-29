@@ -24,10 +24,13 @@ export function CertificateActions({
   certificateId,
   status,
   canApprove,
+  size = "sm",
 }: {
   certificateId: string;
   status: CertificateStatus;
   canApprove: boolean;
+  /** "md" in a popup, to match the buttons beside it; "sm" in a table row. */
+  size?: "sm" | "md";
 }) {
   const [approveState, approve, approving] = useActionState<ActionState, FormData>(
     approveCertificate,
@@ -44,6 +47,9 @@ export function CertificateActions({
   if (!canApprove) return null;
 
   const error = approveState.error ?? revokeState.error;
+  // Green to approve, red to withdraw: the two are opposites, and a pair of
+  // same-looking buttons is how the wrong one gets pressed.
+  const box = size === "md" ? "h-9 rounded-full px-4 text-sm" : "h-8 rounded-md px-3 text-xs";
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -57,7 +63,7 @@ export function CertificateActions({
             <input type="hidden" name="certificateId" value={certificateId} />
             <button
               type="submit"
-              className="press h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
+              className={`press ${box} bg-status-success font-semibold text-white shadow-sm hover:bg-status-success/90`}
             >
               {status === "revoked" ? "Reinstate" : "Approve"}
             </button>
@@ -68,7 +74,7 @@ export function CertificateActions({
           <button
             type="button"
             onClick={() => setAskReason(true)}
-            className="press h-8 rounded-md border border-app-line px-3 text-xs font-medium text-muted-foreground"
+            className={`press ${box} bg-status-danger/10 font-semibold text-status-danger ring-1 ring-status-danger/30 ring-inset hover:bg-status-danger/15`}
           >
             Withdraw
           </button>

@@ -35,14 +35,14 @@ export function CertificateOverview({ c }: { c: CertificateListRow }) {
         ]}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-app-line-soft bg-card p-2">
         <CertificatePreviewButton cert={c.print} />
         <VerifyLink code={c.code} />
         <SendCertificateButton certificateId={c.id} approved={c.status === "approved"} />
         <div className="ml-auto">
           {/* An admin can approve anywhere; the policy in 0008 lets
               `is_admin()` through every certificate branch. */}
-          <CertificateActions certificateId={c.id} status={c.status} canApprove />
+          <CertificateActions certificateId={c.id} status={c.status} canApprove size="md" />
         </div>
       </div>
 
