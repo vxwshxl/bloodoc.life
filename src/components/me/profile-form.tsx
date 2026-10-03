@@ -13,6 +13,7 @@ import {
   DONOR_KINDS,
   FATHER_TITLES,
   MOTHER_TITLES,
+  HUSBAND_TITLES,
   SEXES,
   ageOn,
 } from "@/lib/validations/donor";
@@ -156,6 +157,17 @@ export function ProfileForm({ donor, email }: { donor: Donor | null; email: stri
                 className="w-20 shrink-0"
               />
               <input name="motherName" required defaultValue={donor?.mother_name ?? ""} className={field} />
+            </span>
+          </Field>
+          <Field label="Husband's name (optional)" error={e.husbandName}>
+            <span className="flex gap-2">
+              <Dropdown
+                name="husbandTitle"
+                defaultValue={donor?.husband_title ?? "mr"}
+                options={HUSBAND_TITLES}
+                className="w-20 shrink-0"
+              />
+              <input name="husbandName" defaultValue={donor?.husband_name ?? ""} className={field} />
             </span>
           </Field>
         </div>

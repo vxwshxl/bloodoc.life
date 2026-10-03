@@ -36,6 +36,8 @@ export type CertificateStatus = "pending" | "approved" | "revoked";
 /** Printed before a parent's name: "Mr." / "Mrs." / "Lt." (late). See 0020. */
 export type FatherTitle = "mr" | "late";
 export type MotherTitle = "mrs" | "late";
+/** Before the husband's name, the same way as the father's. See 0022. */
+export type HusbandTitle = "mr" | "late";
 
 export type Profile = {
   id: string;
@@ -57,6 +59,9 @@ export type Donor = {
   father_name: string | null;
   mother_title: MotherTitle | null;
   mother_name: string | null;
+  /** Optional, asked beside the parents' names. See 0022. */
+  husband_title: HusbandTitle | null;
+  husband_name: string | null;
   kind: DonorKind;
   occupation: string | null;
   /** The RGU school, as its display name. Null for "other" and older rows. */
@@ -326,6 +331,7 @@ export type Database = {
           code: string;
           donor_name: string;
           donor_email: string;
+          donor_phone: string | null;
           camp_title: string;
           camp_starts: string;
         }[];

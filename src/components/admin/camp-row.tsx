@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Loader2, Send } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, Loader2, Send } from "lucide-react";
 import { CampForm } from "@/components/admin/camp-form";
 import { DeleteCamp } from "@/components/admin/delete-camp";
 import { sendCampReminders, type ActionState } from "@/lib/admin/actions";
@@ -84,6 +84,17 @@ export function CampRow({
           >
             Roster
           </Link>
+          {/* A plain link: the route answers with the file, and the browser
+              downloads it without leaving the page. */}
+          <a
+            href={`/admin/camps/${camp.id}/export`}
+            download
+            title="Download the camp report as an Excel sheet: totals, collaborators and every donor"
+            className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-app-line px-3.5 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <FileSpreadsheet className="size-4 text-[#1d6f42]" strokeWidth={1.9} aria-hidden />
+            Excel
+          </a>
           <form action={action}>
             <input type="hidden" name="campId" value={camp.id} />
             <button

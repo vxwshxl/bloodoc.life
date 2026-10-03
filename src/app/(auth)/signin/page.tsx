@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignInForm } from "@/components/auth/signin-form";
+import { whatsappConfigured } from "@/lib/whatsapp/send";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -11,11 +13,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  // Read per request, not baked in at build: adding the WhatsApp keys should
+  // turn phone sign-in on without a rebuild.
+  await connection();
+  const phone = whatsappConfigured();
   return (
     <AuthShell
       title="Sign in"
-      subtitle="We'll email you a 6-digit code."
+      subtitle={phone ? "We'll send you a 6-digit code by email or WhatsApp." : "We'll email you a 6-digit code."}
       footer={
         <>
           New here? Sign in, then{" "}
@@ -26,7 +32,7 @@ export default function SignInPage() {
         </>
       }
     >
-      <SignInForm />
+      <SignInForm phoneEnabled={phone} />
     </AuthShell>
   );
 }

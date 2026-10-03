@@ -55,7 +55,8 @@ actually happens.
 | 🎖️ Certificate emailed the moment a donation is recorded | 🔏 Anyone can check a certificate at `/verify` |
 | 📧 Confirmation + reminder email, branded | 📊 Counts by group, deferral and first-timer |
 | ✅ Eligibility guidance, honestly hedged | ✨ Assistant that reads your own roster |
-| 🔑 Sign in with an emailed code, no password | 🗓️ Camps: draft, published, closed |
+| 🔑 Sign in with a code by email or WhatsApp, no password | 🗓️ Camps: draft, published, closed |
+| 📱 Certificate on WhatsApp too, with a QR to verify it | 📗 Excel report per camp: totals, partners' logos, every donor |
 
 ## How it's built
 

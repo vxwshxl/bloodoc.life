@@ -26,6 +26,7 @@ export function DonorProfile({ donor: d }: { donor: Donor }) {
           ["Date of birth", d.date_of_birth ? formatCampDate(d.date_of_birth) : null],
           ["Father's name", parentName(d.father_title, d.father_name)],
           ["Mother's name", parentName(d.mother_title, d.mother_name)],
+          ["Husband's name", parentName(d.husband_title, d.husband_name)],
           ["Blood group", d.blood_group === "unknown" ? "Not known" : d.blood_group],
         ]}
       />

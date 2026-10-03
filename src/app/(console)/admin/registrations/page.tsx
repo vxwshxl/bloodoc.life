@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet } from "lucide-react";
 import { CampCard } from "@/components/camps/camp-card";
 import { listCampRosters, listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
@@ -139,6 +139,19 @@ export default async function RegistrationsPage({
           active
             ? `${formatCampDateShort(active.starts_at)} · ${total} on the roster · ${donated} donated, ${firstTimers} first-timers on this page`
             : `${total} across every camp`
+        }
+        action={
+          active ? (
+            <a
+              href={`/admin/camps/${active.id}/export`}
+              download
+              title="Download this camp's report as an Excel sheet"
+              className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-app-line bg-card px-3.5 text-sm font-medium transition-colors hover:bg-muted"
+            >
+              <FileSpreadsheet className="size-4 text-[#1d6f42]" strokeWidth={1.9} aria-hidden />
+              Download Excel
+            </a>
+          ) : undefined
         }
       />
 

@@ -109,6 +109,9 @@ export const MOTHER_TITLES = [
   { value: "late", label: "Lt." },
 ] as const;
 
+/** A husband is titled like a father: "Mr." or "Lt." */
+export const HUSBAND_TITLES = FATHER_TITLES;
+
 const TITLE_LABEL: Record<string, string> = { mr: "Mr.", mrs: "Mrs.", late: "Lt." };
 
 /** "Lt. Ramesh Das", or the bare name for a row saved before titles existed. */
@@ -162,6 +165,10 @@ const personShape = {
   fatherName: parentText("Enter your father's name."),
   motherTitle: z.enum(["mrs", "late"], { message: "Pick Mrs. or Lt." }),
   motherName: parentText("Enter your mother's name."),
+  // Optional, for the donors it applies to. The title menu always posts a
+  // value, so it is kept only when a name came with it.
+  husbandTitle: z.enum(["mr", "late"]).optional(),
+  husbandName: box.refine((s) => s === "" || (s.length >= 2 && s.length <= 120), "Enter your husband's name, or leave it blank."),
 
   kind: z.enum(["student", "faculty", "staff", "other"], { message: "Pick one." }),
   occupation: box,
@@ -182,6 +189,8 @@ const personShape = {
 
 type PersonFields = {
   dateOfBirth: string;
+  husbandTitle?: "mr" | "late";
+  husbandName: string;
   kind: "student" | "faculty" | "staff" | "other";
   occupation: string;
   school: string;
@@ -255,6 +264,8 @@ function finishPerson<T extends PersonFields & { address: string }>(v: T) {
   return {
     ...v,
     age: ageOn(v.dateOfBirth),
+    husbandName: v.husbandName || null,
+    husbandTitle: v.husbandName ? (v.husbandTitle ?? "mr") : null,
     permanentAddress: v.sameAddress ? v.address : v.permanentAddress,
     occupation: v.kind === "other" ? v.occupation : null,
     school: school?.name ?? null,
