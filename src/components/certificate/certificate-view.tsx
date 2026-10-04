@@ -2,6 +2,7 @@ import { Cinzel, Libre_Caslon_Text } from "next/font/google";
 import type { VerifiedCertificate } from "@/lib/partners/queries";
 import { artFor, type CertificateArt } from "@/lib/certificates/artwork";
 import { DropMark } from "@/components/brand";
+import { CertificateQr } from "@/components/certificate/certificate-qr";
 import { cn } from "@/lib/utils";
 
 /**
@@ -72,15 +73,49 @@ function Page({
   );
 }
 
-/** The line that lets anyone holding the paper check it. */
+/**
+ * The line that lets anyone holding the paper check it, and says whose
+ * system issued it.
+ */
 function CodeLine({ code }: { code: string }) {
   return (
     <>
       Certificate no. <span className="font-mono font-semibold tracking-wider">{code}</span>
       <span style={{ color: GOLD }}> · </span>
       Verify at {VERIFY_HOST}
+      <span style={{ color: GOLD }}> · </span>
+      Powered by{" "}
+      <span className="font-extrabold tracking-tight">
+        BLOOD<span style={{ color: CRIMSON }}>OC</span>
+      </span>
     </>
   );
+}
+
+/** The QR and the words under it, sized by the box it is placed in. */
+function QrBlock({ code, color }: { code: string; color: string }) {
+  return (
+    <span className="flex w-full flex-col items-center">
+      <CertificateQr code={code} color={color} className="block aspect-square w-full" />
+      <span
+        className="mt-[0.35cqw] block text-center text-[0.62cqw] leading-none font-semibold tracking-[0.12em] uppercase"
+        style={{ color }}
+      >
+        Scan to verify
+      </span>
+    </span>
+  );
+}
+
+/** Lower-case letters and digits only, so case and punctuation never count as a rename. */
+function sameName(a: string, b: string): boolean {
+  const n = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  return n(a) === n(b);
+}
+
+/** `YYYY-MM-DD` in IST. */
+function istDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(iso));
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +151,15 @@ function ArtworkCertificate({ cert, art }: { cert: VerifiedCertificate; art: Cer
         {cert.donor_name}
       </p>
 
+      <Reprint cert={cert} art={art} />
+
+      <div
+        className="absolute"
+        style={{ top: `${art.qr.top}%`, right: `${art.qr.right}%`, width: `${art.qr.size}%` }}
+      >
+        <QrBlock code={cert.code} color={art.qr.color} />
+      </div>
+
       <p
         className="absolute inset-x-0 -translate-y-1/2 text-center text-[0.8cqw] leading-none"
         style={{ top: `${art.code.centre}%`, color: art.code.color }}
@@ -123,6 +167,68 @@ function ArtworkCertificate({ cert, art }: { cert: VerifiedCertificate; art: Cer
         <CodeLine code={cert.code} />
       </p>
     </Page>
+  );
+}
+
+/**
+ * The camp's current name, printed over the one in the artwork.
+ *
+ * Renders nothing while the camp is still called what the organisers printed,
+ * so an unchanged camp gets their artwork exactly as designed. Once it is
+ * renamed (or moved to another day), the ribbon and the sentence under it are
+ * painted over in the artwork's own colours and reset with the camp's record,
+ * so a certificate never names a drive that no longer exists.
+ */
+function Reprint({ cert, art }: { cert: VerifiedCertificate; art: CertificateArt }) {
+  const p = art.printed;
+  if (!p) return null;
+  const renamed = !sameName(cert.camp_title, p.title);
+  const moved = istDate(cert.camp_date) !== p.date;
+  if (!renamed && !moved) return null;
+
+  const box = (b: { left: number; right: number; top: number; height: number; background: string }) => ({
+    left: `${b.left}%`,
+    right: `${b.right}%`,
+    top: `${b.top}%`,
+    height: `${b.height}%`,
+    background: b.background,
+    // Feathered at the ends so the patch melts into the band and the paper
+    // instead of showing a hard-edged rectangle.
+    maskImage: "linear-gradient(90deg, transparent, #000 1.5%, #000 98.5%, transparent)",
+  });
+  const ribbonWidth = 100 - p.ribbon.left - p.ribbon.right;
+  const sentenceWidth = 100 - p.sentence.left - p.sentence.right;
+  const sentence = `The ${cert.camp_title} was held on ${longDate(cert.camp_date)}`;
+
+  return (
+    <>
+      {renamed && (
+        <p
+          className={cn(serif.className, "absolute flex items-center justify-center leading-none font-bold whitespace-nowrap uppercase")}
+          style={{
+            ...box(p.ribbon),
+            color: p.ribbon.color,
+            fontSize: fit(cert.camp_title, 2.15, ribbonWidth - 3, 0.74),
+            letterSpacing: "0.02em",
+          }}
+        >
+          {cert.camp_title}
+        </p>
+      )}
+      <p
+        className={cn(serif.className, "absolute flex items-center justify-center leading-none whitespace-nowrap")}
+        style={{
+          ...box(p.sentence),
+          color: p.sentence.color,
+          fontSize: fit(sentence, 1.32, sentenceWidth - 3, 0.5),
+        }}
+      >
+        <span>
+          The {cert.camp_title} was held on{" "}
+          <strong style={{ color: p.sentence.accent }}>{longDate(cert.camp_date)}</strong>
+        </span>
+      </p>
+    </>
   );
 }
 
@@ -203,6 +309,12 @@ function StandardCertificate({ cert }: { cert: VerifiedCertificate }) {
   return (
     <Page aspect="297 / 210" className="bg-[#fbf8f2]">
       <Frame />
+
+      {/* Top right, clear of the centred logo row and of the corner band,
+          which is top left on this design. */}
+      <div className="absolute top-[5.2cqw] right-[5.4cqw] w-[7.2cqw]">
+        <QrBlock code={cert.code} color={NAVY} />
+      </div>
 
       <div
         className="absolute inset-[4.2cqw] flex flex-col items-center text-center"

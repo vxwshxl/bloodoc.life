@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { CampCard, CampTag } from "@/components/camps/camp-card";
-import { MemberList } from "@/components/admin/partner-manager";
+import { MemberList, PartnerLogo } from "@/components/admin/partner-manager";
 import { getPartnerDetail } from "@/lib/partners/queries";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -130,6 +130,8 @@ export default async function PartnerDetailPage({ params }: Params) {
               </span>
             )}
           </div>
+
+          <PartnerLogo partnerId={p.id} logoUrl={p.logo_url} />
         </Panel>
 
         <Panel className="p-5">

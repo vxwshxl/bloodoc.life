@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { Loader2, Plus, X } from "lucide-react";
-import { saveCamp, type ActionState } from "@/lib/admin/actions";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { Languages, Loader2, Plus, X } from "lucide-react";
+import { saveCamp, translateCampTitleAction, type ActionState } from "@/lib/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -40,8 +40,76 @@ function toLocalInput(iso: string | null): string {
     .replace(" ", "T");
 }
 
+/**
+ * The three titles, kept in step.
+ *
+ * Changing the English title translates it into Assamese and Hindi, into
+ * whichever of those two boxes the organiser has not edited by hand. Typing in
+ * one of them marks it as theirs, and it is left alone from then on. The
+ * server does the same check again on save (`saveCamp`), so a rename still
+ * carries through if this request never came back.
+ */
+function useCampTitles(camp?: Camp) {
+  const [title, setTitle] = useState(camp?.title ?? "");
+  const [titleAs, setTitleAs] = useState(camp?.title_as ?? "");
+  const [titleHi, setTitleHi] = useState(camp?.title_hi ?? "");
+  const [touched, setTouched] = useState({ as: false, hi: false });
+  // The English text the current translations belong to.
+  const source = useRef(camp?.title ?? "");
+  const [status, setStatus] = useState<"idle" | "working" | "done" | "unavailable">("idle");
+
+  useEffect(() => {
+    const text = title.trim();
+    if (text.length < 3 || text === source.current) return;
+    if (touched.as && touched.hi) return;
+    // Waits for a pause in typing: one request per title, not per letter.
+    const timer = setTimeout(async () => {
+      setStatus("working");
+      try {
+        const t = await translateCampTitleAction(text);
+        if (!t.configured) {
+          setStatus("unavailable");
+          return;
+        }
+        source.current = text;
+        if (!touched.as && t.as) setTitleAs(t.as);
+        if (!touched.hi && t.hi) setTitleHi(t.hi);
+        setStatus(t.as || t.hi ? "done" : "unavailable");
+      } catch {
+        setStatus("unavailable");
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [title, touched]);
+
+  const renamed = !!camp && title.trim() !== camp.title;
+  return {
+    title,
+    setTitle,
+    titleAs,
+    setTitleAs: (v: string) => {
+      setTouched((t) => (t.as ? t : { ...t, as: true }));
+      setTitleAs(v);
+    },
+    titleHi,
+    setTitleHi: (v: string) => {
+      setTouched((t) => (t.hi ? t : { ...t, hi: true }));
+      setTitleHi(v);
+    },
+    status,
+    // Renamed in English, nothing could translate it, and the other two still
+    // read exactly as before: they now name a camp that does not exist.
+    stale:
+      status === "unavailable" &&
+      renamed &&
+      ((!touched.as && !!titleAs && titleAs === camp?.title_as) ||
+        (!touched.hi && !!titleHi && titleHi === camp?.title_hi)),
+  };
+}
+
 export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveCamp, {});
+  const titles = useCampTitles(camp);
 
   useEffect(() => {
     if (state.ok) onDone?.();
@@ -55,7 +123,14 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
         <Label htmlFor="title" className="text-xs font-medium text-muted-foreground">
           Title (English)
         </Label>
-        <Input id="title" name="title" defaultValue={camp?.title} className="h-10" required />
+        <Input
+          id="title"
+          name="title"
+          value={titles.title}
+          onChange={(e) => titles.setTitle(e.target.value)}
+          className="h-10"
+          required
+        />
       </div>
 
       {/* The translated titles rotate with the English one on the camp page and
@@ -70,7 +145,8 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           <Input
             id="titleAs"
             name="titleAs"
-            defaultValue={camp?.title_as ?? ""}
+            value={titles.titleAs}
+            onChange={(e) => titles.setTitleAs(e.target.value)}
             className="h-10"
             placeholder="Optional"
           />
@@ -82,11 +158,33 @@ export function CampForm({ camp, onDone }: { camp?: Camp; onDone?: () => void })
           <Input
             id="titleHi"
             name="titleHi"
-            defaultValue={camp?.title_hi ?? ""}
+            value={titles.titleHi}
+            onChange={(e) => titles.setTitleHi(e.target.value)}
             className="h-10"
             placeholder="Optional"
           />
         </div>
+        <p
+          aria-live="polite"
+          className={
+            titles.stale
+              ? "flex items-center gap-1.5 text-xs font-medium text-destructive sm:col-span-2"
+              : "flex items-center gap-1.5 text-xs text-muted-foreground sm:col-span-2"
+          }
+        >
+          {titles.status === "working" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Languages className="size-3.5" />
+          )}
+          {titles.status === "working"
+            ? "Translating the new title…"
+            : titles.stale
+              ? "Automatic translation is not set up (SARVAM_API_KEY). These still show the old title: update or clear them."
+              : titles.status === "done"
+                ? "Translated from the English title. Edit either one if it reads wrong."
+                : "Filled in automatically when the English title changes."}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">

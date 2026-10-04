@@ -39,6 +39,23 @@ things that will bite you.
   most once per certificate; call it freely. A camp's `certificate_art` picks organiser artwork from
   `lib/certificates/artwork.ts` (name printed at measured percentages);
   null gets the standard design drawn from the camp's data.
+- **Husband's name** (`husband_title` / `husband_name`, 0022) is optional and
+  displays through `parentName()` like the parents'.
+- **Renaming a camp** re-translates `title_as` / `title_hi` (Sarvam, on
+  `SARVAM_API_KEY`) unless the organiser edited them, in the form and again in
+  `saveCamp`. Organiser artwork has the camp's name baked in; `printed` in
+  `artwork.ts` says what it says, and the certificate paints the current name
+  over it when they differ.
+- **Every certificate carries a QR** to `bloodoc.life/verify/<code>`
+  (`certificate-qr.tsx`) and "Powered by BLOODOC" in its code line.
+- **WhatsApp is optional** (`lib/whatsapp/send.ts`, Meta Cloud API, approved
+  templates only). When set, certificates go out on it alongside email and
+  `/signin` offers phone sign-in: the number must belong to exactly one donor
+  address, and the session is that address's account. Sends are logged in
+  `email_log` as "WhatsApp +91…".
+- **Camp Excel report** is `GET /admin/camps/:id/export`
+  (`lib/reports/camp-workbook.ts`). Partner logos come from `partners.logo_url`,
+  uploaded on the partner page into the `partner-logos` bucket as PNG.
 - **Camp slugs are never updated on edit.** They are in public URLs and in
   confirmation emails already sent.
 

@@ -116,6 +116,8 @@ export async function registerDonor(
     father_name: v.fatherName,
     mother_title: v.motherTitle,
     mother_name: v.motherName,
+    husband_title: v.husbandTitle,
+    husband_name: v.husbandName,
     kind: v.kind,
     occupation: v.occupation,
     school: v.school,

@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Loader2, Plus, Trash2, UserPlus } from "lucide-react";
+import { ImageUp, Loader2, Plus, Trash2, UserPlus } from "lucide-react";
 import {
   createPartner,
   invitePartnerMember,
   removePartnerMember,
+  setPartnerLogo,
   type ActionState,
 } from "@/lib/partners/actions";
 import { ViewAsButton } from "@/components/admin/view-as-button";
@@ -75,6 +76,63 @@ export function NewPartnerForm() {
         {state.error && <p className="text-xs font-medium text-destructive">{state.error}</p>}
       </div>
     </form>
+  );
+}
+
+/**
+ * A partner's logo: what it is now, and the control that changes it.
+ *
+ * Shown on the certificate's standard design and in the camp Excel report,
+ * which is why it says so — an admin wondering where a logo goes is the
+ * admin who never uploads one.
+ */
+export function PartnerLogo({ partnerId, logoUrl }: { partnerId: string; logoUrl: string | null }) {
+  const [state, action, pending] = useActionState<ActionState, FormData>(setPartnerLogo, {});
+  return (
+    <div className="mt-4 border-t border-app-line-soft pt-4">
+      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Logo</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Printed on certificates and in each camp&rsquo;s Excel report. PNG, JPEG, WebP or SVG, under 1 MB.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <span className="flex size-16 items-center justify-center overflow-hidden rounded-lg border border-app-line bg-white">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="" className="max-h-full max-w-full object-contain" />
+          ) : (
+            <ImageUp className="size-5 text-muted-foreground" strokeWidth={1.8} aria-hidden />
+          )}
+        </span>
+        <form action={action} className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="partnerId" value={partnerId} />
+          <input
+            type="file"
+            name="logo"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            required
+            className="max-w-56 text-xs file:mr-2 file:rounded-md file:border file:border-app-line file:bg-transparent file:px-2.5 file:py-1.5 file:text-xs file:font-medium"
+          />
+          <button
+            type="submit"
+            disabled={pending}
+            className="press inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {pending && <Loader2 className="size-3.5 animate-spin" />}
+            {logoUrl ? "Replace" : "Upload"}
+          </button>
+        </form>
+        {logoUrl && (
+          <form action={action}>
+            <input type="hidden" name="partnerId" value={partnerId} />
+            <input type="hidden" name="remove" value="true" />
+            <button type="submit" disabled={pending} className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive">
+              Remove
+            </button>
+          </form>
+        )}
+      </div>
+      {state.error && <p className="mt-2 text-xs font-medium text-destructive">{state.error}</p>}
+    </div>
   );
 }
 

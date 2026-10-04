@@ -7,6 +7,7 @@ import {
   BLOOD_GROUPS,
   DONOR_KINDS,
   FATHER_TITLES,
+  HUSBAND_TITLES,
   MOTHER_TITLES,
   SEXES,
   ageOn,
@@ -18,6 +19,12 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dropdown } from "@/components/ui/dropdown";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn, mobileInputProps } from "@/lib/utils";
 import type { Camp } from "@/lib/db/types";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
@@ -78,6 +85,7 @@ const LABELS: Record<string, string> = {
   fatherName: "Father's name",
   motherTitle: "Mother's title",
   motherName: "Mother's name",
+  husbandName: "Husband's name",
   email: "Email",
   phone: "Phone",
   altPhone: "Alternate phone",
@@ -229,6 +237,85 @@ export function RegisterForm({
   /** Drops the camp summary — the dialog already shows it in its header. */
   compact?: boolean;
 }) {
+  // Bumped when the confirmation is dismissed, which remounts the form empty
+  // and with a fresh action state, ready for the next person at the same
+  // phone (a desk volunteer registering a queue, a friend borrowing it).
+  const [round, setRound] = useState(0);
+  // The first name of whoever just registered; non-null while the
+  // confirmation is open.
+  const [registered, setRegistered] = useState<string | null>(null);
+
+  /**
+   * The confirmation is a popup over the form, not a replacement for it.
+   *
+   * It used to take the form's place in the page. The form is three screens
+   * tall and the confirmation is a few lines, so the page shrank under the
+   * donor's thumb at the exact moment they pressed the button at the bottom:
+   * the browser kept the scroll offset, and they were left looking at the
+   * footer with the message somewhere above them. A dialog changes nothing in
+   * the page's layout, so nothing moves.
+   */
+  return (
+    <>
+      <RegisterFormBody
+        key={round}
+        camp={camp}
+        compact={compact}
+        onRegistered={setRegistered}
+      />
+      <Dialog
+        open={registered !== null}
+        onOpenChange={(open) => {
+          if (open) return;
+          setRegistered(null);
+          setRound((r) => r + 1);
+          onDone?.();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <div className="flex flex-col items-center px-2 py-4 text-center">
+            <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+              <CheckCircle2 className="size-7" strokeWidth={1.9} />
+            </span>
+            <DialogTitle className="mt-5 font-display text-2xl font-bold tracking-tight">
+              You&rsquo;re on the roster{registered ? `, ${registered}` : ""}.
+            </DialogTitle>
+            <DialogDescription className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              We have emailed you the details. Bring a photo ID on the day. It is
+              the only thing you need to carry. Eat a normal meal and drink water
+              before you come.
+            </DialogDescription>
+            <p className="mt-4 max-w-sm text-xs leading-relaxed text-muted-foreground">
+              Final eligibility is decided by the medical officer after a short
+              screening at the camp. Registering does not guarantee you will be able
+              to donate on the day.
+            </p>
+            <Button
+              onClick={() => {
+                setRegistered(null);
+                setRound((r) => r + 1);
+                onDone?.();
+              }}
+              className="mt-7 h-10 rounded-full px-6"
+            >
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function RegisterFormBody({
+  camp,
+  compact,
+  onRegistered,
+}: {
+  camp: Camp;
+  compact: boolean;
+  onRegistered: (firstName: string) => void;
+}) {
   const [state, action, pending] = useActionState<RegisterState, FormData>(
     registerDonor,
     {},
@@ -293,33 +380,11 @@ export function RegisterForm({
     if (state.error) topRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [state.error]);
 
-  if (state.ok) {
-    return (
-      <div className="flex flex-col items-center px-2 py-10 text-center">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-          <CheckCircle2 className="size-7" strokeWidth={1.9} />
-        </span>
-        <h3 className="mt-5 font-display text-2xl font-bold tracking-tight">
-          You&rsquo;re on the roster{state.donorName ? `, ${state.donorName}` : ""}.
-        </h3>
-        <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          We have emailed you the details. Bring a photo ID on the day. It is
-          the only thing you need to carry. Eat a normal meal and drink water
-          before you come.
-        </p>
-        <p className="mt-4 max-w-sm text-xs leading-relaxed text-muted-foreground">
-          Final eligibility is decided by the medical officer after a short
-          screening at the camp. Registering does not guarantee you will be able
-          to donate on the day.
-        </p>
-        {onDone && (
-          <Button onClick={onDone} className="mt-7 h-10 rounded-full px-6">
-            Done
-          </Button>
-        )}
-      </div>
-    );
-  }
+  // Success opens the confirmation over the form; see `RegisterForm`. Keyed on
+  // the state object, so each successful submit reports once.
+  useEffect(() => {
+    if (state.ok) onRegistered(state.donorName ?? "");
+  }, [state, onRegistered]);
 
   return (
     <form
@@ -443,6 +508,26 @@ export function RegisterForm({
                 className="w-20 shrink-0"
               />
               <Input id="motherName" name="motherName" className={FIELD} required aria-invalid={!!e.motherName || undefined} />
+            </div>
+          </Field>
+          <Field
+            label="Husband's name"
+            name="husbandName"
+            error={e.husbandName}
+            hint="If you are married. Leave blank otherwise."
+            className="sm:col-span-3"
+          >
+            <div className="flex gap-2">
+              <Label htmlFor="husbandTitle" className="sr-only">
+                Husband&rsquo;s title
+              </Label>
+              <Dropdown
+                name="husbandTitle"
+                defaultValue="mr"
+                options={HUSBAND_TITLES}
+                className="w-20 shrink-0"
+              />
+              <Input id="husbandName" name="husbandName" className={FIELD} aria-invalid={!!e.husbandName || undefined} />
             </div>
           </Field>
         </div>

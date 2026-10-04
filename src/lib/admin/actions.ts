@@ -12,6 +12,7 @@ import { formatCampDate, formatTimeRange } from "@/lib/format";
 import { CONFIGURABLE_FIELDS } from "@/lib/validations/donor";
 import { CERTIFICATE_ART, STANDARD_CERTIFICATE } from "@/lib/certificates/artwork";
 import { emailCertificateFor } from "@/lib/certificates/email";
+import { translateCampTitle, translatorConfigured } from "@/lib/ai/translate";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string };
 
@@ -94,6 +95,25 @@ function istToIso(local: string): string | null {
   return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
 }
 
+export type TranslateState = {
+  as?: string | null;
+  hi?: string | null;
+  /** False when no translator is set up, so the form can say so instead. */
+  configured: boolean;
+};
+
+/**
+ * The camp form's live translation: called as the English title is edited, so
+ * the organiser sees the Assamese and Hindi before saving and can correct
+ * them.
+ */
+export async function translateCampTitleAction(title: string): Promise<TranslateState> {
+  await requireAdmin();
+  const text = z.string().trim().min(3).max(160).safeParse(title);
+  if (!text.success || !translatorConfigured()) return { configured: translatorConfigured() };
+  return { configured: true, ...(await translateCampTitle(text.data)) };
+}
+
 export async function saveCamp(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireAdmin();
   const parsed = campSchema.safeParse(Object.fromEntries(formData));
@@ -114,6 +134,30 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
 
   const supabase = await createClient();
 
+  // Renaming a camp renames it in every language.
+  //
+  // The form translates as the English title is typed, but this is the
+  // guarantee: if the English title changed and a translated title was posted
+  // back exactly as it was stored — the organiser did not touch it, or the
+  // form's own translation did not arrive — it is translated again here.
+  // A new camp with a blank translation gets one too. A translation the
+  // organiser edited themselves is never replaced.
+  let titleAs = v.titleAs;
+  let titleHi = v.titleHi;
+  {
+    const { data: before } = v.id
+      ? await supabase.from("camps").select("title, title_as, title_hi").eq("id", v.id).maybeSingle()
+      : { data: null };
+    const renamed = !before || before.title !== v.title;
+    const staleAs = renamed && (before ? titleAs === before.title_as : !titleAs);
+    const staleHi = renamed && (before ? titleHi === before.title_hi : !titleHi);
+    if ((staleAs || staleHi) && translatorConfigured()) {
+      const t = await translateCampTitle(v.title);
+      if (staleAs && t.as) titleAs = t.as;
+      if (staleHi && t.hi) titleHi = t.hi;
+    }
+  }
+
   // `camps_one_featured` (0011) rejects a second featured row outright, so the
   // previous holder is stood down first. Done here rather than in a trigger
   // because "the newest tick wins" is a product decision, not a data rule —
@@ -128,8 +172,8 @@ export async function saveCamp(_prev: ActionState, formData: FormData): Promise<
 
   const row = {
     title: v.title,
-    title_as: v.titleAs,
-    title_hi: v.titleHi,
+    title_as: titleAs,
+    title_hi: titleHi,
     summary: v.summary,
     organiser: v.organiser,
     contact_phone: v.contactPhone,

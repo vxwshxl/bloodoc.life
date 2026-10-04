@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, requireConsoleUser } from "@/lib/auth/dal";
-import { emailCertificateFor, sendCertificateEmail } from "@/lib/certificates/email";
+import { deliverCertificate, emailCertificateFor } from "@/lib/certificates/email";
 import { emailConfigured } from "@/lib/email/send";
+import { whatsappConfigured } from "@/lib/whatsapp/send";
 
 /**
  * Writes from the partner panel.
@@ -181,19 +182,21 @@ export async function resendCertificate(
   await requireConsoleUser();
   const id = z.uuid().safeParse(formData.get("certificateId"));
   if (!id.success) return { error: "Unknown certificate." };
-  if (!emailConfigured()) return { error: "Email is not configured (ZEPTOMAIL_TOKEN)." };
+  if (!emailConfigured() && !whatsappConfigured()) {
+    return { error: "Neither email (ZEPTOMAIL_TOKEN) nor WhatsApp (WHATSAPP_TOKEN) is configured." };
+  }
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("certificates")
-    .select("code, status, registration:registrations(donor:donors(full_name, email), camp:camps(title, starts_at))")
+    .select("code, status, registration:registrations(donor:donors(full_name, email, phone), camp:camps(title, starts_at))")
     .eq("id", id.data)
     .maybeSingle();
   const row = data as unknown as {
     code: string;
     status: string;
     registration: {
-      donor: { full_name: string; email: string } | null;
+      donor: { full_name: string; email: string; phone: string | null } | null;
       camp: { title: string; starts_at: string } | null;
     } | null;
   } | null;
@@ -202,16 +205,25 @@ export async function resendCertificate(
   if (row.status !== "approved") return { error: "Approve it first. Only an approved certificate can be sent." };
   const donor = row.registration?.donor;
   const camp = row.registration?.camp;
-  if (!donor?.email || !camp) return { error: "This donor has no email address on file." };
+  if ((!donor?.email && !donor?.phone) || !camp) {
+    return { error: "This donor has no email address or phone on file." };
+  }
 
-  const result = await sendCertificateEmail({
+  const result = await deliverCertificate({
     code: row.code,
     donor_name: donor.full_name,
     donor_email: donor.email,
+    donor_phone: donor.phone,
     camp_title: camp.title,
     camp_starts: camp.starts_at,
   });
-  if (!result.ok) return { error: "The email did not go through. The attempt is in the email log." };
+  const sentTo = [
+    result.email?.ok ? donor.email : null,
+    result.whatsapp?.ok ? `WhatsApp ${donor.phone}` : null,
+  ].filter(Boolean);
+  if (!sentTo.length) {
+    return { error: "It did not go through. The attempt is in the email log." };
+  }
 
   // Recorded where the policy allows it (an admin, the blood bank). A
   // partner organisation's send still went; it just is not stamped.
@@ -221,7 +233,7 @@ export async function resendCertificate(
     .eq("id", id.data);
 
   revalidatePath("/admin/email");
-  return { ok: true, message: `Sent to ${donor.email}.` };
+  return { ok: true, message: `Sent to ${sentTo.join(" and ")}.` };
 }
 
 /**
@@ -328,6 +340,76 @@ export async function createPartner(
   });
   if (error) return { error: "Could not add that partner." };
 
+  revalidatePath("/admin/partners");
+  return { ok: true };
+}
+
+/**
+ * Set or clear a partner's logo.
+ *
+ * The logo is printed on the standard certificate and in the camp's Excel
+ * report, both of which need a plain raster image, so whatever is uploaded —
+ * SVG, WebP, a phone photo of the letterhead — is re-encoded here to a PNG no
+ * larger than it needs to be. The bucket (0022) accepts nothing else.
+ *
+ * On the session client: the storage policies in 0022 are what let an
+ * administrator write, and nobody else.
+ */
+export async function setPartnerLogo(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const partnerId = z.uuid().safeParse(formData.get("partnerId"));
+  if (!partnerId.success) return { error: "Unknown partner." };
+  const supabase = await createClient();
+
+  if (formData.get("remove") === "true") {
+    const { data } = await supabase
+      .from("partners")
+      .update({ logo_url: null })
+      .eq("id", partnerId.data)
+      .select("slug")
+      .maybeSingle();
+    if (!data) return { error: "Could not remove the logo." };
+    revalidatePath(`/admin/partners/${data.slug}`);
+    return { ok: true };
+  }
+
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
+  if (file.size > 1024 * 1024) return { error: "That file is over 1 MB. Use a smaller image." };
+  if (!file.type.startsWith("image/")) return { error: "That is not an image." };
+
+  let png: Buffer;
+  try {
+    const { default: sharp } = await import("sharp");
+    png = await sharp(Buffer.from(await file.arrayBuffer()), { density: 300 })
+      .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
+      .png()
+      .toBuffer();
+  } catch {
+    return { error: "Could not read that image. Try a PNG or JPEG." };
+  }
+
+  // A new name per upload, so a browser or the PDF capture holding the old
+  // logo in its cache cannot show it after a change.
+  const path = `${partnerId.data}/${Date.now()}.png`;
+  const { error: upError } = await supabase.storage
+    .from("partner-logos")
+    .upload(path, png, { contentType: "image/png", upsert: false });
+  if (upError) return { error: "Could not upload the logo." };
+
+  const { data: pub } = supabase.storage.from("partner-logos").getPublicUrl(path);
+  const { data } = await supabase
+    .from("partners")
+    .update({ logo_url: pub.publicUrl })
+    .eq("id", partnerId.data)
+    .select("slug")
+    .maybeSingle();
+  if (!data) return { error: "Could not save the logo." };
+
+  revalidatePath(`/admin/partners/${data.slug}`);
   revalidatePath("/admin/partners");
   return { ok: true };
 }
