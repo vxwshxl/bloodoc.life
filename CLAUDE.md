@@ -39,7 +39,7 @@ things that will bite you.
   most once per certificate; call it freely. A camp's `certificate_art` picks organiser artwork from
   `lib/certificates/artwork.ts` (name printed at measured percentages);
   null gets the standard design drawn from the camp's data.
-- **Husband's name** (`husband_title` / `husband_name`, 0022) is optional and
+- **Spouse's name** (`husband_title` / `husband_name`, 0022; Mrs. allowed 0023) is optional and
   displays through `parentName()` like the parents'.
 - **Renaming a camp** re-translates `title_as` / `title_hi` (Sarvam, on
   `SARVAM_API_KEY`) unless the organiser edited them, in the form and again in

@@ -36,8 +36,8 @@ export type CertificateStatus = "pending" | "approved" | "revoked";
 /** Printed before a parent's name: "Mr." / "Mrs." / "Lt." (late). See 0020. */
 export type FatherTitle = "mr" | "late";
 export type MotherTitle = "mrs" | "late";
-/** Before the husband's name, the same way as the father's. See 0022. */
-export type HusbandTitle = "mr" | "late";
+/** Before the spouse's name: "Mr.", "Mrs." or "Lt.". See 0022, 0023. */
+export type HusbandTitle = "mr" | "mrs" | "late";
 
 export type Profile = {
   id: string;

@@ -109,8 +109,12 @@ export const MOTHER_TITLES = [
   { value: "late", label: "Lt." },
 ] as const;
 
-/** A husband is titled like a father: "Mr." or "Lt." */
-export const HUSBAND_TITLES = FATHER_TITLES;
+/** A spouse may be a husband or a wife: "Mr.", "Mrs." or "Lt." */
+export const HUSBAND_TITLES = [
+  { value: "mr", label: "Mr." },
+  { value: "mrs", label: "Mrs." },
+  { value: "late", label: "Lt." },
+] as const;
 
 const TITLE_LABEL: Record<string, string> = { mr: "Mr.", mrs: "Mrs.", late: "Lt." };
 
@@ -167,8 +171,8 @@ const personShape = {
   motherName: parentText("Enter your mother's name."),
   // Optional, for the donors it applies to. The title menu always posts a
   // value, so it is kept only when a name came with it.
-  husbandTitle: z.enum(["mr", "late"]).optional(),
-  husbandName: box.refine((s) => s === "" || (s.length >= 2 && s.length <= 120), "Enter your husband's name, or leave it blank."),
+  husbandTitle: z.enum(["mr", "mrs", "late"]).optional(),
+  husbandName: box.refine((s) => s === "" || (s.length >= 2 && s.length <= 120), "Enter your spouse's name, or leave it blank."),
 
   kind: z.enum(["student", "faculty", "staff", "other"], { message: "Pick one." }),
   occupation: box,
@@ -189,7 +193,7 @@ const personShape = {
 
 type PersonFields = {
   dateOfBirth: string;
-  husbandTitle?: "mr" | "late";
+  husbandTitle?: "mr" | "mrs" | "late";
   husbandName: string;
   kind: "student" | "faculty" | "staff" | "other";
   occupation: string;
