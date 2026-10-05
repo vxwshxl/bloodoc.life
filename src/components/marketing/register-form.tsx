@@ -85,7 +85,7 @@ const LABELS: Record<string, string> = {
   fatherName: "Father's name",
   motherTitle: "Mother's title",
   motherName: "Mother's name",
-  husbandName: "Husband's name",
+  husbandName: "Spouse's name",
   email: "Email",
   phone: "Phone",
   altPhone: "Alternate phone",
@@ -511,7 +511,7 @@ function RegisterFormBody({
             </div>
           </Field>
           <Field
-            label="Husband's name"
+            label="Spouse's name"
             name="husbandName"
             error={e.husbandName}
             hint="If you are married. Leave blank otherwise."
@@ -519,7 +519,7 @@ function RegisterFormBody({
           >
             <div className="flex gap-2">
               <Label htmlFor="husbandTitle" className="sr-only">
-                Husband&rsquo;s title
+                Spouse&rsquo;s title
               </Label>
               <Dropdown
                 name="husbandTitle"

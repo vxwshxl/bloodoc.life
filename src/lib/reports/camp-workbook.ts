@@ -195,7 +195,7 @@ const DONOR_COLUMNS: { header: string; width: number; value: (r: ReportRow, i: n
   { header: "Email", width: 28, value: (r) => r.donor?.email ?? "" },
   { header: "Father's name", width: 22, value: (r) => parentName(r.donor?.father_title, r.donor?.father_name) ?? "" },
   { header: "Mother's name", width: 22, value: (r) => parentName(r.donor?.mother_title, r.donor?.mother_name) ?? "" },
-  { header: "Husband's name", width: 22, value: (r) => parentName(r.donor?.husband_title, r.donor?.husband_name) ?? "" },
+  { header: "Spouse's name", width: 22, value: (r) => parentName(r.donor?.husband_title, r.donor?.husband_name) ?? "" },
   { header: "Donor type", width: 11, value: (r) => sexLabel(r.donor?.kind) },
   { header: "School", width: 26, value: (r) => r.donor?.school ?? "" },
   { header: "Department", width: 26, value: (r) => r.donor?.department ?? "" },
