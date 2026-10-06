@@ -381,15 +381,20 @@ export async function setPartnerLogo(
   if (file.size > 1024 * 1024) return { error: "That file is over 1 MB. Use a smaller image." };
   if (!file.type.startsWith("image/")) return { error: "That is not an image." };
 
+  const input = Buffer.from(await file.arrayBuffer());
   let png: Buffer;
   try {
     const { default: sharp } = await import("sharp");
-    png = await sharp(Buffer.from(await file.arrayBuffer()), { density: 300 })
+    png = await sharp(input, { density: 300 })
       .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
       .png()
       .toBuffer();
   } catch {
-    return { error: "Could not read that image. Try a PNG or JPEG." };
+    // sharp's native library is not always in the deployed function. A PNG
+    // under the size cap is already what the bucket and the reports take, so
+    // it goes up as it is; anything else needs the conversion.
+    if (input.length > 8 && input.readUInt32BE(0) === 0x89504e47) png = input;
+    else return { error: "Could not convert that image here. Upload it as a PNG." };
   }
 
   // A new name per upload, so a browser or the PDF capture holding the old

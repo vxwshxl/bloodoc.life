@@ -1,10 +1,20 @@
 import "server-only";
 
 import ExcelJS from "exceljs";
-import sharp from "sharp";
-import type { Camp, Donor, Registration, RegistrationStatus } from "@/lib/db/types";
+import type { Camp, RegistrationStatus } from "@/lib/db/types";
 import { relationLine } from "@/lib/validations/donor";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
+import { MARK, fitBox, loadLogo, type ReportImage } from "@/lib/reports/images";
+import {
+  STATUS_LABEL,
+  bloodGroupLabel,
+  bySchool,
+  capitalise,
+  countsLine,
+  reportSections,
+  type ReportPartner,
+  type ReportRow,
+} from "@/lib/reports/camp-report";
 
 /**
  * A camp's report as an Excel workbook.
@@ -20,30 +30,10 @@ import { formatCampDate, formatTimeRange } from "@/lib/format";
  * for the two groups the college reports on.
  */
 
-export type ReportPartner = {
-  name: string;
-  kind: "organisation" | "blood_bank";
-  note: string | null;
-  logo_url: string | null;
-};
-
-export type ReportRow = Registration & {
-  donor: Donor | null;
-  certificate_code: string | null;
-};
-
 const CRIMSON = "FFC41F22";
 const INK = "FF1A1A1A";
 const MUTED = "FF6B6B6B";
 const LINE = "FFE4E0DA";
-
-const STATUS_LABEL: Record<RegistrationStatus, string> = {
-  donated: "Donated",
-  deferred: "Deferred",
-  cancelled: "Cancelled",
-  registered: "Registered",
-  screened: "Screened",
-};
 
 const STATUS_FILL: Record<RegistrationStatus, string> = {
   donated: "FFDCF2E3",
@@ -53,60 +43,7 @@ const STATUS_FILL: Record<RegistrationStatus, string> = {
   screened: "FFE6EEFB",
 };
 
-type Image = { buffer: Buffer; width: number; height: number };
-type Placed = ReportPartner & { image: Image | null };
-
-/**
- * Any logo, as a PNG at most `max` px tall. Excel takes PNG and JPEG only, and
- * partners send SVG and WebP as often as not. Null when it cannot be fetched
- * or read: a missing logo leaves its name standing alone, never a failed report.
- */
-async function loadImage(url: string, origin: string, max = 160): Promise<Image | null> {
-  try {
-    // Short: a logo is decoration, and a slow one must not hold up the file.
-    const res = await fetch(new URL(url, origin), { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const input = Buffer.from(await res.arrayBuffer());
-    const { data, info } = await sharp(input, { density: 300 })
-      .resize({ height: max, width: max * 3, fit: "inside", withoutEnlargement: true })
-      .png()
-      .toBuffer({ resolveWithObject: true });
-    return { buffer: data, width: info.width, height: info.height };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * BlooDoc's mark, drawn here rather than fetched. The partner logos have to
- * come over the network, but the report's own mark should not depend on the
- * function reaching its own public site — on the live deployment that request
- * goes back out through the CDN, which may stall or challenge it.
- *
- * The same drawing as `DropMark` and public/brand/logo.svg.
- */
-const MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="256" height="256">
-<defs><linearGradient id="d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E4443C"/><stop offset="0.55" stop-color="#C41F22"/><stop offset="1" stop-color="#8E1418"/></linearGradient></defs>
-<path d="M16 1.6c.52 0 .95.23 1.24.63C20.1 6.1 26.6 14.3 26.6 19.7a10.6 10.6 0 0 1-21.2 0c0-5.4 6.5-13.6 9.36-17.47.29-.4.72-.63 1.24-.63Z" fill="url(#d)"/>
-<path d="M9.5 15.9C7.9 20.9 10.9 25.6 15.4 26.3v-1.75C12.3 23.8 10 20.6 9.5 15.9ZM22.5 15.9c1.6 5-1.4 9.7-5.9 10.4v-1.75c3.1-.75 5.4-3.95 5.9-8.65Z" fill="#fff"/>
-<path d="M16 23.1c-3.9-2.5-5.5-4.8-5.2-6.8.3-2 2.7-2.9 4.3-1.6l.9.8.9-.8c1.6-1.3 4-.4 4.3 1.6.3 2-1.3 4.3-5.2 6.8Z" fill="#fff"/>
-<path d="M15.3 16.4h1.4v1.3H18v1.4h-1.3v1.3h-1.4v-1.3H14v-1.4h1.3Z" fill="#C41F22"/>
-</svg>`;
-
-async function markImage(): Promise<Image | null> {
-  try {
-    const { data, info } = await sharp(Buffer.from(MARK_SVG)).png().toBuffer({ resolveWithObject: true });
-    return { buffer: data, width: info.width, height: info.height };
-  } catch {
-    return null;
-  }
-}
-
-/** Fit an image into a box, keeping its shape. */
-function fitBox(img: Image, maxW: number, maxH: number) {
-  const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-  return { width: Math.round(img.width * scale), height: Math.round(img.height * scale) };
-}
+type Placed = ReportPartner & { image: ReportImage | null };
 
 function dateTime(iso: string): string {
   return new Intl.DateTimeFormat("en-IN", {
@@ -122,15 +59,11 @@ function shortDate(iso: string): string {
   );
 }
 
-function capitalise(s: string | undefined) {
-  return s ? s[0].toUpperCase() + s.slice(1) : "";
-}
-
 const COLUMNS: { header: string; width: number; wrap?: boolean; value: (r: ReportRow, i: number) => ExcelJS.CellValue }[] = [
   { header: "S. No.", width: 7, value: (_r, i) => i + 1 },
   { header: "Name", width: 24, value: (r) => r.donor?.full_name ?? "" },
   { header: "Status", width: 12, value: (r) => STATUS_LABEL[r.status] },
-  { header: "Blood group", width: 11, value: (r) => (r.donor?.blood_group === "unknown" ? "Not known" : r.donor?.blood_group ?? "") },
+  { header: "Blood group", width: 11, value: bloodGroupLabel },
   { header: "Donor type", width: 11, value: (r) => capitalise(r.donor?.kind) },
   { header: "School", width: 26, wrap: true, value: (r) => r.donor?.school ?? "" },
   { header: "Department", width: 26, wrap: true, value: (r) => r.donor?.department ?? r.donor?.occupation ?? "" },
@@ -352,28 +285,6 @@ function letterhead(
   return row;
 }
 
-function countsLine(rows: ReportRow[]): string {
-  const n = (s: RegistrationStatus) => rows.filter((r) => r.status === s).length;
-  const parts = [
-    `${rows.length} registered`,
-    `${n("donated")} donated`,
-    `${n("screened")} screened`,
-    `${n("cancelled")} cancelled`,
-  ];
-  // Only shown for a camp that still has older deferrals on it.
-  if (n("deferred")) parts.push(`${n("deferred")} deferred`);
-  return parts.join("  ·  ");
-}
-
-/** School, then department, then name: how a college reads a list of its own. */
-function bySchool(a: ReportRow, b: ReportRow): number {
-  const k = (r: ReportRow) =>
-    [r.donor?.school ?? "~", r.donor?.department ?? r.donor?.occupation ?? "~", r.donor?.full_name ?? ""]
-      .join("\u0000")
-      .toLowerCase();
-  return k(a).localeCompare(k(b));
-}
-
 function donorSheet(
   wb: ExcelJS.Workbook,
   name: string,
@@ -452,10 +363,9 @@ export async function buildCampWorkbook({
   rows: ReportRow[];
   origin: string;
 }): Promise<Buffer> {
-  const [mark, ...logos] = await Promise.all([
-    markImage(),
-    ...partners.map((p) => (p.logo_url ? loadImage(p.logo_url, origin) : Promise.resolve(null))),
-  ]);
+  const logos = await Promise.all(
+    partners.map((p) => (p.logo_url ? loadLogo(p.logo_url, origin) : Promise.resolve(null))),
+  );
   const placed: Placed[] = partners.map((p, i) => ({ ...p, image: logos[i] }));
 
   const wb = new ExcelJS.Workbook();
@@ -465,17 +375,15 @@ export async function buildCampWorkbook({
   wb.created = new Date();
 
   // Each image is stored once and placed on every sheet.
-  const markId = mark
-    ? wb.addImage({ buffer: mark.buffer as unknown as ExcelJS.Buffer, extension: "png" })
-    : null;
+  const markId = wb.addImage({ buffer: MARK.buffer as unknown as ExcelJS.Buffer, extension: "png" });
   const logoIds = placed.map((p) =>
-    p.image ? wb.addImage({ buffer: p.image.buffer as unknown as ExcelJS.Buffer, extension: "png" }) : null,
+    p.image
+      ? wb.addImage({ buffer: p.image.buffer as unknown as ExcelJS.Buffer, extension: p.image.extension })
+      : null,
   );
   const head = { markId, partners: placed, logoIds, camp };
 
-  donorSheet(wb, "All donors", rows, head);
-  donorSheet(wb, "Faculty", rows.filter((r) => r.donor?.kind === "faculty"), head);
-  donorSheet(wb, "Students", rows.filter((r) => r.donor?.kind === "student"), head);
+  for (const section of reportSections(rows)) donorSheet(wb, section.name, section.rows, head);
 
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { adminUpdateDonor, type DonorEditState } from "@/lib/admin/actions";
 import { DonorFields, Field, fieldClass } from "@/components/donor/donor-fields";
@@ -38,17 +38,25 @@ export function DonorEditForm({ donor, onDone }: { donor: Donor; onDone: () => v
         errors={state.fieldErrors ?? {}}
         self={false}
         email={
-          // The address is the donor's sign-in, so it is shown and not
-          // offered: see `adminUpdateDonor`.
-          <Field label="Email" hint="Their sign-in. Not editable here.">
-            <div className="relative">
-              <input value={donor.email} readOnly disabled className={`${fieldClass} pr-9 opacity-70`} />
-              <Lock
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
-                strokeWidth={1.9}
-              />
-            </div>
+          // The address is the donor's sign-in when they have an account, so
+          // changing it moves that too: see `adminUpdateDonor`.
+          <Field
+            label="Email"
+            error={state.fieldErrors?.email}
+            hint={
+              donor.profile_id
+                ? "Also their sign-in. Changing it moves their account to the new address."
+                : "Certificates and reminders go here."
+            }
+          >
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="off"
+              defaultValue={donor.email}
+              className={fieldClass}
+            />
           </Field>
         }
       />

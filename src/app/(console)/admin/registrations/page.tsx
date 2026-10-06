@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, FileText } from "lucide-react";
 import { CampCard } from "@/components/camps/camp-card";
 import { listCampRosters, listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
@@ -142,15 +142,26 @@ export default async function RegistrationsPage({
         }
         action={
           active ? (
-            <a
-              href={`/admin/camps/${active.id}/export`}
-              download
-              title="Download this camp's report as an Excel sheet"
-              className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-app-line bg-card px-3.5 text-sm font-medium transition-colors hover:bg-muted"
-            >
-              <FileSpreadsheet className="size-4 text-[#1d6f42]" strokeWidth={1.9} aria-hidden />
-              Download Excel
-            </a>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={`/admin/camps/${active.id}/export`}
+                download
+                title="Download this camp's report as an Excel sheet"
+                className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-app-line bg-card px-3.5 text-sm font-medium transition-colors hover:bg-muted"
+              >
+                <FileSpreadsheet className="size-4 text-[#1d6f42]" strokeWidth={1.9} aria-hidden />
+                Download Excel
+              </a>
+              <a
+                href={`/admin/camps/${active.id}/export?format=pdf`}
+                download
+                title="Download this camp's report as a PDF, ready to print"
+                className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-app-line bg-card px-3.5 text-sm font-medium transition-colors hover:bg-muted"
+              >
+                <FileText className="size-4 text-primary" strokeWidth={1.9} aria-hidden />
+                Download PDF
+              </a>
+            </div>
           ) : undefined
         }
       />

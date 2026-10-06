@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ROLE_VALUES } from "@/lib/roles";
 import { requireAdmin, requireVerifier } from "@/lib/auth/dal";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
@@ -416,10 +417,13 @@ export type DonorEditState = ActionState & { fieldErrors?: Record<string, string
  * there — so a correction made from one registration is a correction
  * everywhere, which is the point.
  *
- * Two things are left out on purpose. The email is the account: rewriting it
- * would detach the donor from their sign-in or attach them to someone else's.
- * And the readings (height, weight, medications) belong to the registration,
- * and are saved by `saveRegistration` alongside the rest of the day's numbers.
+ * The email can be corrected too, and because the address is the account it
+ * moves as one: a donor with no account just gets the new address (the signup
+ * trigger links it when they first sign in); a donor with one has their sign-in
+ * moved to it, or nothing changes. An address another donor or account already
+ * has is refused rather than merged. The readings (height, weight,
+ * medications) belong to the registration, and are saved by
+ * `saveRegistration` alongside the rest of the day's numbers.
  *
  * `requireAdmin`, not `requireVerifier`: the desk records what it measures,
  * but who a person is is not something to be retyped between donors.
@@ -444,7 +448,37 @@ export async function adminUpdateDonor(
   }
   const v = parsed.data;
 
+  const email = z.string().trim().toLowerCase().email().safeParse(formData.get("email"));
+  if (!email.success) {
+    return { error: "Some answers need a look.", fieldErrors: { email: "Enter a valid email address." } };
+  }
+
   const supabase = await createClient();
+  const { data: current } = await supabase
+    .from("donors")
+    .select("email, profile_id")
+    .eq("id", donorId.data)
+    .maybeSingle();
+  if (!current) return { error: "That donor record could not be found." };
+  const emailChanged = current.email.toLowerCase() !== email.data;
+
+  if (emailChanged) {
+    // One person, one donor row: registration finds a returning donor by
+    // address, so two rows sharing one would split their history.
+    const { data: clash } = await supabase
+      .from("donors")
+      .select("id")
+      .ilike("email", email.data.replace(/[\\%_]/g, "\\$&"))
+      .neq("id", donorId.data)
+      .limit(1);
+    if (clash?.length) {
+      return {
+        error: "Some answers need a look.",
+        fieldErrors: { email: "Another donor already uses this address." },
+      };
+    }
+  }
+
   const { data, error } = await supabase
     .from("donors")
     .update({
@@ -468,6 +502,7 @@ export async function adminUpdateDonor(
       permanent_address: v.permanentAddress,
       blood_group: v.bloodGroup,
       prior_donations: v.priorDonations ?? 0,
+      email: email.data,
       updated_at: new Date().toISOString(),
     })
     .eq("id", donorId.data)
@@ -477,10 +512,49 @@ export async function adminUpdateDonor(
   // Zero rows is RLS refusing, not a missing donor; say so rather than "saved".
   if (!data?.length) return { error: "You do not have permission to change that record." };
 
+  // A linked donor's sign-in follows the address, or the record and the
+  // account would disagree about who this is (and phone sign-in, which finds
+  // the account through this address, would land somewhere new).
+  if (emailChanged && current.profile_id) {
+    const moved = await moveSignIn(current.profile_id, email.data);
+    if (!moved.ok) {
+      await supabase.from("donors").update({ email: current.email }).eq("id", donorId.data);
+      return { error: moved.error, fieldErrors: { email: moved.error } };
+    }
+  }
+
   revalidatePath("/admin/registrations");
   revalidatePath("/admin/donors");
   revalidatePath("/admin");
   return { ok: true, message: "Registration form updated." };
+}
+
+/**
+ * Move an account's sign-in to a new address: the auth user, then its profile.
+ * Service role, because no session may change another user's sign-in; the
+ * caller has already passed `requireAdmin`.
+ */
+async function moveSignIn(
+  profileId: string,
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { ok: false, error: "This donor has an account, and moving its sign-in is not configured here." };
+  }
+  const { error } = await admin.auth.admin.updateUserById(profileId, { email, email_confirm: true });
+  if (error) {
+    return {
+      ok: false,
+      error: /registered|exists|already/i.test(error.message)
+        ? "Another account already signs in with this address."
+        : "Could not move this donor's sign-in to the new address.",
+    };
+  }
+  await admin.from("profiles").update({ email }).eq("id", profileId);
+  return { ok: true };
 }
 
 /**

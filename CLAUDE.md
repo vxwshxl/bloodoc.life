@@ -35,8 +35,10 @@ things that will bite you.
   asked on the public form.
 - **Admins edit a registration's form answers** from the registration dialog
   ("Edit form", `adminUpdateDonor`). It writes the donor record through the
-  same `donorProfileSchema` and `DonorFields` the donor's /me editor uses; the
-  email is never editable there.
+  same `donorProfileSchema` and `DonorFields` the donor's /me editor uses. The
+  email is editable there (never on /me): an address another donor has is
+  refused, and for a donor with an account `moveSignIn` moves the auth user and
+  `profiles.email` with it, so the address stays the account.
 - **Age is derived, never posted.** The form shows it; `finishPerson` in
   `lib/validations/donor.ts` recomputes it from the date of birth in IST.
 - **RGU schools and departments live in `lib/rgu.ts`**, copied from rgu.ac.
@@ -62,12 +64,15 @@ things that will bite you.
   `/signin` offers phone sign-in: the number must belong to exactly one donor
   address, and the session is that address's account. Sends are logged in
   `email_log` as "WhatsApp +91…".
-- **Camp Excel report** is `GET /admin/camps/:id/export`
-  (`lib/reports/camp-workbook.ts`): three sheets (All donors, Faculty,
-  Students) under one letterhead — "Powered by" BlooDoc's mark (drawn from
-  `MARK_SVG`, never fetched), then the collaborators. Partner logos come from
-  `partners.logo_url`, uploaded on the partner page into the `partner-logos`
-  bucket as PNG.
+- **Camp report** is `GET /admin/camps/:id/export` — Excel
+  (`lib/reports/camp-workbook.ts`), or PDF with `?format=pdf`
+  (`lib/reports/camp-pdf.ts`), both from `loadCampReport`: three lists (All
+  donors, Faculty, Students) under one letterhead — "Powered by" BlooDoc's mark
+  (a PNG kept in `lib/reports/images.ts`, never fetched), then the
+  collaborators. Partner logos come from `partners.logo_url`, uploaded on the
+  partner page into the `partner-logos` bucket as PNG. **No sharp in the
+  reports**: its libvips was missing from the Vercel function and took the
+  route down. Logos are used as PNG/JPEG as they are.
 - **Users page roles** include Organisation and Blood bank (`ACCESS_OPTIONS`
   in `lib/roles.ts`). They are `partner_members` rows, not `profiles.role`:
   choosing one adds a membership (`grantPartnerAccess`) and sets the role to
