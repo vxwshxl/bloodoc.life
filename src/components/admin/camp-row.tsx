@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Loader2, Send } from "lucide-react";
-import { ReportDownload } from "@/components/admin/report-download";
+import { ReportDownload, ThanksDownload } from "@/components/admin/report-download";
 import { CampForm } from "@/components/admin/camp-form";
 import { DeleteCamp } from "@/components/admin/delete-camp";
 import { sendCampReminders, type ActionState } from "@/lib/admin/actions";
@@ -87,6 +87,7 @@ export function CampRow({
           </Link>
           <ReportDownload campId={camp.id} format="xlsx" />
           <ReportDownload campId={camp.id} format="pdf" />
+          <ThanksDownload campId={camp.id} />
           <form action={action}>
             <input type="hidden" name="campId" value={camp.id} />
             <button

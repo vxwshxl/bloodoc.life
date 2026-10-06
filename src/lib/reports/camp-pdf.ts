@@ -4,7 +4,16 @@ import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
 import type { RegistrationStatus } from "@/lib/db/types";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
-import { MARK, RGU_LOGO, fitBox, loadLogo, type ReportImage } from "@/lib/reports/images";
+import {
+  CRIMSON,
+  INK,
+  LINE,
+  MUTED,
+  drawLetterhead,
+  placePartners,
+  type PlacedPartner,
+  type RGB,
+} from "@/lib/reports/letterhead-pdf";
 import {
   STATUS_LABEL,
   bloodGroupLabel,
@@ -29,12 +38,6 @@ import {
  * leaves addresses, relations and medications to the spreadsheet.
  */
 
-type RGB = [number, number, number];
-const CRIMSON: RGB = [196, 31, 34];
-const INK: RGB = [26, 26, 26];
-const MUTED: RGB = [107, 107, 107];
-const LINE: RGB = [228, 224, 218];
-
 const STATUS_FILL: Record<RegistrationStatus, RGB> = {
   donated: [220, 242, 227],
   deferred: [251, 227, 214],
@@ -47,7 +50,6 @@ const STATUS_FILL: Record<RegistrationStatus, RGB> = {
 const PAGE_W = 297;
 const PAGE_H = 210;
 const MARGIN = 10;
-const CONTENT_W = PAGE_W - MARGIN * 2;
 
 const COLUMNS: { header: string; width?: number; value: (r: ReportRow, i: number) => string }[] = [
   { header: "S. No.", width: 10, value: (_r, i) => String(i + 1) },
@@ -76,85 +78,18 @@ const COLUMNS: { header: string; width?: number; value: (r: ReportRow, i: number
   { header: "Certificate no.", width: 26, value: (r) => r.certificate_code ?? "" },
 ];
 
-type Placed = CampReport["partners"][number] & { image: ReportImage | null };
-
 /**
- * RGU's logo on top for an RGU camp, "Powered by" BlooDoc's mark and name
- * centred under it, a crimson rule, the collaborators with their logos, then the camp, the list's name and its totals. Returns where the
- * table starts.
+ * The shared letterhead (RGU's logo on an RGU camp, "Powered by" BlooDoc, the
+ * collaborators with their logos), then the camp, the list's name and its
+ * totals. Returns where the table starts.
  */
 function letterhead(
   doc: jsPDF,
-  { camp, partners, rgu }: { camp: CampReport["camp"]; partners: Placed[]; rgu: boolean },
+  { camp, partners, rgu }: { camp: CampReport["camp"]; partners: PlacedPartner[]; rgu: boolean },
   sectionName: string,
   counts: string,
 ): number {
-  let y = MARGIN;
-  const center = PAGE_W / 2;
-
-  // The university's logo, centred, on an RGU camp's report.
-  if (rgu) {
-    const box = fitBox(RGU_LOGO, 80, 16);
-    doc.addImage(RGU_LOGO.buffer, "PNG", center - box.width / 2, y, box.width, box.height, "rgu-logo");
-    y += box.height + 3;
-  }
-
-  // "POWERED BY", then the mark and BLOODOC centred as one group.
-  doc.setFont("helvetica", "bold").setFontSize(6).setTextColor(...MUTED);
-  doc.text("POWERED BY", center, y + 2, { align: "center" });
-  y += 3.5;
-
-  doc.setFont("helvetica", "bold").setFontSize(15);
-  const bloodW = doc.getTextWidth("BLOOD");
-  const groupW = 7 + 2 + bloodW + doc.getTextWidth("OC");
-  const left = center - groupW / 2;
-  doc.addImage(MARK.buffer, "PNG", left, y, 7, 7, "bloodoc-mark");
-  doc.setTextColor(...INK).text("BLOOD", left + 9, y + 5.6);
-  doc.setTextColor(...CRIMSON).text("OC", left + 9 + bloodW, y + 5.6);
-  y += 9;
-  doc.setDrawColor(...CRIMSON).setLineWidth(0.3).line(MARGIN, y, PAGE_W - MARGIN, y);
-  y += 4;
-
-  if (partners.length) {
-    doc.setFont("helvetica", "bold").setFontSize(6).setTextColor(...MUTED);
-    doc.text("IN COLLABORATION WITH", MARGIN, y + 2);
-    y += 4;
-
-    const hasLogos = partners.some((p) => p.image);
-    const logoH = hasLogos ? 11 : 0;
-    const slotW = CONTENT_W / partners.length;
-    let bottom = y;
-    partners.forEach((p, i) => {
-      const center = MARGIN + slotW * i + slotW / 2;
-      if (p.image) {
-        const box = fitBox(p.image, slotW - 8, logoH);
-        doc.addImage(
-          p.image.buffer,
-          p.image.extension === "png" ? "PNG" : "JPEG",
-          center - box.width / 2,
-          y + (logoH - box.height) / 2,
-          box.width,
-          box.height,
-          `partner-logo-${i}`,
-        );
-      }
-      let ty = y + logoH + 3;
-      doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...INK);
-      const name = doc.splitTextToSize(p.name, slotW - 6) as string[];
-      doc.text(name, center, ty, { align: "center" });
-      ty += name.length * 3.2;
-      doc.setFont("helvetica", "normal").setFontSize(6).setTextColor(...MUTED);
-      const role = [p.kind === "blood_bank" ? "Blood bank partner" : "Organisation", p.note]
-        .filter(Boolean)
-        .join(" · ");
-      const roleLines = doc.splitTextToSize(role, slotW - 6) as string[];
-      doc.text(roleLines, center, ty, { align: "center" });
-      bottom = Math.max(bottom, ty + roleLines.length * 2.6);
-    });
-    y = bottom + 1;
-    doc.setDrawColor(...LINE).setLineWidth(0.2).line(MARGIN, y, PAGE_W - MARGIN, y);
-    y += 5;
-  }
+  let y = drawLetterhead(doc, { partners, rgu, pageW: PAGE_W, margin: MARGIN });
 
   doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(...INK);
   doc.text(camp.title, MARGIN, y);
@@ -183,10 +118,7 @@ export async function buildCampPdf(
   origin: string,
   only?: ReportList,
 ): Promise<Buffer> {
-  const logos = await Promise.all(
-    partners.map((p) => (p.logo_url ? loadLogo(p.logo_url, origin) : Promise.resolve(null))),
-  );
-  const placed: Placed[] = partners.map((p, i) => ({ ...p, image: logos[i] }));
+  const placed = await placePartners(partners, origin);
   const rgu = isRguCamp({ camp, partners, rows });
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });

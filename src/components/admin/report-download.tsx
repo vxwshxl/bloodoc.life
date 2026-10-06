@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, HeartHandshake } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,5 +85,26 @@ export function ReportDownload({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * The camp's vote of thanks: one PDF, a page per collaborator, under the same
+ * letterhead as the report. A plain link, like the report menu's items.
+ */
+export function ThanksDownload({ campId, className }: { campId: string; className?: string }) {
+  return (
+    <a
+      href={`/admin/camps/${campId}/thanks`}
+      download
+      title="Download a vote of thanks for this camp's collaborators, one page each"
+      className={cn(
+        "press inline-flex h-9 items-center gap-1.5 rounded-full border border-app-line px-3.5 text-sm font-medium transition-colors hover:bg-muted",
+        className,
+      )}
+    >
+      <HeartHandshake className="size-4 text-primary" strokeWidth={1.9} aria-hidden />
+      Vote of thanks
+    </a>
   );
 }

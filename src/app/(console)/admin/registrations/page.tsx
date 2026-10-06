@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { ReportDownload } from "@/components/admin/report-download";
+import { ReportDownload, ThanksDownload } from "@/components/admin/report-download";
 import { CampCard } from "@/components/camps/camp-card";
 import { listCampRosters, listCamps, listRegistrations } from "@/lib/admin/queries";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
@@ -146,6 +146,7 @@ export default async function RegistrationsPage({
             <div className="flex flex-wrap items-center gap-2">
               <ReportDownload campId={active.id} format="xlsx" label="Download Excel" className="bg-card" />
               <ReportDownload campId={active.id} format="pdf" label="Download PDF" className="bg-card" />
+              <ThanksDownload campId={active.id} className="bg-card" />
             </div>
           ) : undefined
         }

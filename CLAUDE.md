@@ -76,6 +76,11 @@ things that will bite you.
   partner page into the `partner-logos` bucket as PNG. **No sharp in the
   reports**: its libvips was missing from the Vercel function and took the
   route down. Logos are used as PNG/JPEG as they are.
+- **Vote of thanks** is `GET /admin/camps/:id/thanks` (`lib/reports/thanks-pdf.ts`,
+  "Vote of thanks" beside the report downloads): A4, one page per
+  collaborator, under the same letterhead as the camp PDF. That letterhead
+  lives in `lib/reports/letterhead-pdf.ts`; change it there, not per document.
+  The camp's totals are printed only once a donation is recorded.
 - **Users page roles** include Organisation and Blood bank (`ACCESS_OPTIONS`
   in `lib/roles.ts`). They are `partner_members` rows, not `profiles.role`:
   choosing one adds a membership (`grantPartnerAccess`) and sets the role to
