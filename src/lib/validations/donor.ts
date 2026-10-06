@@ -132,7 +132,7 @@ export function parentName(title: string | null | undefined, name: string | null
  * input names and must match the check constraint in migration 0019.
  *
  * Parents' names and the address were here until 0020 made them required for
- * every camp. The constraint still allows the old keys, so a camp saved with
+ * every camp (parents now as "father's or mother's"). The constraint still allows the old keys, so a camp saved with
  * them ticked stays valid.
  */
 export const CONFIGURABLE_FIELDS = [
@@ -144,8 +144,9 @@ export const CONFIGURABLE_FIELDS = [
 
 export type ConfigurableField = (typeof CONFIGURABLE_FIELDS)[number]["key"];
 
-const parentText = (message: string) =>
-  z.string({ message }).trim().min(2, message).max(120);
+/** An optional name box: blank, or a name of a sensible length. */
+const optionalName = (message: string) =>
+  box.refine((s) => s === "" || (s.length >= 2 && s.length <= 120), message);
 
 const addressText = (message: string) =>
   z.string({ message }).trim().min(8, message).max(500, "Keep this under 500 characters.");
@@ -165,14 +166,17 @@ const personShape = {
     .string({ message: "Pick your date of birth." })
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick your date of birth."),
+  // One parent's name is required, not both — either is enough to identify
+  // the donor, and a form that insists on both turns away the people who only
+  // have one to give. `checkPerson` enforces "at least one". Each title menu
+  // always posts a value, so a title is kept only when its name came with it.
   fatherTitle: z.enum(["mr", "late"], { message: "Pick Mr. or Lt." }),
-  fatherName: parentText("Enter your father's name."),
+  fatherName: optionalName("Enter your father's name, or leave it blank."),
   motherTitle: z.enum(["mrs", "late"], { message: "Pick Mrs. or Lt." }),
-  motherName: parentText("Enter your mother's name."),
-  // Optional, for the donors it applies to. The title menu always posts a
-  // value, so it is kept only when a name came with it.
+  motherName: optionalName("Enter your mother's name, or leave it blank."),
+  // Optional, for the donors it applies to.
   husbandTitle: z.enum(["mr", "mrs", "late"]).optional(),
-  husbandName: box.refine((s) => s === "" || (s.length >= 2 && s.length <= 120), "Enter your spouse's name, or leave it blank."),
+  husbandName: optionalName("Enter your spouse's name, or leave it blank."),
 
   kind: z.enum(["student", "faculty", "staff", "other"], { message: "Pick one." }),
   occupation: box,
@@ -193,6 +197,10 @@ const personShape = {
 
 type PersonFields = {
   dateOfBirth: string;
+  fatherTitle: "mr" | "late";
+  fatherName: string;
+  motherTitle: "mrs" | "late";
+  motherName: string;
   husbandTitle?: "mr" | "mrs" | "late";
   husbandName: string;
   kind: "student" | "faculty" | "staff" | "other";
@@ -211,6 +219,14 @@ function checkPerson(v: PersonFields, ctx: z.RefinementCtx) {
       code: "custom",
       path: ["dateOfBirth"],
       message: "Check your date of birth.",
+    });
+  }
+
+  if (!v.fatherName && !v.motherName) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["fatherName"],
+      message: "Enter your father's or your mother's name. One is enough.",
     });
   }
 
@@ -268,6 +284,10 @@ function finishPerson<T extends PersonFields & { address: string }>(v: T) {
   return {
     ...v,
     age: ageOn(v.dateOfBirth),
+    fatherName: v.fatherName || null,
+    fatherTitle: v.fatherName ? v.fatherTitle : null,
+    motherName: v.motherName || null,
+    motherTitle: v.motherName ? v.motherTitle : null,
     husbandName: v.husbandName || null,
     husbandTitle: v.husbandName ? (v.husbandTitle ?? "mr") : null,
     permanentAddress: v.sameAddress ? v.address : v.permanentAddress,

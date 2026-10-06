@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { saveRegistration, type ActionState } from "@/lib/admin/actions";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/ui/status-pill";
 import { StatusBar } from "@/components/admin/registration-row";
 import { DetailList, type DetailItem } from "@/components/shell/detail-list";
+import { DonorEditForm } from "@/components/admin/donor-edit-form";
+import { parentName } from "@/lib/validations/donor";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCampDate, formatDateTime, formatTimeRange } from "@/lib/format";
-import type { RegistrationStatus } from "@/lib/db/types";
+import type { Donor, RegistrationStatus } from "@/lib/db/types";
 
 /**
  * What the dialog needs. Deliberately a plain shape rather than the joined row
@@ -34,24 +36,13 @@ export type RegistrationDetailData = {
   bp_systolic: number | null;
   bp_diastolic: number | null;
   hemoglobin_gdl: number | null;
+  pulse_bpm: number | null;
   medications: string | null;
   deferral_reason: string | null;
   created_at: string;
-  donor: {
-    full_name: string;
-    email: string;
-    phone: string;
-    blood_group: string;
-    kind: string;
-    school: string | null;
-    department: string | null;
-    occupation: string | null;
-    age: number | null;
-    sex: string;
-    address: string | null;
-    permanent_address: string | null;
-    prior_donations: number;
-  } | null;
+  // The whole record: every roster selects `donors(*)`, and the form editor
+  // needs all of it to reopen the answers as they were given.
+  donor: Donor | null;
   camp: { title: string; starts_at: string; ends_at: string | null; venue: string } | null;
 };
 
@@ -68,15 +59,21 @@ export type RegistrationDetailData = {
  * `requireVerifier` and, underneath that, by the RLS policies that actually
  * decide. Somebody who should not be here sees the record read-only and would
  * be refused anyway.
+ *
+ * `canEditForm` adds "Edit form" for administrators: the donor's own answers,
+ * reopened in the registration form's fields. Gated again by `requireAdmin`
+ * in `adminUpdateDonor`.
  */
 export function RegistrationDetail({
   registration: r,
   canEdit,
+  canEditForm = false,
   open,
   onOpenChange,
 }: {
   registration: RegistrationDetailData;
   canEdit: boolean;
+  canEditForm?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -85,6 +82,7 @@ export function RegistrationDetail({
   // whatever it last reported, so saving readings never rewinds the outcome.
   const [status, setStatus] = useState<RegistrationStatus>(r.status);
   const [reason, setReason] = useState<string | null>(r.deferral_reason);
+  const [editingForm, setEditingForm] = useState(false);
 
   const seen = useRef<ActionState | null>(null);
   useEffect(() => {
@@ -104,7 +102,7 @@ export function RegistrationDetail({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-2xl"
+        className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"
         // The row underneath this is itself clickable. Without the guard, a
         // click anywhere in the dialog re-opens the row it came from.
         onClick={(e) => e.stopPropagation()}
@@ -129,136 +127,160 @@ export function RegistrationDetail({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Who they are. Never editable here: a donor's own details belong to
-            the donor record, which outlives this one camp — editing them from
-            inside a registration is how two camps end up disagreeing about
-            somebody's phone number. */}
-        <DetailList
-          items={[
-            ["Phone", donor?.phone],
-            ["Email", donor?.email],
-            ["They are", donor ? <span key="k" className="capitalize">{donor.kind}</span> : null],
-            ...(donor?.school ? ([["School", donor.school, { wide: true }]] as DetailItem[]) : []),
-            [donor?.kind === "other" ? "Occupation" : "Department", donor?.department ?? donor?.occupation],
-            ["Age", donor?.age],
-            ["Sex", donor ? <span key="s" className="capitalize">{donor.sex}</span> : null],
-            ["Donations before BlooDoc", donor?.prior_donations],
-            ["Venue", camp?.venue],
-            ["Registered", formatDateTime(r.created_at)],
-            ...(donor?.address ? ([["Residential address", donor.address, { wide: true }]] as DetailItem[]) : []),
-            ...(donor?.permanent_address && donor.permanent_address !== donor.address
-              ? ([["Permanent address", donor.permanent_address, { wide: true }]] as DetailItem[])
-              : []),
-          ]}
-        />
-
-        {canEdit ? (
-          <form action={action} className="flex flex-col gap-4">
-            <input type="hidden" name="id" value={r.id} />
-            <input type="hidden" name="status" value={status} />
-            {reason && <input type="hidden" name="deferralReason" value={reason} />}
-
-            <Field label="Outcome" hint="Saves as soon as you pick one.">
-              <StatusBar
-                id={r.id}
-                status={r.status}
-                reason={r.deferral_reason}
-                onSaved={(next, why) => {
-                  setStatus(next);
-                  setReason(why);
-                }}
-              />
-            </Field>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field label="Height (cm)">
-                <Input name="heightCm" type="number" defaultValue={r.height_cm ?? ""} className="h-10" />
-              </Field>
-              <Field label="Weight (kg)">
-                <Input name="weightKg" type="number" defaultValue={r.weight_kg ?? ""} className="h-10" />
-              </Field>
-              <Field label="BP upper">
-                <Input name="bpSystolic" type="number" defaultValue={r.bp_systolic ?? ""} className="h-10" />
-              </Field>
-              <Field label="BP lower">
-                <Input name="bpDiastolic" type="number" defaultValue={r.bp_diastolic ?? ""} className="h-10" />
-              </Field>
-              <Field label="Haemoglobin" hint="g/dL">
-                <Input
-                  name="hemoglobin"
-                  type="number"
-                  step="0.1"
-                  defaultValue={r.hemoglobin_gdl ?? ""}
-                  className="h-10"
-                />
-              </Field>
-              <Field label="First time">
-                <label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-input px-3 text-sm">
-                  <input
-                    type="checkbox"
-                    name="firstTime"
-                    defaultChecked={r.first_time}
-                    className="tickbox shrink-0"
-                  />
-                  Yes
-                </label>
-              </Field>
-            </div>
-
-            <Field label="Medications" hint="As declared, or as found at the desk.">
-              <Input
-                name="medications"
-                defaultValue={r.medications ?? ""}
-                placeholder="None"
-                className="h-10"
-              />
-            </Field>
-
-
-            <div className="flex items-center justify-end gap-2 border-t border-app-line-soft pt-4">
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="press h-10 rounded-lg border border-app-line px-4 text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={pending}
-                className="press inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-              >
-                {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-                Save readings
-              </button>
-            </div>
-          </form>
+        {/* Who they are. Read-only to the desk. An administrator can reopen
+            the form's answers, which are saved to the donor record rather than
+            this registration — so a correction holds for every camp, and two
+            camps never disagree about somebody's phone number. */}
+        {editingForm && donor ? (
+          <DonorEditForm donor={donor} onDone={() => setEditingForm(false)} />
         ) : (
-          <DetailList
-            heading="On the day"
-            items={[
-              ["Outcome", <StatusPill key="o" status={r.status} />],
-              ["Height", r.height_cm ? `${r.height_cm} cm` : null],
-              ["Weight", r.weight_kg ? `${r.weight_kg} kg` : null],
-              [
-                "Blood pressure",
-                r.bp_systolic && r.bp_diastolic ? `${r.bp_systolic}/${r.bp_diastolic}` : null,
-              ],
-              ["Haemoglobin", r.hemoglobin_gdl != null ? `${r.hemoglobin_gdl} g/dL` : null],
-              ["First time", r.first_time ? "Yes" : "No"],
-              ["Medications", r.medications, { wide: true }],
-              ...(r.deferral_reason
-                ? ([["Deferral reason", r.deferral_reason, { wide: true }]] as DetailItem[])
-                : []),
-            ]}
-          />
-        )}
+          <>
+            {canEditForm && donor && (
+              <div className="-mb-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditingForm(true)}
+                  className="press inline-flex h-8 items-center gap-1.5 rounded-lg border border-app-line px-3 text-xs font-medium"
+                >
+                  <Pencil className="size-3.5" aria-hidden />
+                  Edit form
+                </button>
+              </div>
+            )}
+            <DetailList
+              items={[
+                ["Phone", donor?.phone],
+                ["Email", donor?.email],
+                ["They are", donor ? <span key="k" className="capitalize">{donor.kind}</span> : null],
+                ...(donor?.school ? ([["School", donor.school, { wide: true }]] as DetailItem[]) : []),
+                [donor?.kind === "other" ? "Occupation" : "Department", donor?.department ?? donor?.occupation],
+                ["Age", donor?.age],
+                ["Sex", donor ? <span key="s" className="capitalize">{donor.sex}</span> : null],
+                ["Father's name", parentName(donor?.father_title, donor?.father_name)],
+                ["Mother's name", parentName(donor?.mother_title, donor?.mother_name)],
+                ["Donations before BlooDoc", donor?.prior_donations],
+                ["Venue", camp?.venue],
+                ["Registered", formatDateTime(r.created_at)],
+                ...(donor?.address ? ([["Residential address", donor.address, { wide: true }]] as DetailItem[]) : []),
+                ...(donor?.permanent_address && donor.permanent_address !== donor.address
+                  ? ([["Permanent address", donor.permanent_address, { wide: true }]] as DetailItem[])
+                  : []),
+              ]}
+            />
 
-        <p className="text-[0.6875rem] text-muted-foreground">
-          Screening readings belong to this registration, not to the donor — they
-          are a snapshot of one day, and an earlier camp&apos;s numbers stay as they
-          were.
-        </p>
+            {canEdit ? (
+              <form action={action} className="flex flex-col gap-4">
+                <input type="hidden" name="id" value={r.id} />
+                <input type="hidden" name="status" value={status} />
+                {reason && <input type="hidden" name="deferralReason" value={reason} />}
+
+                <Field label="Outcome" hint="Saves as soon as you pick one.">
+                  <StatusBar
+                    id={r.id}
+                    status={r.status}
+                    reason={r.deferral_reason}
+                    onSaved={(next, why) => {
+                      setStatus(next);
+                      setReason(why);
+                    }}
+                  />
+                </Field>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Field label="Height (cm)">
+                    <Input name="heightCm" type="number" defaultValue={r.height_cm ?? ""} className="h-10" />
+                  </Field>
+                  <Field label="Weight (kg)">
+                    <Input name="weightKg" type="number" defaultValue={r.weight_kg ?? ""} className="h-10" />
+                  </Field>
+                  <Field label="BP upper">
+                    <Input name="bpSystolic" type="number" defaultValue={r.bp_systolic ?? ""} className="h-10" />
+                  </Field>
+                  <Field label="BP lower">
+                    <Input name="bpDiastolic" type="number" defaultValue={r.bp_diastolic ?? ""} className="h-10" />
+                  </Field>
+                  <Field label="Haemoglobin" hint="g/dL">
+                    <Input
+                      name="hemoglobin"
+                      type="number"
+                      step="0.1"
+                      defaultValue={r.hemoglobin_gdl ?? ""}
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Pulse" hint="/min">
+                    <Input name="pulse" type="number" defaultValue={r.pulse_bpm ?? ""} className="h-10" />
+                  </Field>
+                  <Field label="First time">
+                    <label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-input px-3 text-sm">
+                      <input
+                        type="checkbox"
+                        name="firstTime"
+                        defaultChecked={r.first_time}
+                        className="tickbox shrink-0"
+                      />
+                      Yes
+                    </label>
+                  </Field>
+                </div>
+
+                <Field label="Medications" hint="As declared, or as found at the desk.">
+                  <Input
+                    name="medications"
+                    defaultValue={r.medications ?? ""}
+                    placeholder="None"
+                    className="h-10"
+                  />
+                </Field>
+
+
+                <div className="flex items-center justify-end gap-2 border-t border-app-line-soft pt-4">
+                  <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    className="press h-10 rounded-lg border border-app-line px-4 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="press inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                  >
+                    {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                    Save readings
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <DetailList
+                heading="On the day"
+                items={[
+                  ["Outcome", <StatusPill key="o" status={r.status} />],
+                  ["Height", r.height_cm ? `${r.height_cm} cm` : null],
+                  ["Weight", r.weight_kg ? `${r.weight_kg} kg` : null],
+                  [
+                    "Blood pressure",
+                    r.bp_systolic && r.bp_diastolic ? `${r.bp_systolic}/${r.bp_diastolic}` : null,
+                  ],
+                  ["Haemoglobin", r.hemoglobin_gdl != null ? `${r.hemoglobin_gdl} g/dL` : null],
+                  ["Pulse", r.pulse_bpm != null ? `${r.pulse_bpm} /min` : null],
+                  ["First time", r.first_time ? "Yes" : "No"],
+                  ["Medications", r.medications, { wide: true }],
+                  ...(r.deferral_reason
+                    ? ([["Deferral reason", r.deferral_reason, { wide: true }]] as DetailItem[])
+                    : []),
+                ]}
+              />
+            )}
+
+            <p className="text-[0.6875rem] text-muted-foreground">
+              Screening readings belong to this registration, not to the donor — they
+              are a snapshot of one day, and an earlier camp&apos;s numbers stay as they
+              were.
+            </p>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

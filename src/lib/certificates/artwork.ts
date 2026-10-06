@@ -37,61 +37,99 @@ export type CertificateArt = {
    *
    * The artwork is a picture, so renaming the camp in the console would leave
    * the old name on every certificate. When the camp's title (or date) no
-   * longer matches what is printed here, the certificate paints over these
-   * two boxes in the artwork's own colours and sets the current name in them.
-   * When it does match, the artwork is shown untouched.
-   *
-   * Boxes are `left` / `right` distances from each edge (percent of width) and
-   * `top` / `height` (percent of height), measured off the file.
+   * longer matches what is printed here, the certificate paints over each line
+   * that says it, in the artwork's own colours, and sets that line again from
+   * the camp's record. Lines that mention neither are left alone, and an
+   * unchanged camp gets the artwork untouched.
    */
   printed?: {
     title: string;
     /** `YYYY-MM-DD`, in IST. */
     date: string;
-    /** The name on the ribbon, inside its edges. */
-    ribbon: { left: number; right: number; top: number; height: number; background: string; color: string };
-    /** "The … was held on <date>", on the paper below it. */
-    sentence: { left: number; right: number; top: number; height: number; background: string; color: string; accent: string };
+    lines: PrintedLine[];
   };
+};
+
+/**
+ * One line of the artwork that names the camp or its date.
+ *
+ * The box is `left` / `right` distances from each edge (percent of width) and
+ * `top` / `height` (percent of height), measured off the file, and is painted
+ * `background` before the line is set in it.
+ */
+export type PrintedLine = {
+  left: number;
+  right: number;
+  top: number;
+  height: number;
+  background: string;
+  color: string;
+  font: "serif" | "sans";
+  /** Largest size, in percent of the image width. */
+  size: number;
+  uppercase?: boolean;
+  /** Literal text, or the camp's `title` / `date`, each optionally bold. */
+  parts: { text?: string; field?: "title" | "date"; bold?: boolean; color?: string }[];
 };
 
 export const CERTIFICATE_ART: Record<string, CertificateArt> = {
   "rgu-mega-drive-2026": {
     label: "Mega Blood Donation Drive 2026 — RGU",
-    src: "/certificates/rgu-mega-drive-2026.jpg",
+    src: "/certificates/rgu-mega-drive-2026-v2.jpg",
     width: 3508,
-    height: 2482,
-    // The gold rule under "This is to proudly certify that": y = 1095px of
-    // 2482, from x = 858px to 2692px of 3508.
-    name: { left: 24.5, right: 23.3, baseline: 43.7, color: "#7d1418" },
-    // Between the inner gold border (y ≈ 2285px) and the paper edge.
-    code: { centre: 94.4, color: "#1f2a5c" },
-    // The blank corner right of the ABTYP mark: x 3160–3420px, from y 170px.
-    qr: { top: 6.85, right: 2.5, size: 7.4, color: "#1f2a5c" },
+    height: 2481,
+    // The navy rule under "This is to provide certificate that": y = 1114px
+    // of 2481, from x = 877px to 2630px of 3508. The baseline sits a little
+    // above it so descenders clear the rule.
+    name: { left: 25, right: 25, baseline: 44.5, color: "#7d1418" },
+    // The clear strip between the signatures (ink ends y ≈ 2217px) and the
+    // inner gold border (y = 2318px).
+    code: { centre: 91.4, color: "#0d1d34" },
+    // The blank paper between the RGU mark and the NSS seal: x 2100–2832px,
+    // below the gold border (y 117px) and above "CERTIFICATE" (y 516px). The
+    // QR is 309px from y 144px, and its label ends near y 495px.
+    qr: { top: 5.8, right: 20.2, size: 8.8, color: "#0d1d34" },
     printed: {
       title: "Mega Blood Donation Drive",
       date: "2026-10-06",
-      // The ribbon's flat band runs x 1010–2547px, y 1193–1303px; the patch
-      // stays inside it so the band's own darker edges are kept.
-      ribbon: {
-        left: 29.65,
-        right: 28.16,
-        top: 48.59,
-        height: 3.47,
-        background: "linear-gradient(90deg, #961a18, #8a1210 50%, #8c1110)",
-        color: "#ffffff",
-      },
-      // "The Mega Blood Donation Drive was held on 06th October, 2026",
-      // y 1405–1460px, on plain paper wide enough for a longer name.
-      sentence: {
-        left: 24,
-        right: 24,
-        top: 56.45,
-        height: 2.4,
-        background: "#f7f6f2",
-        color: "#14204f",
-        accent: "#7a0f30",
-      },
+      lines: [
+        // "who has successfully donated in the “Mega Blood Donation Drive”",
+        // ink y 1153–1218px, x 725–2781px; the patch (x 700–2810px) stops short
+        // of the hand at 2817px.
+        {
+          left: 19.95,
+          right: 19.9,
+          top: 45.75,
+          height: 3.83,
+          background: "#ffffff",
+          color: "#0d1d34",
+          font: "sans",
+          size: 1.8,
+          parts: [
+            { text: "who has successfully donated in the “" },
+            { field: "title", bold: true },
+            { text: "”" },
+          ],
+        },
+        // "The Mega Blood Donation Drive was held on 6th October, 2026",
+        // ink y 1345–1410px (cap height 44px), x 790–2715px.
+        {
+          left: 19.95,
+          right: 19.9,
+          top: 53.61,
+          height: 3.83,
+          background: "#ffffff",
+          color: "#0d1d34",
+          font: "sans",
+          size: 1.8,
+          parts: [
+            { text: "The ", bold: true },
+            { field: "title", bold: true },
+            { text: " was held on " },
+            { field: "date", bold: true },
+          ],
+        },
+      ],
     },
   },
 };

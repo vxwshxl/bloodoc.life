@@ -176,7 +176,7 @@ export default async function OverviewPage() {
         ) : (
           <ul>
             {o.recent.map((r) => (
-              <RecentRegistration key={r.id} registration={r} canEdit />
+              <RecentRegistration key={r.id} registration={r} canEdit canEditForm />
             ))}
           </ul>
         )}

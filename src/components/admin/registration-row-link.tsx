@@ -22,11 +22,14 @@ import { cn } from "@/lib/utils";
 export function RegistrationRowLink({
   registration,
   canEdit,
+  canEditForm = false,
   children,
   className,
 }: {
   registration: RegistrationDetailData;
   canEdit: boolean;
+  /** Administrators only: reopen the donor's form answers for correction. */
+  canEditForm?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -77,6 +80,7 @@ export function RegistrationRowLink({
         <RegistrationDetail
           registration={registration}
           canEdit={canEdit}
+          canEditForm={canEditForm}
           open={open}
           onOpenChange={setOpen}
         />

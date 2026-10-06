@@ -211,7 +211,7 @@ export default async function RegistrationsPage({
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <RegistrationRowLink key={r.id} registration={r} canEdit>
+                  <RegistrationRowLink key={r.id} registration={r} canEdit canEditForm>
                     <td className="px-5 py-3">
                       <span className="block font-medium">{r.donor.full_name}</span>
                       <span className="block text-xs text-muted-foreground">

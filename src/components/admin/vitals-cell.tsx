@@ -37,6 +37,7 @@ export function VitalsCell({ reg }: { reg: Registration }) {
         <span className="flex items-center gap-1.5" style={{ fontVariantNumeric: "tabular-nums" }}>
           {bp ?? "–"}
           {reg.weight_kg ? ` · ${reg.weight_kg}kg` : ""}
+          {reg.pulse_bpm != null ? ` · ${reg.pulse_bpm}/min` : ""}
           <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-60" />
         </span>
         {reg.hemoglobin_gdl != null && (
@@ -76,6 +77,7 @@ export function VitalsCell({ reg }: { reg: Registration }) {
           <Num name="bpDiastolic" label="Dia" defaultValue={reg.bp_diastolic} />
         </div>
         <Num name="hemoglobin" label="Hb" defaultValue={reg.hemoglobin_gdl} autoFocus />
+        <Num name="pulse" label="Pulse /min" defaultValue={reg.pulse_bpm} />
       </div>
 
       <div className="flex items-center gap-1.5">

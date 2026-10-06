@@ -212,6 +212,7 @@ const DONOR_COLUMNS: { header: string; width: number; value: (r: ReportRow, i: n
     value: (r) => (r.bp_systolic && r.bp_diastolic ? `${r.bp_systolic}/${r.bp_diastolic}` : ""),
   },
   { header: "Haemoglobin (g/dL)", width: 12, value: (r) => r.hemoglobin_gdl ?? "" },
+  { header: "Pulse (/min)", width: 10, value: (r) => r.pulse_bpm ?? "" },
   { header: "Medications", width: 24, value: (r) => r.medications ?? "" },
   { header: "Certificate no.", width: 17, value: (r) => r.certificate_code ?? "" },
   { header: "Registered at", width: 19, value: (r) => dateTime(r.created_at) },
