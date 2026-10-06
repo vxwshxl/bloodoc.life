@@ -94,7 +94,7 @@ export default async function RegistrationsPage({
                     with 37 and 30, and that is the thing worth seeing before
                     opening it. */}
                 <span className="mt-3 flex flex-wrap gap-1.5">
-                  {(["donated", "screened", "registered", "deferred", "cancelled"] as const)
+                  {(["donated", "screened", "registered", "cancelled"] as const)
                     .filter((k) => c.byStatus[k] > 0)
                     .map((k) => (
                       <StatusPill key={k} status={k} count={c.byStatus[k]} />

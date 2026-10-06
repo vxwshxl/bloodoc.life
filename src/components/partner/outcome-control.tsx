@@ -14,13 +14,8 @@ import type { RegistrationStatus } from "@/lib/db/types";
 import { TONE_CLASS, statusMeta } from "@/components/ui/status-pill";
 import { cn } from "@/lib/utils";
 
-const STATUSES: RegistrationStatus[] = [
-  "registered",
-  "screened",
-  "donated",
-  "deferred",
-  "cancelled",
-];
+/** The outcomes offered at the desk; "deferred" is not recorded. */
+const STATUSES: RegistrationStatus[] = ["registered", "screened", "donated", "cancelled"];
 
 /**
  * The desk control on a partner roster row.
@@ -38,17 +33,15 @@ const STATUSES: RegistrationStatus[] = [
 export function OutcomeControl({
   registrationId,
   status,
-  reason,
   canRecord,
 }: {
   registrationId: string;
   status: RegistrationStatus;
-  reason: string | null;
+  reason?: string | null;
   canRecord: boolean;
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(recordOutcome, {});
   const [value, setValue] = useState<RegistrationStatus>(status);
-  const [askReason, setAskReason] = useState(false);
   const [dispatching, startDispatch] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -78,14 +71,6 @@ export function OutcomeControl({
           onValueChange={(next) => {
             const s = next as RegistrationStatus;
             setValue(s);
-            // A deferral without a reason is the one outcome that is useless
-            // later — the donor asks why they were turned away and the roster
-            // cannot say. So this opens the box instead of saving.
-            if (s === "deferred") {
-              setAskReason(true);
-              return;
-            }
-            setAskReason(false);
             // Built here and dispatched, rather than `requestSubmit()`.
             //
             // Radix writes the new value into its hidden input on its own
@@ -122,25 +107,6 @@ export function OutcomeControl({
           </SelectContent>
         </Select>
       </div>
-
-      {askReason && (
-        <div className="flex items-center gap-2">
-          <input
-            name="deferralReason"
-            defaultValue={reason ?? ""}
-            autoFocus
-            placeholder="Why deferred?"
-            className="h-8 w-48 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-          />
-          <button
-            type="submit"
-            onClick={() => setAskReason(false)}
-            className="press h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
-          >
-            Save
-          </button>
-        </div>
-      )}
 
       {state.error && <p className="max-w-48 text-xs font-medium text-destructive">{state.error}</p>}
     </form>

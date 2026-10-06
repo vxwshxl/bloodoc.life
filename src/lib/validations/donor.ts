@@ -118,6 +118,63 @@ export const HUSBAND_TITLES = [
 
 const TITLE_LABEL: Record<string, string> = { mr: "Mr.", mrs: "Mrs.", late: "Lt." };
 
+/**
+ * Whose name the donor gives: one of father, mother or spouse, not all three.
+ *
+ * Asked as one question — pick the relation, then the title and the name —
+ * and stored in that relation's own columns (`father_*`, `mother_*`,
+ * `husband_*`), with the other two cleared. The columns stay separate so a
+ * report can still say which relation it is.
+ */
+export const RELATIONS = [
+  { value: "father", label: "Father" },
+  { value: "mother", label: "Mother" },
+  { value: "spouse", label: "Spouse" },
+] as const;
+
+export type Relation = (typeof RELATIONS)[number]["value"];
+
+export const RELATION_TITLES: Record<Relation, readonly { value: string; label: string }[]> = {
+  father: FATHER_TITLES,
+  mother: MOTHER_TITLES,
+  spouse: HUSBAND_TITLES,
+};
+
+type RelationColumns = {
+  father_title?: string | null;
+  father_name?: string | null;
+  mother_title?: string | null;
+  mother_name?: string | null;
+  husband_title?: string | null;
+  husband_name?: string | null;
+};
+
+/** The relation a stored record gives, for reopening it in the form. */
+export function relationOf(d: RelationColumns | null | undefined): {
+  relation: Relation;
+  title: string;
+  name: string;
+} {
+  if (d?.father_name) return { relation: "father", title: d.father_title ?? "mr", name: d.father_name };
+  if (d?.mother_name) return { relation: "mother", title: d.mother_title ?? "mrs", name: d.mother_name };
+  if (d?.husband_name) return { relation: "spouse", title: d.husband_title ?? "mr", name: d.husband_name };
+  return { relation: "father", title: "mr", name: "" };
+}
+
+/**
+ * "Mr. Ramesh Das (Father)", for a list or a report. A record saved before
+ * the form asked for one name may hold two or three; all of them are shown.
+ */
+export function relationLine(d: RelationColumns | null | undefined): string | null {
+  if (!d) return null;
+  const parts = [
+    d.father_name && `${parentName(d.father_title, d.father_name)} (Father)`,
+    d.mother_name && `${parentName(d.mother_title, d.mother_name)} (Mother)`,
+    d.husband_name && `${parentName(d.husband_title, d.husband_name)} (Spouse)`,
+  ].filter(Boolean);
+  return parts.length ? parts.join("; ") : null;
+}
+
 /** "Lt. Ramesh Das", or the bare name for a row saved before titles existed. */
 export function parentName(title: string | null | undefined, name: string | null | undefined) {
   if (!name) return null;
@@ -132,7 +189,7 @@ export function parentName(title: string | null | undefined, name: string | null
  * input names and must match the check constraint in migration 0019.
  *
  * Parents' names and the address were here until 0020 made them required for
- * every camp (parents now as "father's or mother's"). The constraint still allows the old keys, so a camp saved with
+ * every camp (now one name: father's, mother's or spouse's). The constraint still allows the old keys, so a camp saved with
  * them ticked stays valid.
  */
 export const CONFIGURABLE_FIELDS = [
@@ -143,10 +200,6 @@ export const CONFIGURABLE_FIELDS = [
 ] as const;
 
 export type ConfigurableField = (typeof CONFIGURABLE_FIELDS)[number]["key"];
-
-/** An optional name box: blank, or a name of a sensible length. */
-const optionalName = (message: string) =>
-  box.refine((s) => s === "" || (s.length >= 2 && s.length <= 120), message);
 
 const addressText = (message: string) =>
   z.string({ message }).trim().min(8, message).max(500, "Keep this under 500 characters.");
@@ -166,17 +219,14 @@ const personShape = {
     .string({ message: "Pick your date of birth." })
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick your date of birth."),
-  // One parent's name is required, not both — either is enough to identify
-  // the donor, and a form that insists on both turns away the people who only
-  // have one to give. `checkPerson` enforces "at least one". Each title menu
-  // always posts a value, so a title is kept only when its name came with it.
-  fatherTitle: z.enum(["mr", "late"], { message: "Pick Mr. or Lt." }),
-  fatherName: optionalName("Enter your father's name, or leave it blank."),
-  motherTitle: z.enum(["mrs", "late"], { message: "Pick Mrs. or Lt." }),
-  motherName: optionalName("Enter your mother's name, or leave it blank."),
-  // Optional, for the donors it applies to.
-  husbandTitle: z.enum(["mr", "mrs", "late"]).optional(),
-  husbandName: optionalName("Enter your spouse's name, or leave it blank."),
+  // One name: father's, mother's or spouse's. See `RELATIONS`.
+  relation: z.enum(["father", "mother", "spouse"], { message: "Pick father, mother or spouse." }),
+  relationTitle: z.enum(["mr", "mrs", "late"], { message: "Pick a title." }),
+  relationName: z
+    .string({ message: "Enter the name." })
+    .trim()
+    .min(2, "Enter the name.")
+    .max(120, "Keep the name under 120 characters."),
 
   kind: z.enum(["student", "faculty", "staff", "other"], { message: "Pick one." }),
   occupation: box,
@@ -197,12 +247,9 @@ const personShape = {
 
 type PersonFields = {
   dateOfBirth: string;
-  fatherTitle: "mr" | "late";
-  fatherName: string;
-  motherTitle: "mrs" | "late";
-  motherName: string;
-  husbandTitle?: "mr" | "mrs" | "late";
-  husbandName: string;
+  relation: Relation;
+  relationTitle: "mr" | "mrs" | "late";
+  relationName: string;
   kind: "student" | "faculty" | "staff" | "other";
   occupation: string;
   school: string;
@@ -222,12 +269,10 @@ function checkPerson(v: PersonFields, ctx: z.RefinementCtx) {
     });
   }
 
-  if (!v.fatherName && !v.motherName) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["fatherName"],
-      message: "Enter your father's or your mother's name. One is enough.",
-    });
+  // The title menu follows the relation on screen, but a stale post could pair
+  // "Mrs." with a father; the database's check constraints would refuse it.
+  if (!RELATION_TITLES[v.relation].some((t) => t.value === v.relationTitle)) {
+    ctx.addIssue({ code: "custom", path: ["relationTitle"], message: "Pick a title that fits." });
   }
 
   if (!v.sameAddress && v.permanentAddress.length < 8) {
@@ -284,12 +329,13 @@ function finishPerson<T extends PersonFields & { address: string }>(v: T) {
   return {
     ...v,
     age: ageOn(v.dateOfBirth),
-    fatherName: v.fatherName || null,
-    fatherTitle: v.fatherName ? v.fatherTitle : null,
-    motherName: v.motherName || null,
-    motherTitle: v.motherName ? v.motherTitle : null,
-    husbandName: v.husbandName || null,
-    husbandTitle: v.husbandName ? (v.husbandTitle ?? "mr") : null,
+    // The chosen relation's columns, and the other two cleared: one name.
+    fatherName: v.relation === "father" ? v.relationName : null,
+    fatherTitle: v.relation === "father" ? (v.relationTitle as "mr" | "late") : null,
+    motherName: v.relation === "mother" ? v.relationName : null,
+    motherTitle: v.relation === "mother" ? (v.relationTitle as "mrs" | "late") : null,
+    husbandName: v.relation === "spouse" ? v.relationName : null,
+    husbandTitle: v.relation === "spouse" ? v.relationTitle : null,
     permanentAddress: v.sameAddress ? v.address : v.permanentAddress,
     occupation: v.kind === "other" ? v.occupation : null,
     school: school?.name ?? null,

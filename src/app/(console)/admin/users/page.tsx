@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { listUsers } from "@/lib/admin/queries";
+import { listPartnerOptions, listUsers } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/dal";
 import { PageHeader, Panel, EmptyState } from "@/components/shell/page-header";
 import { SearchBox } from "@/components/shell/search-box";
@@ -10,7 +10,7 @@ import {
   pageFromParams,
 } from "@/components/shell/pagination";
 import { UserRow } from "@/components/admin/user-row";
-import { ROLES } from "@/lib/roles";
+import { ACCESS_OPTIONS } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Users" };
 
@@ -22,9 +22,10 @@ export default async function UsersPage({
   const { q, page: pageParam, role } = await searchParams;
   const page = pageFromParams(pageParam);
 
-  const [me, { rows, total }] = await Promise.all([
+  const [me, { rows, total }, partnerOptions] = await Promise.all([
     requireAdmin(),
     listUsers(q, page, DEFAULT_PAGE_SIZE, role),
+    listPartnerOptions(),
   ]);
 
   return (
@@ -41,13 +42,13 @@ export default async function UsersPage({
           keep={{ role }}
           clearHref="/admin/users"
         />
-        {/* Built from the same ROLES list the row dropdown uses, so the filter
-            can never offer a role the control cannot set. */}
+        {/* Built from the same list the row dropdown uses, so the filter can
+            never offer a role the control cannot set. */}
         <FilterMenu
           label="Role"
           paramName="role"
           active={role}
-          options={ROLES.map((r) => ({ value: r.value, label: r.label, hint: r.hint }))}
+          options={ACCESS_OPTIONS.map((r) => ({ value: r.value, label: r.label, hint: r.hint }))}
         />
       </div>
 
@@ -76,7 +77,7 @@ export default async function UsersPage({
               </thead>
               <tbody>
                 {rows.map((u) => (
-                  <UserRow key={u.id} user={u} isSelf={u.id === me.id} />
+                  <UserRow key={u.id} user={u} isSelf={u.id === me.id} partnerOptions={partnerOptions} />
                 ))}
               </tbody>
             </table>

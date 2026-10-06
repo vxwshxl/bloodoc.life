@@ -27,8 +27,10 @@ things that will bite you.
 - **`donors.address` is the residential address.** It predates
   `permanent_address` (0020) and kept its name. Parents' titles
   (`father_title` / `mother_title`: `mr` / `mrs` / `late`, printed "Lt.") are
-  separate from the names; display through `parentName()`. **One parent's name
-  is required, not both** (`checkPerson`); a title is stored only with its name.
+  separate from the names; display through `parentName()`. **The form asks
+  for one name** — father's, mother's or spouse's (`RelationInput`, posting
+  `relation` / `relationTitle` / `relationName`). `finishPerson` writes that
+  relation's columns and clears the other two; show it with `relationLine()`.
 - **Pulse** (`registrations.pulse_bpm`, 0024) is a desk reading like BP, never
   asked on the public form.
 - **Admins edit a registration's form answers** from the registration dialog
@@ -46,8 +48,8 @@ things that will bite you.
   most once per certificate; call it freely. A camp's `certificate_art` picks organiser artwork from
   `lib/certificates/artwork.ts` (name printed at measured percentages);
   null gets the standard design drawn from the camp's data.
-- **Spouse's name** (`husband_title` / `husband_name`, 0022; Mrs. allowed 0023) is optional and
-  displays through `parentName()` like the parents'.
+- **Spouse's name** (`husband_title` / `husband_name`, 0022; Mrs. allowed 0023)
+  is the third choice of that one name.
 - **Renaming a camp** re-translates `title_as` / `title_hi` (Sarvam, on
   `SARVAM_API_KEY`) unless the organiser edited them, in the form and again in
   `saveCamp`. Organiser artwork has the camp's name baked in; `printed` in
@@ -61,8 +63,19 @@ things that will bite you.
   address, and the session is that address's account. Sends are logged in
   `email_log` as "WhatsApp +91…".
 - **Camp Excel report** is `GET /admin/camps/:id/export`
-  (`lib/reports/camp-workbook.ts`). Partner logos come from `partners.logo_url`,
-  uploaded on the partner page into the `partner-logos` bucket as PNG.
+  (`lib/reports/camp-workbook.ts`): three sheets (All donors, Faculty,
+  Students) under one letterhead — "Powered by" BlooDoc's mark (drawn from
+  `MARK_SVG`, never fetched), then the collaborators. Partner logos come from
+  `partners.logo_url`, uploaded on the partner page into the `partner-logos`
+  bucket as PNG.
+- **Users page roles** include Organisation and Blood bank (`ACCESS_OPTIONS`
+  in `lib/roles.ts`). They are `partner_members` rows, not `profiles.role`:
+  choosing one adds a membership (`grantPartnerAccess`) and sets the role to
+  donor; choosing Donor removes the memberships.
+- **"Deferred" is not offered** as an outcome anywhere in the console. The
+  enum value stays in the database so an older row still reads.
+- **/verify downloads the PDF** in the browser (`VerifyDownload`, the same
+  `downloadCertificatePdf` the console uses), for valid certificates only.
 - **Camp slugs are never updated on edit.** They are in public URLs and in
   confirmation emails already sent.
 

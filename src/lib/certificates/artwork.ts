@@ -112,10 +112,11 @@ export const CERTIFICATE_ART: Record<string, CertificateArt> = {
           ],
         },
         // "The Mega Blood Donation Drive was held on 6th October, 2026",
-        // ink y 1345–1410px (cap height 44px), x 790–2715px.
+        // ink y 1345–1410px (cap height 44px), x 790–2715px. The hand reaches
+        // further left at this height, so the patch stops at 2760px.
         {
           left: 19.95,
-          right: 19.9,
+          right: 21.3,
           top: 53.61,
           height: 3.83,
           background: "#ffffff",

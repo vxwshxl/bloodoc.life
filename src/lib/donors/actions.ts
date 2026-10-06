@@ -77,35 +77,58 @@ export async function registerDonor(
   }
 
   // Someone already signed in registers as themselves, so the record is linked
-  // to their account from the start rather than at next sign-in.
+  // to their account from the start rather than at next sign-in — but only
+  // when the form's address is the account's. A volunteer signed in on the
+  // desk laptop registering a friend is not registering themselves, and
+  // linking the friend's row to the volunteer's account would collide with
+  // the volunteer's own row on `donors.profile_id`'s unique constraint.
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
+  const emailPattern = v.email.replace(/[\\%_]/g, "\\$&");
 
-  // Signed out, but the address may still belong to an existing account — a
-  // donor who registered last year, opened the form on a different device and
-  // never signed in. Linking on the email here closes the third and last gap:
-  // the signup trigger catches "registered first, signed in later", the branch
+  // Otherwise the address may still belong to an existing account — a donor
+  // who registered last year, opened the form on a different device and never
+  // signed in. Linking on the email here closes the third and last gap: the
+  // signup trigger catches "registered first, signed in later", the branch
   // above catches "signed in first, registered later", and this one catches
   // "has an account, is registering anonymously". Without it that person ends
   // up with a donor row their own /me page cannot see.
-  let profileId = auth.user?.id ?? null;
+  let profileId =
+    auth.user && auth.user.email?.toLowerCase() === v.email ? auth.user.id : null;
   if (!profileId) {
     const { data: existingProfile } = await admin
       .from("profiles")
       .select("id")
-      .eq("email", v.email)
+      .ilike("email", emailPattern)
+      .limit(1)
       .maybeSingle();
     profileId = existingProfile?.id ?? null;
   }
 
-  // One person, one donor row, keyed on email. A second camp six months later
-  // should update the same record rather than fork a duplicate that then
-  // disagrees with the first about their blood group.
-  const { data: existing } = await admin
-    .from("donors")
-    .select("id, prior_donations")
-    .eq("email", v.email)
-    .maybeSingle();
+  // One person, one donor row. The row already linked to the account wins;
+  // failing that, the row with this address (case-insensitively — older rows
+  // were not lowercased). A second camp six months later should update the
+  // same record rather than fork a duplicate that then disagrees with the
+  // first about their blood group.
+  let existing: { id: string; prior_donations: number; profile_id: string | null } | null = null;
+  if (profileId) {
+    const { data } = await admin
+      .from("donors")
+      .select("id, prior_donations, profile_id")
+      .eq("profile_id", profileId)
+      .maybeSingle();
+    existing = data;
+  }
+  if (!existing) {
+    const { data } = await admin
+      .from("donors")
+      .select("id, prior_donations, profile_id")
+      .ilike("email", emailPattern)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    existing = data;
+  }
 
   const donorFields = {
     full_name: v.fullName,
@@ -129,7 +152,8 @@ export async function registerDonor(
     permanent_address: v.permanentAddress,
     blood_group: v.bloodGroup,
     prior_donations: v.priorDonations ?? (v.firstTime === "yes" ? 0 : existing?.prior_donations ?? 0),
-    ...(profileId ? { profile_id: profileId } : {}),
+    // A row already linked keeps its link; only an unclaimed one is claimed.
+    ...(profileId && !existing?.profile_id ? { profile_id: profileId } : {}),
   };
 
   let donorId: string;

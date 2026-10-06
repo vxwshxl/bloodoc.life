@@ -12,6 +12,13 @@ import type { Donor, Registration } from "@/lib/db/types";
  * which rows come back, and `requireAdmin` only gives a non-admin a better
  * landing than an empty file.
  */
+// Node, not the edge: the workbook is built with exceljs and the logos with
+// sharp. Never cached — it is a different file every time a donor registers.
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+// Room for the logo fetches and a large roster on a cold start.
+export const maxDuration = 60;
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const id = z.uuid().safeParse((await params).id);
@@ -59,12 +66,24 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     partners.push({ name: camp.partner_name, kind: "blood_bank", note: camp.partner_note, logo_url: null });
   }
 
-  const file = await buildCampWorkbook({
-    camp,
-    partners,
-    rows,
-    origin: new URL(request.url).origin,
-  });
+  let file: Buffer;
+  try {
+    file = await buildCampWorkbook({
+      camp,
+      partners,
+      rows,
+      origin: new URL(request.url).origin,
+    });
+  } catch (error) {
+    // Logged for the deployment's function logs, and said plainly to the
+    // admin: a half-written download that Excel refuses to open tells nobody
+    // what went wrong.
+    console.error("[camp-report]", camp.id, error);
+    return new Response("Could not build this camp's report. Try again in a moment.", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
 
   const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
   const name = `${camp.title.replace(/[\\/:*?"<>|]+/g, "").trim() || "Camp"} - report ${stamp}.xlsx`;
