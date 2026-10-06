@@ -7,8 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ROLE_VALUES } from "@/lib/roles";
 import { requireAdmin, requireVerifier } from "@/lib/auth/dal";
 import { sendEmailNow, emailConfigured } from "@/lib/email/send";
-import { campReminderEmail } from "@/lib/email/templates";
-import { copyFor } from "@/lib/email/copy";
+import { campReminderEmail, donorEncouragementEmail } from "@/lib/email/templates";
+import { TEMPLATE_KEYS, copyFor } from "@/lib/email/copy";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
 import { CONFIGURABLE_FIELDS, donorProfileSchema } from "@/lib/validations/donor";
 import { CERTIFICATE_ART, STANDARD_CERTIFICATE } from "@/lib/certificates/artwork";
@@ -632,6 +632,77 @@ export async function sendCampReminders(
 }
 
 /**
+ * Encourage the donors who came to a camp and could not donate (marked
+ * cancelled at the desk), with everyday tips for next time.
+ *
+ * At most once per donor per camp: the log's template is tagged with the camp,
+ * and an address that already has a delivered one is skipped, so pressing the
+ * button again later reaches only the people cancelled since.
+ */
+export async function sendDonorEncouragement(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  if (!emailConfigured()) return { error: "Email is not configured (ZEPTOMAIL_TOKEN)." };
+
+  const campId = z.uuid().safeParse(formData.get("campId"));
+  if (!campId.success) return { error: "Pick a camp." };
+
+  const supabase = await createClient();
+  const { data: camp } = await supabase.from("camps").select("*").eq("id", campId.data).maybeSingle();
+  if (!camp) return { error: "That camp no longer exists." };
+
+  const { data: rows } = await supabase
+    .from("registrations")
+    .select("donor:donors(full_name, email)")
+    .eq("camp_id", camp.id)
+    .eq("status", "cancelled");
+
+  const template = `donor-encouragement:${camp.id}`;
+  const { data: already } = await supabase
+    .from("email_log")
+    .select("to_email")
+    .eq("template", template)
+    .eq("ok", true);
+  const done = new Set((already ?? []).map((r) => r.to_email.toLowerCase()));
+
+  // One email per address, even if a donor somehow has two cancelled rows.
+  const recipients = new Map<string, { full_name: string; email: string }>();
+  for (const r of rows ?? []) {
+    const d = (r as unknown as { donor: { full_name: string; email: string } | null }).donor;
+    if (d?.email && !done.has(d.email.toLowerCase())) recipients.set(d.email.toLowerCase(), d);
+  }
+
+  if (!recipients.size) {
+    return {
+      error: rows?.length
+        ? "Everyone marked cancelled at this camp has already been sent this email."
+        : "Nobody is marked cancelled at this camp.",
+    };
+  }
+
+  const campDate = formatCampDate(camp.starts_at);
+  let sent = 0;
+  for (const d of recipients.values()) {
+    const name = d.full_name.split(" ")[0];
+    const copy = await copyFor("donor_encouragement", { name, camp: camp.title });
+    const { subject, html } = donorEncouragementEmail({ donorName: name, campTitle: camp.title, campDate }, copy);
+    const res = await sendEmailNow({ to: d.email, toName: d.full_name, subject, html, template });
+    if (res.ok) sent += 1;
+  }
+
+  revalidatePath("/admin/email");
+  return {
+    ok: true,
+    message:
+      sent === recipients.size
+        ? `Encouragement sent to ${sent} ${sent === 1 ? "donor" : "donors"}.`
+        : `Sent ${sent} of ${recipients.size}. The rest are in the email log with their errors.`,
+  };
+}
+
+/**
  * Delete one logged email, or every logged email.
  *
  * Runs on the session client so `email_log_admin_write` (0010) is what actually
@@ -721,13 +792,9 @@ export async function saveTemplateCopy(
   const admin = await requireAdmin();
   const parsed = z
     .object({
-      key: z.enum([
-        "signin_code",
-        "registration_confirmed",
-        "camp_reminder",
-        "profile_change",
-        "signin_alert",
-      ]),
+      // Every template the console lists; a hand-kept list here once left
+      // certificate_issued out, so its wording could not be saved.
+      key: z.enum(TEMPLATE_KEYS),
       subject: z.string().trim().max(200),
       heading: z.string().trim().max(200),
       lead: z.string().trim().max(1000),

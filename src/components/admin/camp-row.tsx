@@ -2,11 +2,11 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Loader2, Send } from "lucide-react";
+import { ChevronDown, HeartPulse, Loader2, Send } from "lucide-react";
 import { ReportDownload, ThanksDownload } from "@/components/admin/report-download";
 import { CampForm } from "@/components/admin/camp-form";
 import { DeleteCamp } from "@/components/admin/delete-camp";
-import { sendCampReminders, type ActionState } from "@/lib/admin/actions";
+import { sendCampReminders, sendDonorEncouragement, type ActionState } from "@/lib/admin/actions";
 import { CampSummary, CampTag } from "@/components/camps/camp-card";
 import { cn } from "@/lib/utils";
 import type { Camp } from "@/lib/db/types";
@@ -32,6 +32,9 @@ export function CampRow({
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<ActionState, FormData>(sendCampReminders, {});
+  const [cheer, cheerAction, cheerPending] = useActionState<ActionState, FormData>(sendDonorEncouragement, {});
+  // Real donors' inboxes: one click arms it, a second sends.
+  const [cheerArmed, setCheerArmed] = useState(false);
 
   return (
     <div className="grain overflow-hidden rounded-2xl border border-app-line-soft bg-card shadow-card">
@@ -100,6 +103,42 @@ export function CampRow({
               Remind
             </button>
           </form>
+          <form action={cheerAction} onSubmit={() => setCheerArmed(false)} className="flex items-center gap-1.5">
+            <input type="hidden" name="campId" value={camp.id} />
+            {cheerArmed ? (
+              <>
+                <button
+                  type="submit"
+                  className="press inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <HeartPulse className="size-4" strokeWidth={1.9} />
+                  Email cancelled donors
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCheerArmed(false)}
+                  className="press inline-flex h-9 items-center rounded-full px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={cheerPending}
+                onClick={() => setCheerArmed(true)}
+                title="Email the donors marked cancelled at this camp some encouragement and tips for next time"
+                className="press inline-flex h-9 items-center gap-1.5 rounded-full border border-app-line px-3.5 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-60"
+              >
+                {cheerPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <HeartPulse className="size-4 text-primary" strokeWidth={1.9} />
+                )}
+                Encourage
+              </button>
+            )}
+          </form>
           <DeleteCamp
             campId={camp.id}
             title={camp.title}
@@ -119,16 +158,20 @@ export function CampRow({
           </button>
       </div>
 
-      {(state.error || state.message) && (
-        <p
-          role="status"
-          className={cn(
-            "border-t border-app-line-soft px-5 py-3 text-sm font-medium",
-            state.error ? "text-destructive" : "text-primary",
-          )}
-        >
-          {state.error ?? state.message}
-        </p>
+      {[state, cheer].map(
+        (s, i) =>
+          (s.error || s.message) && (
+            <p
+              key={i}
+              role="status"
+              className={cn(
+                "border-t border-app-line-soft px-5 py-3 text-sm font-medium",
+                s.error ? "text-destructive" : "text-primary",
+              )}
+            >
+              {s.error ?? s.message}
+            </p>
+          ),
       )}
 
       {open && (

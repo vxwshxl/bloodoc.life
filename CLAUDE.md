@@ -82,6 +82,11 @@ things that will bite you.
   collaborator, under the same letterhead as the camp PDF. That letterhead
   lives in `lib/reports/letterhead-pdf.ts`; change it there, not per document.
   The camp's totals are printed only once a donation is recorded.
+- **Encourage** (camp card) emails donors marked `cancelled` at that camp
+  (`sendDonorEncouragement`, `donorEncouragementEmail`): general habits, no
+  guessed reason, hedged to a doctor and the medical officer. Logged with
+  template `donor-encouragement:<campId>`, which is how a donor is never sent
+  it twice for one camp. Template keys come from `TEMPLATE_META` only.
 - **Users page roles** include Organisation and Blood bank (`ACCESS_OPTIONS`
   in `lib/roles.ts`). They are `partner_members` rows, not `profiles.role`:
   choosing one adds a membership (`grantPartnerAccess`) and sets the role to

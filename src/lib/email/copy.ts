@@ -18,7 +18,8 @@ export type TemplateKey =
   | "camp_reminder"
   | "profile_change"
   | "signin_alert"
-  | "certificate_issued";
+  | "certificate_issued"
+  | "donor_encouragement";
 
 export type TemplateCopy = { subject?: string; heading?: string; lead?: string };
 
@@ -92,7 +93,18 @@ export const TEMPLATE_META: Record<
       { token: "{{venue}}", means: "Where it is" },
     ],
   },
+  donor_encouragement: {
+    label: "Couldn't donate: encouragement",
+    description:
+      "Sent from the console to donors marked cancelled at a camp. The camp card, the tips and the medical note are fixed.",
+    tokens: [
+      { token: "{{name}}", means: "The donor's first name" },
+      { token: "{{camp}}", means: "The camp's title" },
+    ],
+  },
 };
+
+export const TEMPLATE_KEYS = Object.keys(TEMPLATE_META) as [TemplateKey, ...TemplateKey[]];
 
 /**
  * Replace `{{token}}` with its value.

@@ -19,6 +19,8 @@ import {
   button,
   codeBlock,
   notice,
+  eyebrow,
+  tipList,
 } from "@/lib/email/render";
 import { SITE_URL } from "@/lib/site-url";
 
@@ -155,6 +157,85 @@ export function campReminderEmail(input: {
           { muted: true },
         ),
       ],
+    }),
+  };
+}
+
+/**
+ * Encouragement for a donor who came to a camp and could not donate: the
+ * desk recorded them as cancelled (low haemoglobin, blood pressure out of
+ * range, or another reason on the day). Sent from the console, per camp.
+ *
+ * Deliberately general. A cancelled registration carries no reason, and an
+ * email must not guess one from the readings or tell anyone they will be
+ * able to donate next time: the tips are everyday habits, and the notice
+ * sends anything medical to a doctor and the camp's medical officer.
+ */
+export const ENCOURAGEMENT_TIPS: { title: string; text: string }[] = [
+  {
+    title: "Eat proper meals, on time",
+    text: "Don't skip breakfast. A balanced plate of dal, rice or roti, sabzi and curd keeps your energy and blood counts steady. Eat a good meal 2–3 hours before you donate.",
+  },
+  {
+    title: "Add iron-rich foods",
+    text: "Green leafy vegetables like spinach and methi, lentils, chana, rajma, jaggery, dates, and eggs, fish or meat if you eat them. They help your body build haemoglobin.",
+  },
+  {
+    title: "Have fruit every day",
+    text: "Oranges, amla, guava, lemon and pomegranate are rich in vitamin C, which helps your body absorb iron. Bananas and apples make an easy snack too.",
+  },
+  {
+    title: "Drink plenty of water",
+    text: "Sip water through the day, more in the heat, and have a few extra glasses the day before and the morning of the camp.",
+  },
+  {
+    title: "Go easy on junk food",
+    text: "Cut down on fried snacks, packaged food, very salty food and sugary drinks. Too much salt can push blood pressure up.",
+  },
+  {
+    title: "Keep tea and coffee away from meals",
+    text: "Have them at least an hour before or after you eat, because they make it harder for your body to absorb iron.",
+  },
+  {
+    title: "Sleep well and keep moving",
+    text: "Aim for 7–8 hours of sleep, especially the night before a camp. A 30-minute walk most days is good for your blood pressure and your mood.",
+  },
+  {
+    title: "Skip smoking and alcohol",
+    text: "Both affect your blood pressure and heart. Avoid alcohol completely for at least 24 hours before you donate.",
+  },
+];
+
+export function donorEncouragementEmail(input: {
+  donorName: string;
+  campTitle: string;
+  campDate: string;
+}, copy?: TemplateCopy) {
+  return {
+    subject: copy?.subject || `Thank you for coming, ${input.donorName}. We'd love to see you again`,
+    html: renderEmail({
+      preheader: "You couldn't donate this time, and that's okay. A few simple habits for next time.",
+      blocks: [
+        heading(copy?.heading || `Thank you for showing up, ${input.donorName}.`),
+        paragraph(
+          copy?.lead ||
+            `You came to ${input.campTitle} ready to give blood, and that already says a lot about you. It didn't work out on the day, and that's okay. A low haemoglobin reading, blood pressure that is a little high or low, a short night's sleep or an empty stomach can all mean "not today". It is common, it is often temporary, and it is never a mark against you.`,
+        ),
+        infoCard([
+          { label: "Camp", value: input.campTitle, strong: true },
+          { label: "Date", value: input.campDate },
+        ]),
+        eyebrow("Getting ready for next time"),
+        tipList(ENCOURAGEMENT_TIPS),
+        paragraph(
+          "The screening is there to keep you safe. Taking care of yourself now is the best way to come back strong, and every donor at every camp started exactly where you are.",
+        ),
+        button("See upcoming camps", `${site()}/camps`),
+        notice(
+          "These are general wellness tips, not medical advice. If your haemoglobin or blood pressure was outside the range at the camp, or you feel unwell, please see a doctor. Whether you can donate is always decided by the medical officer at the camp on the day.",
+        ),
+      ],
+      footerNote: `You are receiving this because you registered for ${input.campTitle} on bloodoc.life.`,
     }),
   };
 }

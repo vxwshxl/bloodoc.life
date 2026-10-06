@@ -6,6 +6,7 @@ import { TEMPLATE_META, fillTokens, type TemplateKey } from "@/lib/email/copy";
 import {
   campReminderEmail,
   certificateIssuedEmail,
+  donorEncouragementEmail,
   profileChangeCodeEmail,
   registrationConfirmedEmail,
   signInAlertEmail,
@@ -91,6 +92,11 @@ function renderPreview(key: TemplateKey, saved: EmailTemplate | undefined) {
           when: SAMPLE.when,
           venue: SAMPLE.venue,
         },
+        copy,
+      );
+    case "donor_encouragement":
+      return donorEncouragementEmail(
+        { donorName: SAMPLE.name, campTitle: SAMPLE.camp, campDate: "Tuesday, 6 October 2026" },
         copy,
       );
   }

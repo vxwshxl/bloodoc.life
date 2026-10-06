@@ -104,6 +104,41 @@ export function codeBlock(code: string): Block {
     </table>`;
 }
 
+/** A small uppercase label over the block that follows it. */
+export function eyebrow(text: string): Block {
+  return `<p style="margin:6px 0 10px;font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${BRAND};">${escapeHtml(text)}</p>`;
+}
+
+/**
+ * Tips as a list: a crimson plus (the one in the mark), a bold title, a line
+ * of detail. Table rows rather than <ul>, whose bullets and indents every
+ * client draws differently.
+ */
+export function tipList(items: Array<{ title: string; text: string }>): Block {
+  const last = items.length - 1;
+  const trs = items
+    .map(
+      (t, i) => `
+      <tr>
+        <td valign="top" width="30" style="padding:${i ? 12 : 2}px 0 ${i < last ? 12 : 2}px;${i < last ? `border-bottom:1px solid ${BORDER};` : ""}">
+          <div style="width:20px;height:20px;border-radius:6px;background:${BRAND};color:#ffffff;font-family:${FONT};font-size:15px;font-weight:700;line-height:20px;text-align:center;">+</div>
+        </td>
+        <td valign="top" style="padding:${i ? 12 : 2}px 0 ${i < last ? 12 : 2}px;${i < last ? `border-bottom:1px solid ${BORDER};` : ""}">
+          <p style="margin:0 0 3px;font-family:${FONT};font-size:14px;font-weight:600;line-height:1.4;color:${INK};">${escapeHtml(t.title)}</p>
+          <p style="margin:0;font-family:${FONT};font-size:13px;line-height:1.6;color:${MUTED};">${escapeHtml(t.text)}</p>
+        </td>
+      </tr>`,
+    )
+    .join("");
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+      style="margin:0 0 22px;border:1px solid ${BORDER};border-radius:12px;background:${CARD_BG};">
+      <tr><td style="padding:14px 18px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${trs}</table>
+      </td></tr>
+    </table>`;
+}
+
 /** A quiet note in a tinted rail — security warnings, eligibility reminders. */
 export function notice(text: string): Block {
   return `
