@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
-import { loadCampReport, reportFileName } from "@/lib/reports/camp-report";
+import { REPORT_LISTS, loadCampReport, reportFileName, type ReportList } from "@/lib/reports/camp-report";
 import { buildCampWorkbook } from "@/lib/reports/camp-workbook";
 import { buildCampPdf } from "@/lib/reports/camp-pdf";
 
 /**
  * GET /admin/camps/:id/export — the camp's report, as Excel by default or as
- * a PDF with `?format=pdf`.
+ * a PDF with `?format=pdf`. All three lists by default; `?list=all`,
+ * `?list=faculty` or `?list=students` gives just that one.
  *
  * On the administrator's own session, like every console read: RLS decides
  * which rows come back, and `requireAdmin` only gives a non-admin a better
@@ -33,6 +34,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const url = new URL(request.url);
   const format = url.searchParams.get("format") === "pdf" ? "pdf" : "xlsx";
+  const list = url.searchParams.get("list");
+  const only = list && Object.hasOwn(REPORT_LISTS, list) ? (list as ReportList) : undefined;
 
   const report = await loadCampReport(id.data);
   if (!report) return new Response("Unknown camp.", { status: 404 });
@@ -41,8 +44,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     file =
       format === "pdf"
-        ? await buildCampPdf(report, url.origin)
-        : await buildCampWorkbook({ ...report, origin: url.origin });
+        ? await buildCampPdf(report, url.origin, only)
+        : await buildCampWorkbook({ ...report, origin: url.origin, only });
   } catch (error) {
     // Logged for the deployment's function logs, and said plainly to the
     // admin: a half-written download that Excel refuses to open tells nobody
@@ -54,7 +57,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     });
   }
 
-  const name = reportFileName(report.camp, format);
+  const name = reportFileName(report.camp, format, only);
   return new Response(new Uint8Array(file), {
     headers: {
       "Content-Type": TYPES[format],

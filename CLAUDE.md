@@ -67,7 +67,8 @@ things that will bite you.
 - **Camp report** is `GET /admin/camps/:id/export` — Excel
   (`lib/reports/camp-workbook.ts`), or PDF with `?format=pdf`
   (`lib/reports/camp-pdf.ts`), both from `loadCampReport`: three lists (All
-  donors, Faculty, Students) under one letterhead — "Powered by" BlooDoc's mark
+  donors, Faculty, Students; `?list=all|faculty|students` for one, which is
+  what the `ReportDownload` menus offer first) under one letterhead — "Powered by" BlooDoc's mark
   (a PNG kept in `lib/reports/images.ts`, never fetched), then the
   collaborators. Partner logos come from `partners.logo_url`, uploaded on the
   partner page into the `partner-logos` bucket as PNG. **No sharp in the

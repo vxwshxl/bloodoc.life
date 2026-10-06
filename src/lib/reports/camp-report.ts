@@ -75,14 +75,20 @@ export async function loadCampReport(campId: string): Promise<CampReport | null>
 /**
  * The three lists every report carries: everybody, the faculty, the students.
  * Staff and "other" donors are on the first only; the organisers asked for the
- * two groups the college reports on.
+ * two groups the college reports on. A download can ask for just one of them.
  */
-export function reportSections(rows: ReportRow[]): { name: string; rows: ReportRow[] }[] {
-  return [
-    { name: "All donors", rows },
-    { name: "Faculty", rows: rows.filter((r) => r.donor?.kind === "faculty") },
-    { name: "Students", rows: rows.filter((r) => r.donor?.kind === "student") },
-  ];
+export const REPORT_LISTS = { all: "All donors", faculty: "Faculty", students: "Students" } as const;
+export type ReportList = keyof typeof REPORT_LISTS;
+
+export function reportSections(rows: ReportRow[], only?: ReportList): { name: string; rows: ReportRow[] }[] {
+  const sections: Record<ReportList, ReportRow[]> = {
+    all: rows,
+    faculty: rows.filter((r) => r.donor?.kind === "faculty"),
+    students: rows.filter((r) => r.donor?.kind === "student"),
+  };
+  return (Object.keys(REPORT_LISTS) as ReportList[])
+    .filter((list) => !only || list === only)
+    .map((list) => ({ name: REPORT_LISTS[list], rows: sections[list] }));
 }
 
 export const STATUS_LABEL: Record<RegistrationStatus, string> = {
@@ -123,8 +129,9 @@ export function bloodGroupLabel(r: ReportRow): string {
   return r.donor?.blood_group === "unknown" ? "Not known" : r.donor?.blood_group ?? "";
 }
 
-/** The camp's file name, dated in IST: "<Camp> - report 2026-10-06.xlsx". */
-export function reportFileName(camp: Camp, extension: "xlsx" | "pdf"): string {
+/** The camp's file name, dated in IST: "<Camp> - report 2026-10-06.xlsx", or "- faculty …" for one list. */
+export function reportFileName(camp: Camp, extension: "xlsx" | "pdf", only?: ReportList): string {
   const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
-  return `${camp.title.replace(/[\\/:*?"<>|]+/g, "").trim() || "Camp"} - report ${stamp}.${extension}`;
+  const what = only ? REPORT_LISTS[only].toLowerCase() : "report";
+  return `${camp.title.replace(/[\\/:*?"<>|]+/g, "").trim() || "Camp"} - ${what} ${stamp}.${extension}`;
 }

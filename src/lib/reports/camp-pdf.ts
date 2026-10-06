@@ -13,6 +13,7 @@ import {
   countsLine,
   reportSections,
   type CampReport,
+  type ReportList,
   type ReportRow,
 } from "@/lib/reports/camp-report";
 
@@ -165,7 +166,11 @@ function letterhead(
   return y + 4;
 }
 
-export async function buildCampPdf({ camp, partners, rows }: CampReport, origin: string): Promise<Buffer> {
+export async function buildCampPdf(
+  { camp, partners, rows }: CampReport,
+  origin: string,
+  only?: ReportList,
+): Promise<Buffer> {
   const logos = await Promise.all(
     partners.map((p) => (p.logo_url ? loadLogo(p.logo_url, origin) : Promise.resolve(null))),
   );
@@ -177,7 +182,7 @@ export async function buildCampPdf({ camp, partners, rows }: CampReport, origin:
   // Which list each page belongs to, for its footer.
   const pageSection: string[] = [];
 
-  reportSections(rows).forEach((section, s) => {
+  reportSections(rows, only).forEach((section, s) => {
     if (s > 0) doc.addPage();
     const first = doc.getNumberOfPages();
     const startY = letterhead(doc, { camp, partners: placed }, section.name, countsLine(section.rows));

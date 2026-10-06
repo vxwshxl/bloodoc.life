@@ -12,6 +12,7 @@ import {
   capitalise,
   countsLine,
   reportSections,
+  type ReportList,
   type ReportPartner,
   type ReportRow,
 } from "@/lib/reports/camp-report";
@@ -357,11 +358,13 @@ export async function buildCampWorkbook({
   partners,
   rows,
   origin,
+  only,
 }: {
   camp: Camp;
   partners: ReportPartner[];
   rows: ReportRow[];
   origin: string;
+  only?: ReportList;
 }): Promise<Buffer> {
   const logos = await Promise.all(
     partners.map((p) => (p.logo_url ? loadLogo(p.logo_url, origin) : Promise.resolve(null))),
@@ -383,7 +386,7 @@ export async function buildCampWorkbook({
   );
   const head = { markId, partners: placed, logoIds, camp };
 
-  for (const section of reportSections(rows)) donorSheet(wb, section.name, section.rows, head);
+  for (const section of reportSections(rows, only)) donorSheet(wb, section.name, section.rows, head);
 
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
