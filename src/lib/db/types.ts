@@ -142,6 +142,8 @@ export type Registration = {
   bp_diastolic: number | null;
   /** g/dL, as measured at the desk. Below the cutoff is a deferral, not a bug. */
   hemoglobin_gdl: number | null;
+  /** Beats per minute, as taken at the desk. */
+  pulse_bpm: number | null;
   medications: string | null;
   deferral_reason: string | null;
   created_at: string;

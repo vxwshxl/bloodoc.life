@@ -9,7 +9,7 @@ import { sendEmailNow, emailConfigured } from "@/lib/email/send";
 import { campReminderEmail } from "@/lib/email/templates";
 import { copyFor } from "@/lib/email/copy";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
-import { CONFIGURABLE_FIELDS } from "@/lib/validations/donor";
+import { CONFIGURABLE_FIELDS, donorProfileSchema } from "@/lib/validations/donor";
 import { CERTIFICATE_ART, STANDARD_CERTIFICATE } from "@/lib/certificates/artwork";
 import { emailCertificateFor } from "@/lib/certificates/email";
 import { translateCampTitle, translatorConfigured } from "@/lib/ai/translate";
@@ -284,6 +284,11 @@ const vitalsSchema = z.object({
   // caused a deferral is by definition below it, and a field that refused to
   // hold it would only work for people who passed.
   hemoglobin: optionalNumber(3, 25, "Haemoglobin"),
+  // Beats per minute: a count, and the column is a smallint.
+  pulse: optionalNumber(30, 220, "Pulse").refine(
+    (n) => n === null || Number.isInteger(n),
+    "Pulse is a whole number of beats per minute.",
+  ),
 });
 
 export async function setRegistrationVitals(
@@ -313,6 +318,7 @@ export async function setRegistrationVitals(
       bp_systolic: v.bpSystolic,
       bp_diastolic: v.bpDiastolic,
       hemoglobin_gdl: v.hemoglobin,
+      pulse_bpm: v.pulse,
     })
     .eq("id", v.id);
   if (error) return { error: "Could not save those readings." };
@@ -375,6 +381,7 @@ export async function saveRegistration(
       bp_systolic: v.bpSystolic,
       bp_diastolic: v.bpDiastolic,
       hemoglobin_gdl: v.hemoglobin,
+      pulse_bpm: v.pulse,
       medications: v.medications || null,
       // Cleared when the status moves off "deferred": a stale "low
       // haemoglobin" sitting on a row that now reads "donated" is worse than
@@ -396,6 +403,84 @@ export async function saveRegistration(
   revalidatePath("/admin");
   revalidatePath("/desk", "layout");
   return { ok: true, message: "Saved." };
+}
+
+export type DonorEditState = ActionState & { fieldErrors?: Record<string, string> };
+
+/**
+ * An administrator correcting the answers on somebody's registration form.
+ *
+ * The same schema the donor's own editor uses, so the console cannot store an
+ * answer the form would have refused. What it writes is the donor record —
+ * that is where the form's answers live, and the next camp reads them from
+ * there — so a correction made from one registration is a correction
+ * everywhere, which is the point.
+ *
+ * Two things are left out on purpose. The email is the account: rewriting it
+ * would detach the donor from their sign-in or attach them to someone else's.
+ * And the readings (height, weight, medications) belong to the registration,
+ * and are saved by `saveRegistration` alongside the rest of the day's numbers.
+ *
+ * `requireAdmin`, not `requireVerifier`: the desk records what it measures,
+ * but who a person is is not something to be retyped between donors.
+ */
+export async function adminUpdateDonor(
+  _prev: DonorEditState,
+  formData: FormData,
+): Promise<DonorEditState> {
+  await requireAdmin();
+
+  const donorId = z.string().uuid().safeParse(formData.get("donorId"));
+  if (!donorId.success) return { error: "That donor record could not be found." };
+
+  const parsed = donorProfileSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[0] ?? "");
+      if (key && !fieldErrors[key]) fieldErrors[key] = issue.message;
+    }
+    return { error: "Some answers need a look.", fieldErrors };
+  }
+  const v = parsed.data;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("donors")
+    .update({
+      full_name: v.fullName,
+      sex: v.sex,
+      date_of_birth: v.dateOfBirth,
+      age: v.age,
+      father_title: v.fatherTitle,
+      father_name: v.fatherName,
+      mother_title: v.motherTitle,
+      mother_name: v.motherName,
+      husband_title: v.husbandTitle,
+      husband_name: v.husbandName,
+      kind: v.kind,
+      occupation: v.occupation,
+      school: v.school,
+      department: v.department,
+      phone: v.phone,
+      alt_phone: v.altPhone,
+      address: v.address,
+      permanent_address: v.permanentAddress,
+      blood_group: v.bloodGroup,
+      prior_donations: v.priorDonations ?? 0,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", donorId.data)
+    .select("id");
+
+  if (error) return { error: "Could not save those details." };
+  // Zero rows is RLS refusing, not a missing donor; say so rather than "saved".
+  if (!data?.length) return { error: "You do not have permission to change that record." };
+
+  revalidatePath("/admin/registrations");
+  revalidatePath("/admin/donors");
+  revalidatePath("/admin");
+  return { ok: true, message: "Registration form updated." };
 }
 
 /**

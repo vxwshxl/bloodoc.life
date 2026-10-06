@@ -1,6 +1,6 @@
-import { Cinzel, Libre_Caslon_Text } from "next/font/google";
+import { Cinzel, Libre_Caslon_Text, Poppins } from "next/font/google";
 import type { VerifiedCertificate } from "@/lib/partners/queries";
-import { artFor, type CertificateArt } from "@/lib/certificates/artwork";
+import { artFor, type CertificateArt, type PrintedLine } from "@/lib/certificates/artwork";
 import { DropMark } from "@/components/brand";
 import { CertificateQr } from "@/components/certificate/certificate-qr";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 // the root layout so no other page pays for them.
 const display = Cinzel({ subsets: ["latin"], weight: ["600", "700"], display: "swap" });
 const serif = Libre_Caslon_Text({ subsets: ["latin"], weight: ["400", "700"], display: "swap" });
+// The face organiser artwork is set in, for lines reprinted over it.
+const sans = Poppins({ subsets: ["latin"], weight: ["400", "600"], display: "swap" });
 
 /** Printed on the page, so a fixed brand domain rather than the deploy URL. */
 const VERIFY_HOST = "bloodoc.life/verify";
@@ -84,9 +86,14 @@ function CodeLine({ code }: { code: string }) {
       <span style={{ color: GOLD }}> · </span>
       Verify at {VERIFY_HOST}
       <span style={{ color: GOLD }}> · </span>
-      Powered by{" "}
-      <span className="font-extrabold tracking-tight">
-        BLOOD<span style={{ color: CRIMSON }}>OC</span>
+      {/* The mark and the name, set a size up so the credit reads as a logo
+          rather than as more small print. */}
+      <span className="inline-flex items-center gap-[0.35em] align-middle whitespace-nowrap">
+        Powered by
+        <DropMark className="size-[1.9em]" />
+        <span className="text-[1.25em] font-extrabold tracking-tight">
+          BLOOD<span style={{ color: CRIMSON }}>OC</span>
+        </span>
       </span>
     </>
   );
@@ -98,7 +105,7 @@ function QrBlock({ code, color }: { code: string; color: string }) {
     <span className="flex w-full flex-col items-center">
       <CertificateQr code={code} color={color} className="block aspect-square w-full" />
       <span
-        className="mt-[0.35cqw] block text-center text-[0.62cqw] leading-none font-semibold tracking-[0.12em] uppercase"
+        className="mt-[0.4cqw] block text-center text-[0.72cqw] leading-none font-semibold tracking-[0.12em] uppercase"
         style={{ color }}
       >
         Scan to verify
@@ -161,7 +168,7 @@ function ArtworkCertificate({ cert, art }: { cert: VerifiedCertificate; art: Cer
       </div>
 
       <p
-        className="absolute inset-x-0 -translate-y-1/2 text-center text-[0.8cqw] leading-none"
+        className="absolute inset-x-0 -translate-y-1/2 text-center text-[0.95cqw] leading-none"
         style={{ top: `${art.code.centre}%`, color: art.code.color }}
       >
         <CodeLine code={cert.code} />
@@ -175,9 +182,9 @@ function ArtworkCertificate({ cert, art }: { cert: VerifiedCertificate; art: Cer
  *
  * Renders nothing while the camp is still called what the organisers printed,
  * so an unchanged camp gets their artwork exactly as designed. Once it is
- * renamed (or moved to another day), the ribbon and the sentence under it are
- * painted over in the artwork's own colours and reset with the camp's record,
- * so a certificate never names a drive that no longer exists.
+ * renamed (or moved to another day), each line that names it is painted over
+ * in the artwork's own colours and reset with the camp's record, so a
+ * certificate never names a drive that no longer exists.
  */
 function Reprint({ cert, art }: { cert: VerifiedCertificate; art: CertificateArt }) {
   const p = art.printed;
@@ -186,48 +193,64 @@ function Reprint({ cert, art }: { cert: VerifiedCertificate; art: CertificateArt
   const moved = istDate(cert.camp_date) !== p.date;
   if (!renamed && !moved) return null;
 
-  const box = (b: { left: number; right: number; top: number; height: number; background: string }) => ({
-    left: `${b.left}%`,
-    right: `${b.right}%`,
-    top: `${b.top}%`,
-    height: `${b.height}%`,
-    background: b.background,
-    // Feathered at the ends so the patch melts into the band and the paper
-    // instead of showing a hard-edged rectangle.
-    maskImage: "linear-gradient(90deg, transparent, #000 1.5%, #000 98.5%, transparent)",
-  });
-  const ribbonWidth = 100 - p.ribbon.left - p.ribbon.right;
-  const sentenceWidth = 100 - p.sentence.left - p.sentence.right;
-  const sentence = `The ${cert.camp_title} was held on ${longDate(cert.camp_date)}`;
+  const stale = (line: PrintedLine) =>
+    line.parts.some((part) => (part.field === "title" && renamed) || (part.field === "date" && moved));
 
   return (
     <>
-      {renamed && (
-        <p
-          className={cn(serif.className, "absolute flex items-center justify-center leading-none font-bold whitespace-nowrap uppercase")}
-          style={{
-            ...box(p.ribbon),
-            color: p.ribbon.color,
-            fontSize: fit(cert.camp_title, 2.15, ribbonWidth - 3, 0.74),
-            letterSpacing: "0.02em",
-          }}
-        >
-          {cert.camp_title}
-        </p>
-      )}
-      <p
-        className={cn(serif.className, "absolute flex items-center justify-center leading-none whitespace-nowrap")}
-        style={{
-          ...box(p.sentence),
-          color: p.sentence.color,
-          fontSize: fit(sentence, 1.32, sentenceWidth - 3, 0.5),
-        }}
-      >
-        <span>
-          The {cert.camp_title} was held on{" "}
-          <strong style={{ color: p.sentence.accent }}>{longDate(cert.camp_date)}</strong>
-        </span>
-      </p>
+      {p.lines.filter(stale).map((line, i) => {
+        const text = line.parts
+          .map((part) => part.text ?? (part.field === "title" ? cert.camp_title : longDate(cert.camp_date)))
+          .join("");
+        return (
+          <p
+            key={i}
+            className={cn(
+              line.font === "sans" ? sans.className : serif.className,
+              "absolute flex items-center justify-center leading-none whitespace-nowrap",
+              line.uppercase && "uppercase",
+            )}
+            style={{
+              left: `${line.left}%`,
+              right: `${line.right}%`,
+              top: `${line.top}%`,
+              height: `${line.height}%`,
+              background: line.background,
+              // Feathered at the ends so the patch melts into the paper
+              // instead of showing a hard-edged rectangle.
+              maskImage: "linear-gradient(90deg, transparent, #000 0.6%, #000 99.4%, transparent)",
+              color: line.color,
+              fontSize: fit(text, line.size, 100 - line.left - line.right - 3, line.font === "sans" ? 0.53 : 0.5),
+            }}
+          >
+            <span>
+              {line.parts.map((part, j) => {
+                const value =
+                  part.text ?? (part.field === "title" ? cert.camp_title : <OrdinalDate iso={cert.camp_date} />);
+                return part.bold || part.color ? (
+                  <strong key={j} className={part.bold ? "font-semibold" : "font-normal"} style={{ color: part.color }}>
+                    {value}
+                  </strong>
+                ) : (
+                  <span key={j}>{value}</span>
+                );
+              })}
+            </span>
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
+/** "6th October, 2026", the ordinal raised as printed artwork sets it. */
+function OrdinalDate({ iso }: { iso: string }) {
+  const [, day, suffix, rest] = longDate(iso).match(/^0?(\d+)(\D+?) (.*)$/) ?? [];
+  if (!day) return <>{longDate(iso)}</>;
+  return (
+    <>
+      {day}
+      <sup className="text-[0.6em]">{suffix}</sup> {rest}
     </>
   );
 }
@@ -312,7 +335,7 @@ function StandardCertificate({ cert }: { cert: VerifiedCertificate }) {
 
       {/* Top right, clear of the centred logo row and of the corner band,
           which is top left on this design. */}
-      <div className="absolute top-[5.2cqw] right-[5.4cqw] w-[7.2cqw]">
+      <div className="absolute top-[5.2cqw] right-[5.4cqw] w-[8.2cqw]">
         <QrBlock code={cert.code} color={NAVY} />
       </div>
 

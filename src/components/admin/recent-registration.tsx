@@ -23,9 +23,11 @@ import { formatDateTime } from "@/lib/format";
 export function RecentRegistration({
   registration: r,
   canEdit,
+  canEditForm = false,
 }: {
   registration: RegistrationDetailData;
   canEdit: boolean;
+  canEditForm?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -51,6 +53,7 @@ export function RecentRegistration({
         <RegistrationDetail
           registration={r}
           canEdit={canEdit}
+          canEditForm={canEditForm}
           open={open}
           onOpenChange={setOpen}
         />

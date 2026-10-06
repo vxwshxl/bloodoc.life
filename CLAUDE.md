@@ -27,7 +27,14 @@ things that will bite you.
 - **`donors.address` is the residential address.** It predates
   `permanent_address` (0020) and kept its name. Parents' titles
   (`father_title` / `mother_title`: `mr` / `mrs` / `late`, printed "Lt.") are
-  separate from the names; display through `parentName()`.
+  separate from the names; display through `parentName()`. **One parent's name
+  is required, not both** (`checkPerson`); a title is stored only with its name.
+- **Pulse** (`registrations.pulse_bpm`, 0024) is a desk reading like BP, never
+  asked on the public form.
+- **Admins edit a registration's form answers** from the registration dialog
+  ("Edit form", `adminUpdateDonor`). It writes the donor record through the
+  same `donorProfileSchema` and `DonorFields` the donor's /me editor uses; the
+  email is never editable there.
 - **Age is derived, never posted.** The form shows it; `finishPerson` in
   `lib/validations/donor.ts` recomputes it from the date of birth in IST.
 - **RGU schools and departments live in `lib/rgu.ts`**, copied from rgu.ac.

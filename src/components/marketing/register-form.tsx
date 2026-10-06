@@ -113,6 +113,7 @@ function Field({
   hint,
   required = false,
   computed = false,
+  either,
   className,
   children,
 }: {
@@ -121,6 +122,11 @@ function Field({
   error?: string;
   hint?: string;
   required?: boolean;
+  /**
+   * One of a pair where either answer will do, named by the other half:
+   * neither "*" nor "(Optional)" is true of it alone.
+   */
+  either?: string;
   /** Filled in by the form, so neither required nor optional. */
   computed?: boolean;
   className?: string;
@@ -130,7 +136,11 @@ function Field({
     <div className={cn("flex flex-col gap-1.5", className)}>
       <Label htmlFor={name} className="gap-1 text-xs font-medium text-muted-foreground">
         {label}
-        {!computed && <Mark required={required} />}
+        {either ? (
+          <span className="font-normal text-muted-foreground/70">(or {either})</span>
+        ) : (
+          !computed && <Mark required={required} />
+        )}
       </Label>
       {children}
       {/* The hint is replaced by the error rather than joined by it: two lines
@@ -480,7 +490,8 @@ function RegisterFormBody({
 
           {/* The title and the name are one line on the paper form, so they are
               one control here: a short menu joined to the text box. */}
-          <Field label="Father's name" name="fatherName" error={e.fatherName ?? e.fatherTitle} required className="sm:col-span-3">
+          {/* Either parent will do; the schema asks for at least one. */}
+          <Field label="Father's name" name="fatherName" error={e.fatherName ?? e.fatherTitle} either="mother's" className="sm:col-span-3">
             <div className="flex gap-2">
               <Label htmlFor="fatherTitle" className="sr-only">
                 Father&rsquo;s title
@@ -492,10 +503,10 @@ function RegisterFormBody({
                 invalid={!!e.fatherTitle}
                 className="w-20 shrink-0"
               />
-              <Input id="fatherName" name="fatherName" className={FIELD} required aria-invalid={!!e.fatherName || undefined} />
+              <Input id="fatherName" name="fatherName" className={FIELD} aria-invalid={!!e.fatherName || undefined} />
             </div>
           </Field>
-          <Field label="Mother's name" name="motherName" error={e.motherName ?? e.motherTitle} required className="sm:col-span-3">
+          <Field label="Mother's name" name="motherName" error={e.motherName ?? e.motherTitle} either="father's" className="sm:col-span-3">
             <div className="flex gap-2">
               <Label htmlFor="motherTitle" className="sr-only">
                 Mother&rsquo;s title
@@ -507,7 +518,7 @@ function RegisterFormBody({
                 invalid={!!e.motherTitle}
                 className="w-20 shrink-0"
               />
-              <Input id="motherName" name="motherName" className={FIELD} required aria-invalid={!!e.motherName || undefined} />
+              <Input id="motherName" name="motherName" className={FIELD} aria-invalid={!!e.motherName || undefined} />
             </div>
           </Field>
           <Field
