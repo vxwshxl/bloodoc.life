@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getCampPartners } from "@/lib/partners/queries";
 import type { Camp, Donor, Registration, RegistrationStatus } from "@/lib/db/types";
+import { schoolIdForName } from "@/lib/rgu";
 
 /**
  * What both camp reports (Excel and PDF) are built from: the camp, its
@@ -89,6 +90,17 @@ export function reportSections(rows: ReportRow[], only?: ReportList): { name: st
   return (Object.keys(REPORT_LISTS) as ReportList[])
     .filter((list) => !only || list === only)
     .map((list) => ({ name: REPORT_LISTS[list], rows: sections[list] }));
+}
+
+/**
+ * Whether a report goes out under RGU's logo: the camp names the university,
+ * or its donors picked RGU schools on the form. Not every camp is RGU's, and a
+ * report must not claim a university that had no part in it.
+ */
+export function isRguCamp({ camp, partners, rows }: CampReport): boolean {
+  const named = [camp.title, camp.venue, camp.organiser, camp.collaboration, ...partners.map((p) => p.name)];
+  if (named.some((t) => t && /royal global|\bRGU\b/i.test(t))) return true;
+  return rows.some((r) => !!schoolIdForName(r.donor?.school));
 }
 
 export const STATUS_LABEL: Record<RegistrationStatus, string> = {

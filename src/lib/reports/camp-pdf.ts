@@ -4,13 +4,14 @@ import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
 import type { RegistrationStatus } from "@/lib/db/types";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
-import { MARK, fitBox, loadLogo, type ReportImage } from "@/lib/reports/images";
+import { MARK, RGU_LOGO, fitBox, loadLogo, type ReportImage } from "@/lib/reports/images";
 import {
   STATUS_LABEL,
   bloodGroupLabel,
   bySchool,
   capitalise,
   countsLine,
+  isRguCamp,
   reportSections,
   type CampReport,
   type ReportList,
@@ -78,27 +79,38 @@ const COLUMNS: { header: string; width?: number; value: (r: ReportRow, i: number
 type Placed = CampReport["partners"][number] & { image: ReportImage | null };
 
 /**
- * "Powered by" BlooDoc's mark and name, a crimson rule, the collaborators with
- * their logos, then the camp, the list's name and its totals. Returns where the
+ * RGU's logo on top for an RGU camp, "Powered by" BlooDoc's mark and name
+ * centred under it, a crimson rule, the collaborators with their logos, then the camp, the list's name and its totals. Returns where the
  * table starts.
  */
 function letterhead(
   doc: jsPDF,
-  { camp, partners }: { camp: CampReport["camp"]; partners: Placed[] },
+  { camp, partners, rgu }: { camp: CampReport["camp"]; partners: Placed[]; rgu: boolean },
   sectionName: string,
   counts: string,
 ): number {
   let y = MARGIN;
+  const center = PAGE_W / 2;
 
+  // The university's logo, centred, on an RGU camp's report.
+  if (rgu) {
+    const box = fitBox(RGU_LOGO, 80, 16);
+    doc.addImage(RGU_LOGO.buffer, "PNG", center - box.width / 2, y, box.width, box.height, "rgu-logo");
+    y += box.height + 3;
+  }
+
+  // "POWERED BY", then the mark and BLOODOC centred as one group.
   doc.setFont("helvetica", "bold").setFontSize(6).setTextColor(...MUTED);
-  doc.text("POWERED BY", MARGIN, y + 2);
+  doc.text("POWERED BY", center, y + 2, { align: "center" });
   y += 3.5;
 
-  doc.addImage(MARK.buffer, "PNG", MARGIN, y, 7, 7, "bloodoc-mark");
-  doc.setFont("helvetica", "bold").setFontSize(15).setTextColor(...INK);
-  doc.text("BLOOD", MARGIN + 9, y + 5.6);
+  doc.setFont("helvetica", "bold").setFontSize(15);
   const bloodW = doc.getTextWidth("BLOOD");
-  doc.setTextColor(...CRIMSON).text("OC", MARGIN + 9 + bloodW, y + 5.6);
+  const groupW = 7 + 2 + bloodW + doc.getTextWidth("OC");
+  const left = center - groupW / 2;
+  doc.addImage(MARK.buffer, "PNG", left, y, 7, 7, "bloodoc-mark");
+  doc.setTextColor(...INK).text("BLOOD", left + 9, y + 5.6);
+  doc.setTextColor(...CRIMSON).text("OC", left + 9 + bloodW, y + 5.6);
   y += 9;
   doc.setDrawColor(...CRIMSON).setLineWidth(0.3).line(MARGIN, y, PAGE_W - MARGIN, y);
   y += 4;
@@ -175,6 +187,7 @@ export async function buildCampPdf(
     partners.map((p) => (p.logo_url ? loadLogo(p.logo_url, origin) : Promise.resolve(null))),
   );
   const placed: Placed[] = partners.map((p, i) => ({ ...p, image: logos[i] }));
+  const rgu = isRguCamp({ camp, partners, rows });
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
   doc.setProperties({ title: `${camp.title} — camp report`, creator: "BlooDoc", author: "BlooDoc" });
@@ -185,7 +198,7 @@ export async function buildCampPdf(
   reportSections(rows, only).forEach((section, s) => {
     if (s > 0) doc.addPage();
     const first = doc.getNumberOfPages();
-    const startY = letterhead(doc, { camp, partners: placed }, section.name, countsLine(section.rows));
+    const startY = letterhead(doc, { camp, partners: placed, rgu }, section.name, countsLine(section.rows));
 
     if (!section.rows.length) {
       doc.setFont("helvetica", "italic").setFontSize(9).setTextColor(...MUTED);

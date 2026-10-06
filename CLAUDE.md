@@ -68,9 +68,11 @@ things that will bite you.
   (`lib/reports/camp-workbook.ts`), or PDF with `?format=pdf`
   (`lib/reports/camp-pdf.ts`), both from `loadCampReport`: three lists (All
   donors, Faculty, Students; `?list=all|faculty|students` for one, which is
-  what the `ReportDownload` menus offer first) under one letterhead — "Powered by" BlooDoc's mark
-  (a PNG kept in `lib/reports/images.ts`, never fetched), then the
-  collaborators. Partner logos come from `partners.logo_url`, uploaded on the
+  what the `ReportDownload` menus offer first) under one letterhead — RGU's
+  logo on top when `isRguCamp`, then "Powered by" BlooDoc's mark and name
+  centred (both PNGs kept in `lib/reports/images.ts`, never fetched), then the
+  collaborators. Excel images are placed with `placeImage` in native EMU;
+  ExcelJS's fractional `{ col, row }` anchors land in the wrong place. Partner logos come from `partners.logo_url`, uploaded on the
   partner page into the `partner-logos` bucket as PNG. **No sharp in the
   reports**: its libvips was missing from the Vercel function and took the
   route down. Logos are used as PNG/JPEG as they are.

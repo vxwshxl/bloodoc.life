@@ -4,13 +4,14 @@ import ExcelJS from "exceljs";
 import type { Camp, RegistrationStatus } from "@/lib/db/types";
 import { relationLine } from "@/lib/validations/donor";
 import { formatCampDate, formatTimeRange } from "@/lib/format";
-import { MARK, fitBox, loadLogo, type ReportImage } from "@/lib/reports/images";
+import { MARK, RGU_LOGO, fitBox, loadLogo, type ReportImage } from "@/lib/reports/images";
 import {
   STATUS_LABEL,
   bloodGroupLabel,
   bySchool,
   capitalise,
   countsLine,
+  isRguCamp,
   reportSections,
   type ReportList,
   type ReportPartner,
@@ -22,7 +23,8 @@ import {
  *
  * What the organisers hand to the blood bank, the college and every body that
  * ran the drive. Three sheets — everybody, the faculty, the students — each
- * under the same letterhead: "Powered by" BlooDoc's mark and name, then every
+ * under the same letterhead: RGU's logo for an RGU camp, "Powered by"
+ * BlooDoc's mark and name, then every
  * collaborator's logo with its name and what it is, then the camp and its
  * totals. A sheet printed or forwarded on its own still says whose report it
  * is and who ran the drive.
@@ -99,19 +101,35 @@ const HEAD_COLS = 13;
 /** Excel's rendering of a character-width column, in pixels. */
 const colPx = (c: number) => Math.round(COLUMNS[c].width * 7 + 5);
 
+/** Excel's drawing unit: 9525 EMU to a pixel. */
+const EMU = 9525;
+
 /**
- * A point `px` from the sheet's left edge, as the column-and-fraction anchor
- * ExcelJS places images by. Images float over cells, so this is how one is
- * centred in a span of columns of different widths.
+ * Place an image with its top-left corner `x` px from the sheet's left edge
+ * and `y` px below the top of row `row` (1-based). Images float over cells, so
+ * this is how one is centred in a span of columns of different widths.
+ *
+ * Given in Excel's own units, not ExcelJS's fractional `{ col, row }`: ExcelJS
+ * turns a fraction into an offset with a column width of `width × 10000` EMU,
+ * several times too narrow, so every fractional image sat well left of where
+ * it was meant to.
  */
-function anchorX(px: number): number {
+function placeImage(
+  ws: ExcelJS.Worksheet,
+  imageId: number,
+  { x, row, y = 0 }: { x: number; row: number; y?: number },
+  ext: { width: number; height: number },
+) {
+  let col = 0;
   let left = 0;
-  for (let c = 0; c < COLUMNS.length; c++) {
-    const w = colPx(c);
-    if (px < left + w) return c + (px - left) / w;
-    left += w;
-  }
-  return COLUMNS.length;
+  while (col < COLUMNS.length - 1 && x >= left + colPx(col)) left += colPx(col++);
+  const tl = {
+    nativeCol: col,
+    nativeColOff: Math.round(Math.max(0, x - left) * EMU),
+    nativeRow: row - 1,
+    nativeRowOff: Math.round(y * EMU),
+  };
+  ws.addImage(imageId, { tl: tl as unknown as ExcelJS.ImagePosition["tl"], ext });
 }
 
 /**
@@ -148,21 +166,25 @@ const spanPx = ([a, b]: [number, number]) => {
 };
 
 /**
- * The letterhead: "Powered by" BlooDoc's mark and name, a crimson rule, then
- * "In collaboration with" and each collaborator's logo, name and role, then
- * the camp. Returns the row the table's header goes on.
+ * The letterhead: RGU's logo on top for an RGU camp, "Powered by" BlooDoc's
+ * mark and name centred under it, a crimson rule, then "In collaboration with"
+ * and each collaborator's logo, name and role, then the camp. Returns the row
+ * the table's header goes on.
  */
 function letterhead(
   ws: ExcelJS.Worksheet,
   {
     markId,
+    institutionId,
     partners,
     logoIds,
     camp,
     sheetTitle,
     counts,
   }: {
-    markId: number | null;
+    markId: number;
+    /** RGU's logo, on an RGU camp's report; null otherwise. */
+    institutionId: number | null;
     partners: Placed[];
     logoIds: (number | null)[];
     camp: Camp;
@@ -171,36 +193,55 @@ function letterhead(
   },
 ): number {
   const last = HEAD_COLS;
+  const headW = spanPx([0, HEAD_COLS - 1]).width;
+  /** Excel sizes rows in points and images in pixels. */
+  const rowPx = (pt: number) => (pt * 4) / 3;
+  let row = 1;
 
-  // 1. "POWERED BY"
-  ws.mergeCells(1, 1, 1, last);
-  const powered = ws.getCell(1, 1);
+  // 1. The university's logo, centred, on an RGU camp's report.
+  if (institutionId !== null) {
+    const height = 42;
+    ws.getRow(row).height = height;
+    const box = fitBox(RGU_LOGO, 400, rowPx(height) - 8);
+    placeImage(ws, institutionId, { x: (headW - box.width) / 2, row, y: 4 }, box);
+    row += 1;
+  }
+
+  // 2. "POWERED BY", then the mark and BLOODOC with "OC" in crimson, centred
+  // as one group. Kept small: this is a credit over a data sheet, not a cover
+  // page. The name is centred text, so the mark is placed against its
+  // measured width in Arial Black.
+  ws.mergeCells(row, 1, row, last);
+  const powered = ws.getCell(row, 1);
   powered.value = "POWERED BY";
   powered.font = { bold: true, size: 7, color: { argb: MUTED } };
-  powered.alignment = { vertical: "bottom", horizontal: "left", indent: 1 };
-  ws.getRow(1).height = 12;
+  powered.alignment = { vertical: "bottom", horizontal: "center" };
+  ws.getRow(row).height = 12;
+  row += 1;
 
-  // 2. The mark, then BLOODOC with "OC" in crimson. Kept small: this is a
-  // credit over a data sheet, not a cover page.
-  ws.getRow(2).height = 22;
-  if (markId !== null) {
-    ws.addImage(markId, { tl: { col: 0.2, row: 1.08 }, ext: { width: 24, height: 24 } });
-  }
-  ws.mergeCells(2, 2, 2, last);
-  const brand = ws.getCell(2, 2);
+  const brandHeight = 22;
+  const nameW = 96;
+  ws.getRow(row).height = brandHeight;
+  placeImage(
+    ws,
+    markId,
+    { x: headW / 2 - nameW / 2 - 24 - 6, row, y: (rowPx(brandHeight) - 24) / 2 },
+    { width: 24, height: 24 },
+  );
+  ws.mergeCells(row, 1, row, last);
+  const brand = ws.getCell(row, 1);
   brand.value = {
     richText: [
       { text: "BLOOD", font: { bold: true, size: 14, color: { argb: INK }, name: "Arial Black" } },
       { text: "OC", font: { bold: true, size: 14, color: { argb: CRIMSON }, name: "Arial Black" } },
     ],
   };
-  brand.alignment = { vertical: "middle", horizontal: "left" };
+  brand.alignment = { vertical: "middle", horizontal: "center" };
   for (let c = 1; c <= last; c++) {
-    ws.getCell(2, c).border = { bottom: { style: "thin", color: { argb: CRIMSON } } };
+    ws.getCell(row, c).border = { bottom: { style: "thin", color: { argb: CRIMSON } } };
   }
-  ws.getRow(3).height = 6;
-
-  let row = 4;
+  ws.getRow(row + 1).height = 6;
+  row += 2;
 
   // 3. In collaboration with — one slot per collaborator.
   if (partners.length) {
@@ -222,10 +263,12 @@ function letterhead(
       const id = logoIds[i];
       if (id !== null && p.image) {
         const box = fitBox(p.image, width - 16, 38);
-        ws.addImage(id, {
-          tl: { col: anchorX(left + (width - box.width) / 2), row: logoRow - 1 + 0.06 },
-          ext: box,
-        });
+        placeImage(
+          ws,
+          id,
+          { x: left + (width - box.width) / 2, row: logoRow, y: (rowPx(32) - box.height) / 2 },
+          box,
+        );
       }
       ws.mergeCells(logoRow + 1, span[0] + 1, logoRow + 1, span[1] + 1);
       const name = ws.getCell(logoRow + 1, span[0] + 1);
@@ -384,7 +427,10 @@ export async function buildCampWorkbook({
       ? wb.addImage({ buffer: p.image.buffer as unknown as ExcelJS.Buffer, extension: p.image.extension })
       : null,
   );
-  const head = { markId, partners: placed, logoIds, camp };
+  const institutionId = isRguCamp({ camp, partners, rows })
+    ? wb.addImage({ buffer: RGU_LOGO.buffer as unknown as ExcelJS.Buffer, extension: "png" })
+    : null;
+  const head = { markId, institutionId, partners: placed, logoIds, camp };
 
   for (const section of reportSections(rows, only)) donorSheet(wb, section.name, section.rows, head);
 
