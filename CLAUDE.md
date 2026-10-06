@@ -71,7 +71,8 @@ things that will bite you.
   what the `ReportDownload` menus offer first) under one letterhead — RGU's
   logo on top when `isRguCamp`, then "Powered by" BlooDoc's mark and name
   centred (both PNGs kept in `lib/reports/images.ts`, never fetched), then the
-  collaborators. Excel images are placed with `placeImage` in native EMU;
+  collaborators (those with a logo in the first row, names-only under it:
+  `partnerRows`). Excel images are placed with `placeImage` in native EMU;
   ExcelJS's fractional `{ col, row }` anchors land in the wrong place. Partner logos come from `partners.logo_url`, uploaded on the
   partner page into the `partner-logos` bucket as PNG. **No sharp in the
   reports**: its libvips was missing from the Vercel function and took the

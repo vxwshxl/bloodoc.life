@@ -20,6 +20,15 @@ export type ReportPartner = {
   logo_url: string | null;
 };
 
+/**
+ * A letterhead's rows of collaborators: those with a logo, then those
+ * without, each in the camp's order. A name alone beside a row of logos reads
+ * as a gap, so the names-only row goes under. Empty rows are dropped.
+ */
+export function partnerRows<T extends { image: unknown }>(partners: T[]): T[][] {
+  return [partners.filter((p) => p.image), partners.filter((p) => !p.image)].filter((r) => r.length);
+}
+
 export type ReportRow = Registration & {
   donor: Donor | null;
   certificate_code: string | null;

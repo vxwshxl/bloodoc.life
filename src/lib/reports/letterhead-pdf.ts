@@ -2,7 +2,7 @@ import "server-only";
 
 import type { jsPDF } from "jspdf";
 import { MARK, RGU_LOGO, fitBox, loadLogo, type ReportImage } from "@/lib/reports/images";
-import type { ReportPartner } from "@/lib/reports/camp-report";
+import { partnerRows, type ReportPartner } from "@/lib/reports/camp-report";
 
 /**
  * The letterhead every BlooDoc PDF opens with: RGU's logo on an RGU camp,
@@ -78,35 +78,39 @@ export function drawLetterhead(
   doc.text("IN COLLABORATION WITH", margin, y + 2);
   y += 4;
 
-  const hasLogos = partners.some((p) => p.image);
-  const logoH = hasLogos ? 11 : 0;
-  const slotW = contentW / partners.length;
-  let bottom = y;
-  partners.forEach((p, i) => {
-    const slotCenter = margin + slotW * i + slotW / 2;
-    if (p.image) {
-      const box = fitBox(p.image, slotW - 8, logoH);
-      doc.addImage(
-        p.image.buffer,
-        p.image.extension === "png" ? "PNG" : "JPEG",
-        slotCenter - box.width / 2,
-        y + (logoH - box.height) / 2,
-        box.width,
-        box.height,
-        `partner-logo-${i}`,
-      );
-    }
-    let ty = y + logoH + 3;
-    doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...INK);
-    const name = doc.splitTextToSize(p.name, slotW - 6) as string[];
-    doc.text(name, slotCenter, ty, { align: "center" });
-    ty += name.length * 3.2;
-    doc.setFont("helvetica", "normal").setFontSize(6).setTextColor(...MUTED);
-    const roleLines = doc.splitTextToSize(partnerRole(p), slotW - 6) as string[];
-    doc.text(roleLines, slotCenter, ty, { align: "center" });
-    bottom = Math.max(bottom, ty + roleLines.length * 2.6);
-  });
-  y = bottom + 1;
+  // Collaborators with a logo in the first row, those without in a row of
+  // names under it: a name alone beside a row of logos reads as a gap.
+  for (const row of partnerRows(partners)) {
+    const logoH = row[0].image ? 11 : 0;
+    const slotW = contentW / row.length;
+    let bottom = y;
+    row.forEach((p, i) => {
+      const slotCenter = margin + slotW * i + slotW / 2;
+      if (p.image) {
+        const box = fitBox(p.image, slotW - 8, logoH);
+        doc.addImage(
+          p.image.buffer,
+          p.image.extension === "png" ? "PNG" : "JPEG",
+          slotCenter - box.width / 2,
+          y + (logoH - box.height) / 2,
+          box.width,
+          box.height,
+          `partner-logo-${p.name}`,
+        );
+      }
+      let ty = y + logoH + 3;
+      doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...INK);
+      const name = doc.splitTextToSize(p.name, slotW - 6) as string[];
+      doc.text(name, slotCenter, ty, { align: "center" });
+      ty += name.length * 3.2;
+      doc.setFont("helvetica", "normal").setFontSize(6).setTextColor(...MUTED);
+      const roleLines = doc.splitTextToSize(partnerRole(p), slotW - 6) as string[];
+      doc.text(roleLines, slotCenter, ty, { align: "center" });
+      bottom = Math.max(bottom, ty + roleLines.length * 2.6);
+    });
+    y = bottom + 1.5;
+  }
+  y -= 0.5;
   doc.setDrawColor(...LINE).setLineWidth(0.2).line(margin, y, pageW - margin, y);
   return y + 5;
 }

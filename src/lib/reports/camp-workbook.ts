@@ -14,6 +14,7 @@ import {
   isRguCamp,
   reportSections,
   type ReportList,
+  partnerRows,
   type ReportPartner,
   type ReportRow,
 } from "@/lib/reports/camp-report";
@@ -253,44 +254,50 @@ function letterhead(
     ws.getRow(row).height = 12;
     row += 1;
 
-    const logoRow = row;
-    const hasLogos = logoIds.some((id) => id !== null);
-    ws.getRow(logoRow).height = hasLogos ? 32 : 2;
-    const spans = slots(partners.length);
-    partners.forEach((p, i) => {
-      const span = spans[i];
-      const { left, width } = spanPx(span);
-      const id = logoIds[i];
-      if (id !== null && p.image) {
-        const box = fitBox(p.image, width - 16, 38);
-        placeImage(
-          ws,
-          id,
-          { x: left + (width - box.width) / 2, row: logoRow, y: (rowPx(32) - box.height) / 2 },
-          box,
-        );
-      }
-      ws.mergeCells(logoRow + 1, span[0] + 1, logoRow + 1, span[1] + 1);
-      const name = ws.getCell(logoRow + 1, span[0] + 1);
-      name.value = p.name;
-      name.font = { bold: true, size: 8, color: { argb: INK } };
-      name.alignment = { horizontal: "center", vertical: "top", wrapText: true };
+    // Those with a logo in the first row, those without in a row of names
+    // under it, as on the PDF.
+    const withIds = partners.map((p, i) => ({ ...p, image: logoIds[i] !== null ? p.image : null, id: logoIds[i] }));
+    for (const group of partnerRows(withIds)) {
+      const hasLogos = !!group[0].image;
+      if (hasLogos) ws.getRow(row).height = 32;
+      const logoRow = row;
+      const nameRow = hasLogos ? row + 1 : row;
+      const spans = slots(group.length);
+      group.forEach((p, i) => {
+        const span = spans[i];
+        const { left, width } = spanPx(span);
+        if (p.id !== null && p.image) {
+          const box = fitBox(p.image, width - 16, 38);
+          placeImage(
+            ws,
+            p.id,
+            { x: left + (width - box.width) / 2, row: logoRow, y: (rowPx(32) - box.height) / 2 },
+            box,
+          );
+        }
+        ws.mergeCells(nameRow, span[0] + 1, nameRow, span[1] + 1);
+        const name = ws.getCell(nameRow, span[0] + 1);
+        name.value = p.name;
+        name.font = { bold: true, size: 8, color: { argb: INK } };
+        name.alignment = { horizontal: "center", vertical: "top", wrapText: true };
 
-      ws.mergeCells(logoRow + 2, span[0] + 1, logoRow + 2, span[1] + 1);
-      const role = ws.getCell(logoRow + 2, span[0] + 1);
-      role.value = [p.kind === "blood_bank" ? "Blood bank partner" : "Organisation", p.note]
-        .filter(Boolean)
-        .join(" · ");
-      role.font = { size: 7, color: { argb: MUTED } };
-      role.alignment = { horizontal: "center", vertical: "top", wrapText: true };
-    });
-    ws.getRow(logoRow + 1).height = 14;
-    ws.getRow(logoRow + 2).height = 12;
-    for (let c = 1; c <= last; c++) {
-      ws.getCell(logoRow + 2, c).border = { bottom: { style: "thin", color: { argb: LINE } } };
+        ws.mergeCells(nameRow + 1, span[0] + 1, nameRow + 1, span[1] + 1);
+        const role = ws.getCell(nameRow + 1, span[0] + 1);
+        role.value = [p.kind === "blood_bank" ? "Blood bank partner" : "Organisation", p.note]
+          .filter(Boolean)
+          .join(" · ");
+        role.font = { size: 7, color: { argb: MUTED } };
+        role.alignment = { horizontal: "center", vertical: "top", wrapText: true };
+      });
+      ws.getRow(nameRow).height = 14;
+      ws.getRow(nameRow + 1).height = 12;
+      row = nameRow + 2;
     }
-    ws.getRow(logoRow + 3).height = 6;
-    row = logoRow + 4;
+    for (let c = 1; c <= last; c++) {
+      ws.getCell(row - 1, c).border = { bottom: { style: "thin", color: { argb: LINE } } };
+    }
+    ws.getRow(row).height = 6;
+    row += 1;
   }
 
   // 4. The camp, which sheet this is, and its totals.
