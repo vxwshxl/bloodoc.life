@@ -309,7 +309,8 @@ export async function getDashboardExtras(days = 30): Promise<DashboardExtras> {
     value,
   }));
 
-  const STATUSES = ["registered", "screened", "donated", "deferred", "cancelled"] as const;
+  // "Deferred" is no longer recorded, so it is not charted.
+  const STATUSES = ["registered", "screened", "donated", "cancelled"] as const;
   const byStatus = STATUSES.map((s) => ({
     label: s[0].toUpperCase() + s.slice(1),
     value: rows.filter((r) => r.status === s).length,
@@ -334,7 +335,7 @@ export async function getDashboardExtras(days = 30): Promise<DashboardExtras> {
 
 export type ConsoleUser = Profile & {
   donor: Pick<Donor, "id" | "full_name" | "phone" | "blood_group" | "kind" | "school" | "department" | "prior_donations"> | null;
-  memberships: { partner: { name: string; short_name: string | null; kind: string } | null }[];
+  memberships: { id: string; partner: { id: string; name: string; short_name: string | null; kind: string } | null }[];
 };
 
 /**
@@ -353,16 +354,23 @@ export async function listUsers(
 ): Promise<{ rows: ConsoleUser[]; total: number }> {
   const supabase = await createClient();
   const from = (page - 1) * pageSize;
+  // Organisation and blood bank are memberships, not `profiles.role`, so those
+  // two filters join the memberships inner and match the partner's kind.
+  const byPartner = role === "organisation" || role === "blood_bank";
+  const members = byPartner
+    ? "memberships:partner_members!inner(id, partner:partners!inner(id, name, short_name, kind))"
+    : "memberships:partner_members(id, partner:partners(id, name, short_name, kind))";
   let q = supabase
     .from("profiles")
     .select(
-      "*, donor:donors(id, full_name, phone, blood_group, kind, school, department, prior_donations), memberships:partner_members(partner:partners(name, short_name, kind))",
+      `*, donor:donors(id, full_name, phone, blood_group, kind, school, department, prior_donations), ${members}`,
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
     .range(from, from + pageSize - 1);
 
-  if (role === "admin" || role === "donor") q = q.eq("role", role);
+  if (role === "admin" || role === "verifier" || role === "donor") q = q.eq("role", role);
+  if (byPartner) q = q.eq("memberships.partner.kind", role);
   const term = search?.trim();
   if (term) {
     const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
@@ -371,6 +379,19 @@ export async function listUsers(
 
   const { data, count } = await q;
   return { rows: (data ?? []) as unknown as ConsoleUser[], total: count ?? 0 };
+}
+
+/** The bodies an account can be given access to, for the Users page's picker. */
+export async function listPartnerOptions(): Promise<
+  { id: string; name: string; short_name: string | null; kind: "organisation" | "blood_bank" }[]
+> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("partners")
+    .select("id, name, short_name, kind")
+    .eq("active", true)
+    .order("name");
+  return (data ?? []) as { id: string; name: string; short_name: string | null; kind: "organisation" | "blood_bank" }[];
 }
 
 export type RoleCounts = {

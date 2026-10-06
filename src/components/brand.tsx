@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
  * every theme — it is the brand, not a piece of UI, and a drop that goes pale
  * in dark mode stops reading as blood.
  *
- * The same drawing is in public/brand/logo.svg and public/icon.svg. Change
- * one, change all three, then run `node scripts/render-icons.mjs`.
+ * The same drawing is in public/brand/logo.svg, public/icon.svg and the Excel
+ * report (`MARK_SVG` in lib/reports/camp-workbook.ts). Change one, change all
+ * four, then run `node scripts/render-icons.mjs`.
  */
 export function DropMark({ className }: { className?: string }) {
   return (

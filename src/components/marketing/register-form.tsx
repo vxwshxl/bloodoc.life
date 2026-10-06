@@ -6,9 +6,6 @@ import { lookupDonorByEmail, registerDonor, type RegisterState } from "@/lib/don
 import {
   BLOOD_GROUPS,
   DONOR_KINDS,
-  FATHER_TITLES,
-  HUSBAND_TITLES,
-  MOTHER_TITLES,
   SEXES,
   ageOn,
 } from "@/lib/validations/donor";
@@ -19,6 +16,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dropdown } from "@/components/ui/dropdown";
+import { RelationInput } from "@/components/donor/relation-input";
 import {
   Dialog,
   DialogContent,
@@ -81,11 +79,9 @@ const LABELS: Record<string, string> = {
   fullName: "Full name",
   sex: "Sex",
   dateOfBirth: "Date of birth",
-  fatherTitle: "Father's title",
-  fatherName: "Father's name",
-  motherTitle: "Mother's title",
-  motherName: "Mother's name",
-  husbandName: "Spouse's name",
+  relation: "Father / mother / spouse",
+  relationTitle: "Title",
+  relationName: "Father's, mother's or spouse's name",
   email: "Email",
   phone: "Phone",
   altPhone: "Alternate phone",
@@ -113,7 +109,6 @@ function Field({
   hint,
   required = false,
   computed = false,
-  either,
   className,
   children,
 }: {
@@ -122,11 +117,6 @@ function Field({
   error?: string;
   hint?: string;
   required?: boolean;
-  /**
-   * One of a pair where either answer will do, named by the other half:
-   * neither "*" nor "(Optional)" is true of it alone.
-   */
-  either?: string;
   /** Filled in by the form, so neither required nor optional. */
   computed?: boolean;
   className?: string;
@@ -136,11 +126,7 @@ function Field({
     <div className={cn("flex flex-col gap-1.5", className)}>
       <Label htmlFor={name} className="gap-1 text-xs font-medium text-muted-foreground">
         {label}
-        {either ? (
-          <span className="font-normal text-muted-foreground/70">(or {either})</span>
-        ) : (
-          !computed && <Mark required={required} />
-        )}
+        {!computed && <Mark required={required} />}
       </Label>
       {children}
       {/* The hint is replaced by the error rather than joined by it: two lines
@@ -488,58 +474,18 @@ function RegisterFormBody({
             />
           </Field>
 
-          {/* The title and the name are one line on the paper form, so they are
-              one control here: a short menu joined to the text box. */}
-          {/* Either parent will do; the schema asks for at least one. */}
-          <Field label="Father's name" name="fatherName" error={e.fatherName ?? e.fatherTitle} either="mother's" className="sm:col-span-3">
-            <div className="flex gap-2">
-              <Label htmlFor="fatherTitle" className="sr-only">
-                Father&rsquo;s title
-              </Label>
-              <Dropdown
-                name="fatherTitle"
-                defaultValue="mr"
-                options={FATHER_TITLES}
-                invalid={!!e.fatherTitle}
-                className="w-20 shrink-0"
-              />
-              <Input id="fatherName" name="fatherName" className={FIELD} aria-invalid={!!e.fatherName || undefined} />
-            </div>
-          </Field>
-          <Field label="Mother's name" name="motherName" error={e.motherName ?? e.motherTitle} either="father's" className="sm:col-span-3">
-            <div className="flex gap-2">
-              <Label htmlFor="motherTitle" className="sr-only">
-                Mother&rsquo;s title
-              </Label>
-              <Dropdown
-                name="motherTitle"
-                defaultValue="mrs"
-                options={MOTHER_TITLES}
-                invalid={!!e.motherTitle}
-                className="w-20 shrink-0"
-              />
-              <Input id="motherName" name="motherName" className={FIELD} aria-invalid={!!e.motherName || undefined} />
-            </div>
-          </Field>
+          {/* One name, and whose it is: father's, mother's or spouse's. The
+              relation, title and name are one line on the paper form, so they
+              are one control here. */}
           <Field
-            label="Spouse's name"
-            name="husbandName"
-            error={e.husbandName}
-            hint="If you are married. Leave blank otherwise."
-            className="sm:col-span-3"
+            label="Father's, mother's or spouse's name"
+            name="relationName"
+            error={e.relationName ?? e.relationTitle ?? e.relation}
+            hint="One name is enough. Pick whose it is."
+            required
+            className="sm:col-span-6"
           >
-            <div className="flex gap-2">
-              <Label htmlFor="husbandTitle" className="sr-only">
-                Spouse&rsquo;s title
-              </Label>
-              <Dropdown
-                name="husbandTitle"
-                defaultValue="mr"
-                options={HUSBAND_TITLES}
-                className="w-20 shrink-0"
-              />
-              <Input id="husbandName" name="husbandName" className={FIELD} aria-invalid={!!e.husbandName || undefined} />
-            </div>
+            <RelationInput invalid={!!e.relationName} inputClassName={FIELD} />
           </Field>
         </div>
       </Section>

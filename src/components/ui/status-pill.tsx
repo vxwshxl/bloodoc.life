@@ -60,6 +60,8 @@ const SEMANTIC: Record<string, { label: string; tone: Tone }> = {
   // accounts
   admin: { label: "Administrator", tone: "primary" },
   verifier: { label: "Verifier", tone: "soft" },
+  organisation: { label: "Organisation", tone: "soft" },
+  blood_bank: { label: "Blood bank", tone: "soft" },
   donor: { label: "Donor", tone: "muted" },
 };
 

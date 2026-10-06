@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useOptimistic, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { setUserRole, type ActionState } from "@/lib/admin/actions";
+import { grantPartnerAccess, setUserRole, type ActionState } from "@/lib/admin/actions";
 import { ViewAsButton } from "@/components/admin/view-as-button";
 import {
   Dialog,
@@ -13,17 +13,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/format";
-import { ROLES } from "@/lib/roles";
+import { ACCESS_OPTIONS, accessOf, type Access } from "@/lib/roles";
 import { Dropdown } from "@/components/ui/dropdown";
 import { StatusPill, TONE_CLASS, statusMeta } from "@/components/ui/status-pill";
 import type { ConsoleUser } from "@/lib/admin/queries";
-import type { UserRole } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
 import { DetailList } from "@/components/shell/detail-list";
 
-export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }) {
+export type PartnerOption = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  kind: "organisation" | "blood_bank";
+};
+
+export function UserRow({
+  user,
+  isSelf,
+  partnerOptions,
+}: {
+  user: ConsoleUser;
+  isSelf: boolean;
+  partnerOptions: PartnerOption[];
+}) {
   const [state, action, pending] = useActionState<ActionState, FormData>(setUserRole, {});
   const [open, setOpen] = useState(false);
+  // Organisation and blood bank need a body picked before anything is saved.
+  const [picking, setPicking] = useState<"organisation" | "blood_bank" | null>(null);
   // Optimistic rather than held in ordinary state, and the difference is what
   // happens when the change is refused. `useOptimistic` shows the new role for
   // as long as the transition runs and then snaps back to whatever the server
@@ -31,7 +47,9 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
   // one if it errored. Plain state would need an effect to undo itself, and
   // leaving the control showing a role the database rejected is how somebody
   // walks away believing they promoted a volunteer who is still a donor.
-  const [role, setRole] = useOptimistic<UserRole>(user.role);
+  const [role, setRole] = useOptimistic<Access>(
+    accessOf(user.role, user.memberships.map((m) => m.partner?.kind)),
+  );
   const [dispatching, startDispatch] = useTransition();
 
   useEffect(() => {
@@ -127,6 +145,10 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
                 // page load — a role write per account, for nothing. Controlled
                 // plus this guard means only a real change posts.
                 if (next === role) return;
+                if (next === "organisation" || next === "blood_bank") {
+                  setPicking(next);
+                  return;
+                }
                 const data = new FormData();
                 data.set("profileId", user.id);
                 data.set("role", next);
@@ -135,11 +157,11 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
                 // track it: `pending` never flips and the console says so. The
                 // optimistic write has to be inside it for the same reason.
                 startDispatch(() => {
-                  setRole(next as UserRole);
+                  setRole(next as Access);
                   action(data);
                 });
               }}
-              options={ROLES.map((r) => ({ value: r.value, label: r.label }))}
+              options={ACCESS_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
               // Tinted by its own value, using the same tone the pill would
               // wear, so the control and the badge never disagree.
               className={cn("h-8 w-auto gap-1.5 border-0 text-xs", TONE_CLASS[statusMeta(role).tone])}
@@ -152,12 +174,21 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
         </td>
       </tr>
 
+      {picking && (
+        <PartnerPicker
+          user={user}
+          kind={picking}
+          options={partnerOptions.filter((p) => p.kind === picking)}
+          onClose={() => setPicking(null)}
+        />
+      )}
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               {user.full_name ?? donor?.full_name ?? user.email}
-              <StatusPill status={user.role} />
+              <StatusPill status={role} />
             </DialogTitle>
             <DialogDescription className="text-xs">
               {user.email} · joined {formatDateTime(user.created_at)}
@@ -172,7 +203,7 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
               ["School", donor?.school],
               ["Department", donor?.department],
               ["Donations before BlooDoc", donor ? donor.prior_donations : null],
-              ["Role", <span key="r" className="capitalize">{user.role}</span>],
+              ["Role", statusMeta(role).label],
               [
                 "Partner access",
                 partners.length
@@ -198,5 +229,79 @@ export function UserRow({ user, isSelf }: { user: ConsoleUser; isSelf: boolean }
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/**
+ * "Which organisation?" / "Which blood bank?" — asked when the role control is
+ * set to one of the two, because the access is to a particular body.
+ */
+function PartnerPicker({
+  user,
+  kind,
+  options,
+  onClose,
+}: {
+  user: ConsoleUser;
+  kind: "organisation" | "blood_bank";
+  options: PartnerOption[];
+  onClose: () => void;
+}) {
+  const [state, action, pending] = useActionState<ActionState, FormData>(grantPartnerAccess, {});
+  const [partnerId, setPartnerId] = useState<string>(options[0]?.id ?? "");
+  const what = kind === "blood_bank" ? "blood bank" : "organisation";
+
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+    else if (state.ok) {
+      toast.success(state.message ?? "Access given.");
+      onClose();
+    }
+  }, [state, onClose]);
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle className="text-base">Which {what}?</DialogTitle>
+          <DialogDescription className="text-xs">
+            {user.full_name ?? user.email} will see this {what}&rsquo;s camps in their panel.
+            {user.role !== "donor" && " Their current role is replaced."}
+          </DialogDescription>
+        </DialogHeader>
+        {options.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No {what} is set up yet. Add one under Partners first.
+          </p>
+        ) : (
+          <form action={action} className="flex flex-col gap-4">
+            <input type="hidden" name="profileId" value={user.id} />
+            <input type="hidden" name="partnerId" value={partnerId} />
+            <Dropdown
+              value={partnerId}
+              onValueChange={setPartnerId}
+              options={options.map((p) => ({ value: p.id, label: p.name }))}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="press h-9 rounded-lg border border-app-line px-4 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={pending || !partnerId}
+                className="press inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+              >
+                {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                Give access
+              </button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

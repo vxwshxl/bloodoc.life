@@ -1,6 +1,6 @@
 import { DetailList, type DetailItem } from "@/components/shell/detail-list";
 import { formatCampDate } from "@/lib/format";
-import { parentName } from "@/lib/validations/donor";
+import { relationLine } from "@/lib/validations/donor";
 import type { Donor } from "@/lib/db/types";
 
 /**
@@ -24,9 +24,7 @@ export function DonorProfile({ donor: d }: { donor: Donor }) {
           ["Sex", <span key="s" className="capitalize">{d.sex}</span>],
           ["Age", d.age],
           ["Date of birth", d.date_of_birth ? formatCampDate(d.date_of_birth) : null],
-          ["Father's name", parentName(d.father_title, d.father_name)],
-          ["Mother's name", parentName(d.mother_title, d.mother_name)],
-          ["Spouse's name", parentName(d.husband_title, d.husband_name)],
+          ["Father / mother / spouse", relationLine(d), { span: 2 }],
           ["Blood group", d.blood_group === "unknown" ? "Not known" : d.blood_group],
         ]}
       />

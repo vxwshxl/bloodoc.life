@@ -38,3 +38,40 @@ export const ROLES: { value: UserRole; label: string; hint: string }[] = [
  * role existed. A second copy of a list is a second thing to forget.
  */
 export const ROLE_VALUES = ROLES.map((r) => r.value) as [UserRole, ...UserRole[]];
+
+/**
+ * What the Users page shows and sets: the account's role, with partner access
+ * folded in.
+ *
+ * "Organisation" and "Blood bank" are not values of `profiles.role` — they are
+ * memberships of a partner (`partner_members`), which is what the partner
+ * policies check. The Users table offers them alongside the three roles
+ * because, to the person running the console, "this account belongs to the
+ * blood bank" is the same kind of answer as "this account is a verifier".
+ * Choosing one asks which body and adds the membership; choosing Donor
+ * removes them. Administrator and Verifier win over a membership, because
+ * either already sees more than any partner can.
+ */
+export type Access = UserRole | "organisation" | "blood_bank";
+
+export const ACCESS_OPTIONS: { value: Access; label: string; hint: string }[] = [
+  ROLES[0],
+  ROLES[1],
+  { value: "organisation", label: "Organisation", hint: "Sees the rosters of camps their body runs" },
+  {
+    value: "blood_bank",
+    label: "Blood bank",
+    hint: "Records outcomes and approves certificates for their camps",
+  },
+  ROLES[2],
+];
+
+export function accessOf(
+  role: UserRole,
+  partnerKinds: (string | null | undefined)[],
+): Access {
+  if (role === "admin" || role === "verifier") return role;
+  if (partnerKinds.includes("blood_bank")) return "blood_bank";
+  if (partnerKinds.includes("organisation")) return "organisation";
+  return role;
+}

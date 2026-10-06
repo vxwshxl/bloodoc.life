@@ -10,7 +10,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { StatusBar } from "@/components/admin/registration-row";
 import { DetailList, type DetailItem } from "@/components/shell/detail-list";
 import { DonorEditForm } from "@/components/admin/donor-edit-form";
-import { parentName } from "@/lib/validations/donor";
+import { relationLine } from "@/lib/validations/donor";
 import {
   Dialog,
   DialogContent,
@@ -156,8 +156,7 @@ export function RegistrationDetail({
                 [donor?.kind === "other" ? "Occupation" : "Department", donor?.department ?? donor?.occupation],
                 ["Age", donor?.age],
                 ["Sex", donor ? <span key="s" className="capitalize">{donor.sex}</span> : null],
-                ["Father's name", parentName(donor?.father_title, donor?.father_name)],
-                ["Mother's name", parentName(donor?.mother_title, donor?.mother_name)],
+                ["Father / mother / spouse", relationLine(donor)],
                 ["Donations before BlooDoc", donor?.prior_donations],
                 ["Venue", camp?.venue],
                 ["Registered", formatDateTime(r.created_at)],

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BadgeCheck, CircleAlert, CircleSlash, Printer } from "lucide-react";
+import { BadgeCheck, CircleAlert, CircleSlash } from "lucide-react";
 import { Wordmark } from "@/components/brand";
 import { verifyCertificate } from "@/lib/partners/queries";
 import { CertificateView } from "@/components/certificate/certificate-view";
+import { VerifyDownload } from "@/components/certificate/verify-download";
 
 /**
  * The public face of a certificate.
@@ -110,15 +111,9 @@ export default async function VerifyPage({
         )}
       </div>
 
-      {/* Print is the download. A browser's "Save as PDF" produces the same
-          file a generated one would, without adding a PDF toolchain to a site
-          whose only document this is. */}
-      {state === "valid" && (
-        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground print:hidden">
-          <Printer className="size-3.5" strokeWidth={1.9} aria-hidden />
-          Use your browser&rsquo;s print dialog to save this as a PDF.
-        </p>
-      )}
+      {/* Only a valid certificate can be downloaded: a pending or withdrawn
+          one saved as a file would look like proof it is not. */}
+      {state === "valid" && cert && <VerifyDownload cert={cert} />}
 
       <p className="mt-8 text-center text-xs text-muted-foreground print:hidden">
         <Link href="/verify" className="underline-offset-2 hover:underline">

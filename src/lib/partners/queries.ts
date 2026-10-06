@@ -434,7 +434,8 @@ export async function getPartnerDashboard(days = 30): Promise<PartnerDashboard> 
     value,
   }));
 
-  const STATUSES = ["registered", "screened", "donated", "deferred", "cancelled"] as const;
+  // "Deferred" is no longer recorded, so it is not charted.
+  const STATUSES = ["registered", "screened", "donated", "cancelled"] as const;
   const byStatus = STATUSES.map((s) => ({
     label: s[0].toUpperCase() + s.slice(1),
     value: roster.filter((r) => r.status === s).length,

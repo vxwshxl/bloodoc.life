@@ -1,15 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  BLOOD_GROUPS,
-  DONOR_KINDS,
-  FATHER_TITLES,
-  MOTHER_TITLES,
-  HUSBAND_TITLES,
-  SEXES,
-  ageOn,
-} from "@/lib/validations/donor";
+import { BLOOD_GROUPS, DONOR_KINDS, SEXES, ageOn, relationOf } from "@/lib/validations/donor";
+import { RelationInput } from "@/components/donor/relation-input";
 import { OTHER_SCHOOL, SCHOOL_OPTIONS, schoolById, schoolIdForName } from "@/lib/rgu";
 import { Dropdown } from "@/components/ui/dropdown";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -88,6 +81,7 @@ export function DonorFields({
     !!donor?.address && donor.address === donor.permanent_address,
   );
   const schoolDepartments = schoolById(school)?.departments ?? [];
+  const initialRelation = relationOf(donor);
 
   return (
     <>
@@ -120,44 +114,21 @@ export function DonorFields({
               className={`${fieldClass} bg-muted/50`}
             />
           </Field>
-          {/* Either parent will do; the schema asks for at least one. */}
-          <Field
-            label="Father's name"
-            hint="Father's or mother's name. One is enough."
-            error={e.fatherName ?? e.fatherTitle}
-          >
-            <span className="flex gap-2">
-              <Dropdown
-                name="fatherTitle"
-                defaultValue={donor?.father_title ?? "mr"}
-                options={FATHER_TITLES}
-                className="w-20 shrink-0"
+          <div className="sm:col-span-2">
+            <Field
+              label="Father's, mother's or spouse's name"
+              hint={self ? "One name is enough. Pick whose it is." : "One name. Pick whose it is."}
+              error={e.relationName ?? e.relationTitle ?? e.relation}
+            >
+              <RelationInput
+                defaultRelation={initialRelation.relation}
+                defaultTitle={initialRelation.title}
+                defaultName={initialRelation.name}
+                invalid={!!e.relationName}
+                inputClassName={fieldClass}
               />
-              <input name="fatherName" defaultValue={donor?.father_name ?? ""} className={fieldClass} />
-            </span>
-          </Field>
-          <Field label="Mother's name" error={e.motherName ?? e.motherTitle}>
-            <span className="flex gap-2">
-              <Dropdown
-                name="motherTitle"
-                defaultValue={donor?.mother_title ?? "mrs"}
-                options={MOTHER_TITLES}
-                className="w-20 shrink-0"
-              />
-              <input name="motherName" defaultValue={donor?.mother_name ?? ""} className={fieldClass} />
-            </span>
-          </Field>
-          <Field label="Spouse's name (optional)" error={e.husbandName}>
-            <span className="flex gap-2">
-              <Dropdown
-                name="husbandTitle"
-                defaultValue={donor?.husband_title ?? "mr"}
-                options={HUSBAND_TITLES}
-                className="w-20 shrink-0"
-              />
-              <input name="husbandName" defaultValue={donor?.husband_name ?? ""} className={fieldClass} />
-            </span>
-          </Field>
+            </Field>
+          </div>
         </div>
       </section>
 

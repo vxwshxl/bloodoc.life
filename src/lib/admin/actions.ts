@@ -757,11 +757,97 @@ export async function setUserRole(
   if (error) return { error: "Could not change that role." };
   if (!data) return { error: "That account could not be updated." };
 
+  // "Donor" on the Users page means no console access at all, so it also
+  // takes away any organisation or blood bank membership. Otherwise the row
+  // would go on reading "Blood bank" after being set to Donor.
+  if (v.role === "donor") {
+    const { error: memberError } = await supabase
+      .from("partner_members")
+      .delete()
+      .eq("profile_id", v.profileId);
+    if (memberError) return { error: "Role changed, but their partner access could not be removed." };
+  }
+
   revalidatePath("/admin/users");
+  revalidatePath("/admin/partners");
   const labels: Record<string, string> = {
     admin: "an administrator",
     verifier: "a verifier",
     donor: "a donor",
   };
   return { ok: true, message: `${data.email} is now ${labels[v.role]}.` };
+}
+
+/**
+ * Give an account organisation or blood bank access, from the Users page.
+ *
+ * The same membership the partner page's invite creates, written against the
+ * account directly — it already exists, so there is nothing to wait for it to
+ * claim. The account's own role drops to donor: the Users table shows one
+ * access per person, and an administrator or verifier who stayed one would
+ * go on seeing far more than the body they were just placed in.
+ */
+export async function grantPartnerAccess(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const me = await requireAdmin();
+  const parsed = z
+    .object({ profileId: z.uuid(), partnerId: z.uuid() })
+    .safeParse({ profileId: formData.get("profileId"), partnerId: formData.get("partnerId") });
+  if (!parsed.success) return { error: "Pick who to add them to." };
+  const v = parsed.data;
+
+  if (v.profileId === me.id) {
+    return { error: "You cannot remove your own administrator access." };
+  }
+
+  const supabase = await createClient();
+  const [{ data: profile }, { data: partner }] = await Promise.all([
+    supabase.from("profiles").select("id, email, full_name, role").eq("id", v.profileId).maybeSingle(),
+    supabase.from("partners").select("id, name, kind").eq("id", v.partnerId).maybeSingle(),
+  ]);
+  if (!profile || !partner) return { error: "That account or body could not be found." };
+
+  if (profile.role === "admin") {
+    const { count } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "admin");
+    if ((count ?? 0) <= 1) {
+      return { error: "This is the only administrator. Promote somebody else first." };
+    }
+  }
+
+  const { error } = await supabase.from("partner_members").insert({
+    partner_id: partner.id,
+    profile_id: profile.id,
+    email: profile.email,
+    full_name: profile.full_name,
+    role: "member",
+  });
+  if (error && error.code === "23505") {
+    // Already invited by this address: link the invite to the account.
+    const { error: linkError } = await supabase
+      .from("partner_members")
+      .update({ profile_id: profile.id })
+      .eq("partner_id", partner.id)
+      .ilike("email", profile.email);
+    if (linkError) return { error: "Could not add them." };
+  } else if (error) {
+    return { error: "Could not add them." };
+  }
+
+  if (profile.role !== "donor") {
+    const { error: roleError } = await supabase
+      .from("profiles")
+      .update({ role: "donor", updated_at: new Date().toISOString() })
+      .eq("id", profile.id);
+    if (roleError) return { error: `Added to ${partner.name}, but their old role could not be removed.` };
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/partners");
+  const what = partner.kind === "blood_bank" ? "blood bank" : "organisation";
+  return { ok: true, message: `${profile.email} now has ${what} access for ${partner.name}.` };
 }
